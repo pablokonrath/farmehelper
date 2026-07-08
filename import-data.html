@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>DropList — Importar dados</title>
+  </head>
+  <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto">
+    <h2>Importar dados no DropList</h2>
+    <p>
+      Envie o arquivo <code>droplist-backup.json</code> gerado pela página
+      <code>export-legacy-data.html</code> no navegador antigo. Isso
+      substitui o que já estiver salvo no banco por completo.
+    </p>
+    <div id="authGate"></div>
+
+    <script type="module">
+      const API_BASE = 'api';
+      const authGate = document.getElementById('authGate');
+
+      async function checkSession() {
+        try {
+          const response = await fetch(`${API_BASE}/session-check.php`, { credentials: 'same-origin' });
+          if (!response.ok) return false;
+          const data = await response.json();
+          return !!data.authenticated;
+        } catch {
+          return false;
+        }
+      }
+
+      function renderForm() {
+        authGate.innerHTML = `
+          <input type="file" id="fileInput" accept="application/json" />
+          <button id="importBtn" style="padding:8px 16px;margin-left:8px">Importar</button>
+          <div id="status" style="margin-top:12px;font-size:13px"></div>
+        `;
+        document.getElementById('importBtn').addEventListener('click', async () => {
+          const statusEl = document.getElementById('status');
+          const file = document.getElementById('fileInput').files[0];
+          if (!file) {
+            statusEl.textContent = 'Escolha um arquivo primeiro.';
+            return;
+          }
+          statusEl.textContent = 'Importando...';
+
+          const text = await file.text();
+          let payload;
+          try {
+            payload = JSON.parse(text);
+          } catch (err) {
+            statusEl.textContent = 'O arquivo não é um JSON válido: ' + err.message;
+            return;
+          }
+
+          try {
+            const response = await fetch(`${API_BASE}/migrate.php`, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+              const body = await response.text();
+              throw new Error(`HTTP ${response.status}: ${body.slice(0, 300)}`);
+            }
+            statusEl.innerHTML = 'Importado com sucesso! <a href="index.html">Voltar pro DropList</a>';
+          } catch (err) {
+            statusEl.textContent = 'Erro ao importar: ' + err.message;
+          }
+        });
+      }
+
+      checkSession().then(authenticated => {
+        if (authenticated) {
+          renderForm();
+        } else {
+          authGate.innerHTML = 'Você precisa estar logado primeiro. <a href="index.html">Ir para o login</a>';
+        }
+      });
+    </script>
+  </body>
+</html>

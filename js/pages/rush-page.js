@@ -1,0 +1,219 @@
+import { AppState } from '../state/app-state.js';
+import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
+import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput } from '../utils/formatting.js';
+import { renderDateInputBR } from '../utils/date-input.js';
+import { renderPage } from '../router.js';
+
+export function setRushCartDate(value) {
+  AppState.rushCartDate = value;
+}
+
+export function setRushTicketPrice(value) {
+  AppState.rushTicketPrice = parseAlzInput(value);
+  const input = document.getElementById('tkp');
+  if (input) input.value = AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : '';
+  updateRushMetricsDisplay();
+}
+
+export function setRushCardCashPrice(value) {
+  AppState.rushCardCashPrice = parseAlzInput(value);
+  const input = document.getElementById('ccp');
+  if (input) input.value = AppState.rushCardCashPrice ? formatNumber(AppState.rushCardCashPrice) : '';
+
+  const costPerGem = formatAlzGamer(getCostPerGem());
+  const gemaHint = document.getElementById('gemaHint');
+  if (gemaHint) gemaHint.textContent = costPerGem;
+  const gemaSuggestion = document.getElementById('gemaSuggestion');
+  if (gemaSuggestion) gemaSuggestion.textContent = costPerGem;
+}
+
+export function toggleDungeonManager() {
+  AppState.isDungeonManagerOpen = !AppState.isDungeonManagerOpen;
+  renderPage();
+}
+
+export function startEditingDungeon(id) {
+  AppState.editingDungeonId = id;
+  renderPage();
+}
+
+export function cancelEditingDungeon() {
+  AppState.editingDungeonId = null;
+  renderPage();
+}
+
+export function renderRushPage() {
+  const cost = calculateRushCartCost();
+
+  return `
+<div class="pg-title"><i class="ti ti-swords" style="color:var(--acc)"></i>DGs de rush diário</div>
+<div class="pg-sub">Monte um carrinho de DGs, salve por data e o custo será deduzido do farme daquele dia.</div>
+
+<!-- PARÂMETROS -->
+<div class="card">
+  <div class="ctitle"><i class="ti ti-calendar"></i>Parâmetros do dia</div>
+  <div class="g3">
+    <div><label class="lbl">Data do rush</label>${renderDateInputBR({ value: AppState.rushCartDate, onChange: 'setRushCartDate' })}</div>
+    <div><label class="lbl">Valor unitário do ticket (Alz)</label>
+      <input class="inp" id="tkp" type="text" inputmode="numeric" value="${AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : ''}" placeholder="Ex: 1.000.000"
+        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushTicketPrice(this.value)">
+      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).</div></div>
+    <div><label class="lbl">Card Cash (1.000 Cash em Alz)</label>
+      <input class="inp" id="ccp" type="text" inputmode="numeric" value="${AppState.rushCardCashPrice ? formatNumber(AppState.rushCardCashPrice) : ''}" placeholder="Ex: 550.000.000"
+        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCardCashPrice(this.value)">
+      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
+  </div>
+</div>
+
+<!-- GERENCIAR DGs (colapsável) -->
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleDungeonManager()">
+    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-table"></i>Gerenciar DGs <span style="font-size:11px;font-weight:400;color:var(--muted)">${AppState.dungeonList.length} DGs cadastradas</span></div>
+    <i class="ti ti-chevron-${AppState.isDungeonManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
+  </div>
+  ${AppState.isDungeonManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
+    <table style="margin-bottom:14px"><thead><tr><th>Nome da DG</th><th>Custo Alz (por run)</th><th>Tickets (por run)</th><th>Gemas de entrada (por run)</th><th style="width:100px">Ações</th></tr></thead><tbody>
+    ${AppState.dungeonList.map(dg => AppState.editingDungeonId === dg.id ? `
+      <tr style="background:var(--acc-bg)">
+        <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${dg.name}" style="min-width:160px"></td>
+        <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="number" min="0" value="${dg.alzCost}" style="width:110px"></td>
+        <td><input class="inp inp-sm" id="ed-tk-${dg.id}" type="number" min="0" value="${dg.ticketsPerRun || 0}" style="width:80px"></td>
+        <td><input class="inp inp-sm" id="ed-g-${dg.id}" type="number" min="0" value="${dg.gemsPerRun || 0}" style="width:80px"></td>
+        <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveDungeonEdit('${dg.id}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingDungeon()">✕</button></div></td>
+      </tr>` :
+      `<tr>
+        <td>${dg.name}</td>
+        <td>${dg.alzCost > 0 ? renderAlzValue(dg.alzCost) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${dg.ticketsPerRun > 0 ? `<span class="badge badge-acc">${dg.ticketsPerRun}× Ticket</span>` : '<span class="badge badge-muted">—</span>'}</td>
+        <td>${dg.gemsPerRun > 0 ? `<span class="badge badge-warn">${dg.gemsPerRun}× Gema</span>` : '<span class="badge badge-muted">—</span>'}</td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn btn-d btn-xs" onclick="startEditingDungeon('${dg.id}')"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteDungeon('${dg.id}')"><i class="ti ti-trash"></i></button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table>
+    <div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--txt2)"><i class="ti ti-plus"></i> Nova DG</div>
+    <div class="row">
+      <div style="flex:1"><input class="inp" id="new-dg-n" placeholder="Nome da DG"></div>
+      <div style="width:150px"><input class="inp" id="new-dg-a" type="number" min="0" placeholder="Custo Alz (0 se ticket/gema)"></div>
+      <div style="width:110px"><input class="inp" id="new-dg-tk" type="number" min="0" placeholder="Qtd. tickets"></div>
+      <div style="width:110px"><input class="inp" id="new-dg-g" type="number" min="0" placeholder="Qtd. gemas"></div>
+      <button class="btn btn-p" onclick="addNewDungeon()"><i class="ti ti-plus"></i>Adicionar</button>
+      <button class="btn btn-d" onclick="resetDungeonList()" title="Restaurar padrão"><i class="ti ti-refresh"></i></button>
+    </div></div>
+  </div>` : ''}
+</div>
+
+<!-- ADICIONAR DG AO CARRINHO -->
+<div class="card">
+  <div class="ctitle"><i class="ti ti-plus"></i>Adicionar DG ao rush</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada run usa o custo Alz da DG (se houver) + tickets × preço do ticket + gemas de entrada × custo por gema (sugestão: <span id="gemaSuggestion">${formatAlzGamer(getCostPerGem())}</span>, calculado a partir do Card Cash). Reset (opcional) soma gemas por cima disso.</div>
+  <div class="g3" style="margin-bottom:10px">
+    <div style="grid-column:span 2"><label class="lbl">DG</label>
+      <select class="inp" id="dgS">
+      ${AppState.dungeonList.map(d => {
+        const parts = [];
+        if (d.alzCost > 0) parts.push(formatAlzGamer(d.alzCost) + '/run');
+        if (d.ticketsPerRun > 0) parts.push(d.ticketsPerRun + '× ticket');
+        if (d.gemsPerRun > 0) parts.push(d.gemsPerRun + '× gema');
+        return `<option value="${d.id}">${d.name}${parts.length ? ' — ' + parts.join(' + ') : ''}</option>`;
+      }).join('')}
+      </select></div>
+    <div><label class="lbl">Repetições</label><input class="inp" id="dgRp" type="number" min="1" value="1" oninput="updateCartPreview()"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <input type="checkbox" id="dgReset" style="width:16px;height:16px;accent-color:var(--acc)" onchange="toggleResetDetailFields()">
+    <label for="dgReset" style="cursor:pointer;display:flex;align-items:center;gap:5px"><i class="ti ti-sparkles" style="color:var(--warn)"></i>Utilizou Reset de DG (Gemas) nesta DG?</label>
+  </div>
+  <!-- Detalhe do reset: só visível quando a checkbox acima está marcada -->
+  <div id="resetDetailFields" style="display:none;margin-bottom:12px">
+    <div class="g3">
+      <div><label class="lbl">Quantidade de Gemas do Reset</label>
+        <input class="inp" id="dgGemQty" type="number" min="1" value="1" oninput="updateCartPreview()"></div>
+      <div><label class="lbl">Valor Unitário da Gema (Alz)</label>
+        <input class="inp" id="dgGemPrice" type="text" inputmode="numeric" value="${formatNumber(getCostPerGem())}"
+          onfocus="this.value = this.value.replace(/\D/g,'')"
+          oninput="this.value = this.value.replace(/\D/g,''); updateCartPreview()"
+          onblur="this.value = this.value ? Number(this.value).toLocaleString('pt-BR') : ''">
+        <div class="hint">Preenchido em Alz, conforme unidade do jogo.</div></div>
+      <div><label class="lbl">Custo do Reset (previsão)</label>
+        <div id="resetCostPreview" style="background:var(--warn-bg,rgba(234,88,12,.1));border:1px solid var(--warn);border-radius:8px;padding:8px 12px;font-family:var(--mono,monospace)"></div>
+        <div class="hint" id="resetCostBreakdown"></div></div>
+    </div>
+  </div>
+  <!-- Preview do custo antes de adicionar -->
+  <div id="cartPreview" style="background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--txt2)">
+    Selecione uma DG e o número de repetições para ver o custo estimado.
+  </div>
+  <button class="btn btn-p" onclick="addDungeonToCart()"><i class="ti ti-plus"></i>Adicionar ao carrinho</button>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="g6" style="margin-bottom:12px">
+  <div class="metric"><div class="metric-lbl">Alz das DGs</div><div class="metric-val" id="m-a" style="color:${getAlzTierColor(cost.alzFromDungeons)}" title="${formatNumber(cost.alzFromDungeons)} Alz">${formatAlzGamer(cost.alzFromDungeons)}</div></div>
+  <div class="metric"><div class="metric-lbl">Tickets totais</div><div class="metric-val" id="m-t">${cost.ticketCount}</div></div>
+  <div class="metric"><div class="metric-lbl">Custo tickets</div><div class="metric-val" id="m-ct" style="color:${getAlzTierColor(cost.ticketCost)}" title="${formatNumber(cost.ticketCost)} Alz">${formatAlzGamer(cost.ticketCost)}</div></div>
+  <div class="metric"><div class="metric-lbl">Gemas totais</div><div class="metric-val" id="m-g">${cost.gemCount}</div></div>
+  <div class="metric"><div class="metric-lbl">Custo gemas (entrada + reset)</div><div class="metric-val" id="m-cg" style="color:${getAlzTierColor(cost.gemCost)}" title="${formatNumber(cost.gemCost)} Alz">${formatAlzGamer(cost.gemCost)}</div></div>
+  <div class="metric hl"><div class="metric-lbl">Custo final geral</div><div class="metric-val" id="m-tot" style="color:${getAlzTierColor(cost.total)}" title="${formatNumber(cost.total)} Alz">${formatAlzGamer(cost.total)}</div></div>
+</div>
+
+<!-- CARRINHO -->
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}</div>
+  <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>Salvar rush do dia</button></div>
+  ${AppState.rushHistory[AppState.rushCartDate] ? `<div style="font-size:12px;color:var(--warn);background:var(--warn-bg,rgba(234,88,12,.1));border:1px solid var(--warn);border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Já existe um rush salvo para ${formatDateBR(AppState.rushCartDate)}. Salvar agora vai substituí-lo pelo carrinho atual.</div>` : ''}
+  ${!AppState.rushCart.length ? '<div class="empty">Nenhuma DG adicionada. Escolha uma DG acima e clique em Adicionar.</div>' : `
+  <table><thead><tr><th>DG</th><th>Tipo</th><th>Reps</th><th>Reset</th><th>Custo (breakdown)</th><th style="width:40px"></th></tr></thead><tbody>
+  ${AppState.rushCart.map((item, i) => {
+    const ticketPrice = +AppState.rushTicketPrice || 0;
+    const costPerGem = getCostPerGem();
+    const ticketsPerRun = item.ticketsPerRun ?? (item.requiresTicket ? 1 : 0);
+    const totalTickets = ticketsPerRun * item.repetitions;
+    const alzCost = item.alzCost * item.repetitions;
+    const ticketCost = totalTickets * ticketPrice;
+    const entryGems = (item.gemsPerRun || 0) * item.repetitions;
+    const entryGemCost = entryGems * costPerGem;
+    const resetGemQuantity = item.usedReset ? (item.resetGemQuantity ?? item.repetitions) : 0;
+    const resetGemUnitPrice = item.usedReset ? (item.resetGemUnitPrice ?? costPerGem) : 0;
+    const resetCost = resetGemQuantity * resetGemUnitPrice;
+    const total = alzCost + ticketCost + entryGemCost + resetCost;
+    const breakdown = [];
+    if (alzCost > 0) breakdown.push(`${formatAlzGamer(item.alzCost)} × ${item.repetitions} = ${formatAlzGamer(alzCost)}`);
+    if (totalTickets > 0) breakdown.push(`${totalTickets} ticket${totalTickets > 1 ? 's' : ''} × ${formatAlzGamer(ticketPrice)} = ${formatAlzGamer(ticketCost)}`);
+    if (entryGems > 0) breakdown.push(`${entryGems} gema${entryGems > 1 ? 's' : ''} de entrada × ${formatAlzGamer(costPerGem)} = ${formatAlzGamer(entryGemCost)}`);
+    if (item.usedReset) breakdown.push(`${resetGemQuantity} gema${resetGemQuantity !== 1 ? 's' : ''} de reset × ${formatAlzGamer(resetGemUnitPrice)} = ${formatAlzGamer(resetCost)}`);
+    const typeBadges = [];
+    if (totalTickets > 0) typeBadges.push(`<span class="badge badge-acc">${totalTickets}× Ticket</span>`);
+    if (entryGems > 0) typeBadges.push(`<span class="badge badge-warn">${entryGems}× Gema</span>`);
+    if (!typeBadges.length) typeBadges.push('<span class="badge badge-muted">Alz</span>');
+    return `<tr>
+      <td style="font-weight:500">${item.name}</td>
+      <td>${typeBadges.join(' ')}</td>
+      <td>${item.repetitions}×</td>
+      <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}</td>
+      <td>${renderAlzValue(total, true)}<div style="font-size:10px;color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
+      <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeDungeonFromCart(${i})"><i class="ti ti-trash"></i></button></td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>`}
+  <div id="rMsg" style="display:none;margin-top:10px;padding:7px 12px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:6px;color:var(--ok);font-size:12px"></div>
+</div>
+
+<!-- RUSHES SALVOS -->
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Rushes salvos</div>
+  <span style="font-size:12px;color:var(--muted)">Acumulado: ${renderAlzValue(Object.values(AppState.rushHistory).reduce((s, r) => s + r.total, 0), true)}</span></div>
+  ${!Object.keys(AppState.rushHistory).length ? '<div class="empty">Nenhum rush salvo.</div>' : `
+  <table><thead><tr><th>Data</th><th>DGs</th><th>Custo total</th><th style="width:70px">Ações</th></tr></thead><tbody>
+  ${Object.entries(AppState.rushHistory).sort(([a], [b]) => b.localeCompare(a)).map(([date, rush]) => `<tr>
+    <td>${formatDateBR(date)}</td><td>${rush.items?.length || 0} DGs</td>
+    <td>${renderAlzValue(rush.total, true)}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-d btn-xs" onclick="editSavedRush('${date}')" title="Editar (adicionar/remover DGs)"><i class="ti ti-edit"></i></button>
+      <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushForDay('${date}')"><i class="ti ti-trash"></i></button>
+    </div></td>
+  </tr>`).join('')}
+  </tbody></table>`}
+</div>`;
+}

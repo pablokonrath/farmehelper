@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>DropList — Cabal Online BR</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  </head>
+  <body>
+    <h2 class="sr-only">DropList Dashboard — Cabal Online BR</h2>
+    <div
+      id="loginScreen"
+      style="
+        display: none;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div class="card" style="width: 320px">
+        <div
+          class="sb-logo"
+          style="justify-content: center; margin-bottom: 14px"
+        >
+          <i class="ti ti-sword"></i>DropList
+        </div>
+        <input
+          class="inp"
+          id="loginPassword"
+          type="password"
+          placeholder="Senha"
+          autocomplete="current-password"
+          onkeydown="if(event.key==='Enter')submitLogin()"
+        />
+        <button
+          class="btn btn-p"
+          type="button"
+          style="width: 100%; justify-content: center; margin-top: 10px"
+          onclick="submitLogin()"
+        >
+          <i class="ti ti-login"></i>Entrar
+        </button>
+        <div
+          id="loginError"
+          style="
+            display: none;
+            color: var(--danger, #fb4570);
+            font-size: 12px;
+            margin-top: 8px;
+            text-align: center;
+          "
+        ></div>
+      </div>
+    </div>
+    <div class="wrap" id="appWrap" style="display: none">
+      <aside class="sb">
+        <div class="sb-head">
+          <div class="sb-logo"><i class="ti ti-sword"></i>DropList</div>
+          <div class="sb-sub">Painel de farme</div>
+        </div>
+        <div class="sb-sec">
+          <div class="sec-lbl">Menu</div>
+          <button
+            class="nav-btn on"
+            onclick="navigateTo('overview')"
+            id="nb-overview"
+          >
+            <i class="ti ti-layout-dashboard"></i>Visão geral
+          </button>
+          <button
+            class="nav-btn"
+            onclick="navigateTo('calculo')"
+            id="nb-calculo"
+          >
+            <i class="ti ti-coins"></i>Cálculo de farme
+          </button>
+          <button class="nav-btn" onclick="navigateTo('rush')" id="nb-rush">
+            <i class="ti ti-swords"></i>DGs de rush diário
+          </button>
+          <button
+            class="nav-btn"
+            onclick="navigateTo('alertas')"
+            id="nb-alertas"
+          >
+            <i class="ti ti-bell"></i>Alertas
+          </button>
+          <button
+            class="nav-btn"
+            onclick="navigateTo('relatorio')"
+            id="nb-relatorio"
+          >
+            <i class="ti ti-report"></i>Relatório
+          </button>
+        </div>
+        <div class="sb-ds">
+          <div class="sec-lbl" style="padding: 0 0 6px">Fonte de dados</div>
+          <label class="file-btn" id="upRow"
+            ><i class="ti ti-upload"></i>Upload de arquivo<input
+              type="file"
+              id="fi"
+              style="display: none"
+          /></label>
+          <button class="file-btn" id="liveRow" onclick="connectLiveFile()">
+            <i class="ti ti-wifi"></i>Conectar arquivo local
+          </button>
+          <div
+            id="fstat"
+            style="font-size: 11px; color: var(--muted); margin-top: 5px"
+          >
+            Nenhum arquivo carregado
+          </div>
+        </div>
+        <div class="sb-bal">
+          <div class="bal-ttl">Balanço de hoje</div>
+          <div class="bal-row">
+            <span class="bal-lbl">Total de farme</span
+            ><span class="bal-val" id="bF">0 Alz</span>
+          </div>
+          <div class="bal-row">
+            <span class="bal-lbl">Total gasto em rush</span
+            ><span class="bal-val" id="bR" style="color: #fb923c">0 Alz</span>
+          </div>
+          <div class="bal-row">
+            <span class="bal-lbl">Total líquido</span
+            ><span class="bal-val" id="bL">0 Alz</span>
+          </div>
+        </div>
+        <button
+          class="file-btn"
+          style="margin-top: 8px"
+          onclick="logout()"
+        >
+          <i class="ti ti-logout"></i>Sair
+        </button>
+      </aside>
+      <main class="main" id="main"></main>
+    </div>
+    <div
+      id="alertToastContainer"
+      style="
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 300px;
+      "
+    ></div>
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>

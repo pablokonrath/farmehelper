@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>DropList — Exportar dados locais</title>
+  </head>
+  <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto">
+    <h2>Exportar dados do DropList deste navegador</h2>
+    <p>
+      Ferramenta de recuperação: gera um arquivo <code>.json</code> com tudo
+      que está salvo neste navegador/endereço (preços, rush, DGs, etc). Use
+      quando o DropList estiver rodando num endereço novo (ex: domínio da
+      Hostinger) que nunca teve acesso a este localStorage — abra esta página
+      no <strong>mesmo navegador e mesmo endereço</strong> onde você usava o
+      DropList antes, clique em exportar, e depois importe o arquivo gerado
+      na tela de importação do site novo.
+    </p>
+    <button id="exportBtn" style="padding: 8px 16px">
+      Exportar dados como .json
+    </button>
+    <div id="status" style="margin-top: 12px; font-size: 13px"></div>
+
+    <script type="module">
+      import { hasLegacyData, buildLegacyStatePayload } from './js/utils/legacy-migration.js';
+
+      const statusEl = document.getElementById('status');
+      if (!hasLegacyData()) {
+        statusEl.textContent = 'Nenhum dado do DropList encontrado neste navegador/endereço.';
+      }
+
+      document.getElementById('exportBtn').addEventListener('click', () => {
+        const payload = buildLegacyStatePayload();
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'droplist-backup.json';
+        link.click();
+        URL.revokeObjectURL(url);
+        statusEl.textContent = 'Arquivo baixado. Agora importe ele no site novo.';
+      });
+    </script>
+  </body>
+</html>

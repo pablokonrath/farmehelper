@@ -1,0 +1,11 @@
+# Credenciais reais — nunca versionar. api/config.example.php é o template que fica no repo;
+# o config.php real com dados reais é criado uma vez direto no servidor (ou localmente pra
+# testes) e nunca sobe pro GitHub.
+api/config.php
+
+# Arquivos de SO
+.DS_Store
+Thumbs.db
+
+# Memória/plans locais do Claude Code (específico desta máquina, não faz sentido versionar)
+.claude/

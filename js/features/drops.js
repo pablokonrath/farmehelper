@@ -1,0 +1,80 @@
+import { AppState } from '../state/app-state.js';
+import { stripEnhancementSuffix, normalizeForSearch, todayISODate } from '../utils/parsing.js';
+import { formatNumber, formatAlzGamer, getAlzTierColor } from '../utils/formatting.js';
+
+export function getItemPrice(itemName) {
+  return AppState.itemPrices[itemName] ?? AppState.itemPrices[stripEnhancementSuffix(itemName)] ?? 0;
+}
+
+// Drops vêm do log do jogo (AppState.drops, recarregado por inteiro a cada upload/conexão
+// de arquivo) + itens adicionados manualmente (AppState.manualDrops, persistidos à parte
+// porque um novo upload de arquivo substitui AppState.drops inteiro).
+export function getAllDrops() {
+  return [...AppState.drops, ...AppState.manualDrops];
+}
+
+// Aplica o filtro "Filtrar apenas itens rastreados" (Cálculo de farme) quando ativo — usado
+// tanto pela lista principal de drops quanto pelo comparador de dias, pra manter os dois
+// consistentes com a mesma lista de palavras rastreadas.
+export function applyTrackedKeywordFilter(drops) {
+  if (!AppState.filterByTrackedKeywords || !AppState.trackedKeywords.length) return drops;
+  const keywords = AppState.trackedKeywords.map(kw => normalizeForSearch(kw.word));
+  return drops.filter(d => keywords.some(k => normalizeForSearch(d.name).includes(k)));
+}
+
+export function getFilteredDrops() {
+  let drops = getAllDrops();
+  if (AppState.dateFrom) drops = drops.filter(d => d.date >= AppState.dateFrom);
+  if (AppState.dateTo) drops = drops.filter(d => d.date <= AppState.dateTo);
+  if (AppState.searchQuery) {
+    const query = normalizeForSearch(AppState.searchQuery);
+    drops = drops.filter(d => normalizeForSearch(d.name).includes(query));
+  }
+  return applyTrackedKeywordFilter(drops);
+}
+
+export function getAvailableDropDates() {
+  return [...new Set(getAllDrops().map(d => d.date))].sort();
+}
+
+export function summarizeDropsByItem(drops) {
+  const itemsByName = {};
+  drops.forEach(drop => {
+    const key = stripEnhancementSuffix(drop.name);
+    const price = getItemPrice(drop.name);
+    if (!itemsByName[key]) itemsByName[key] = { name: key, qty: 0, price, total: 0 };
+    itemsByName[key].qty++;
+    itemsByName[key].total += price;
+  });
+  return Object.values(itemsByName).sort((a, b) => b.total - a.total);
+}
+
+// O sidebar mostra só o balanço de hoje, não o histórico inteiro — reflete o que o jogador
+// farmou/gastou na sessão do dia, que é o número que importa pra decidir se compensa continuar.
+export function updateBalanceSidebar() {
+  const today = todayISODate();
+  const totalFarmed = getAllDrops()
+    .filter(drop => drop.date === today)
+    .reduce((sum, drop) => sum + getItemPrice(drop.name), 0);
+  const totalRushSpent = AppState.rushHistory[today]?.total || 0;
+  const net = totalFarmed - totalRushSpent;
+
+  const farmedEl = document.getElementById('bF');
+  const netEl = document.getElementById('bL');
+  const rushEl = document.getElementById('bR');
+
+  if (farmedEl) {
+    farmedEl.textContent = formatAlzGamer(totalFarmed);
+    farmedEl.title = formatNumber(totalFarmed) + ' Alz';
+    farmedEl.style.color = getAlzTierColor(totalFarmed);
+  }
+  if (rushEl) {
+    rushEl.textContent = formatAlzGamer(totalRushSpent);
+    rushEl.title = formatNumber(totalRushSpent) + ' Alz';
+  }
+  if (netEl) {
+    netEl.textContent = formatAlzGamer(net);
+    netEl.title = formatNumber(net) + ' Alz';
+    netEl.style.color = getAlzTierColor(net);
+  }
+}
