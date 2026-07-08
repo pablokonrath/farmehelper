@@ -3,6 +3,13 @@
 # testes) e nunca sobe pro GitHub.
 api/config.php
 
+# Ferramentas de uso pontual (gerar hash de senha, recuperar dados de outra origem) — úteis
+# de ter no projeto local, mas não devem ficar publicadas no site em produção nem se repetir
+# a cada deploy automático. Rode localmente quando precisar, suba na mão só quando for usar.
+api/generate-password-hash.php
+export-legacy-data.html
+import-data.html
+
 # Arquivos de SO
 .DS_Store
 Thumbs.db

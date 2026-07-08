@@ -3,6 +3,41 @@
 Passo a passo pra colocar o backend PHP/MySQL no ar. Tudo aqui é feito pelo hPanel da
 Hostinger (painel de controle da hospedagem) — nenhum acesso SSH é necessário.
 
+## 0. Deploy automático via GitHub (opcional, recomendado)
+
+O projeto já é um repositório git local. Pra editar aqui e a Hostinger puxar sozinha a cada
+push, sem precisar subir arquivo por FTP/Gerenciador de Arquivos toda vez:
+
+1. **Crie o repositório no GitHub** (github.com → New repository → privado). Não crie
+   README/gitignore por lá, o projeto já tem os arquivos.
+2. No seu terminal, dentro da pasta do projeto, rode (troque a URL pela do seu repo):
+   ```
+   git remote add origin https://github.com/pablokonrath/SEU-REPO.git
+   git branch -M main
+   git push -u origin main
+   ```
+   O Git deve pedir login do GitHub na primeira vez (via navegador ou token) — segue o fluxo
+   que aparecer.
+3. No hPanel, vá em **Avançado → Git**, cole a URL do repositório, escolha a branch `main` e
+   a pasta de destino (a raiz pública do domínio/subdomínio onde o DropList vai ficar).
+   Pra repositório **privado** a Hostinger vai pedir autenticação — ela geralmente mostra uma
+   chave SSH pública própria que você precisa adicionar em GitHub → Settings → Deploy Keys
+   do repositório (com permissão só de leitura já basta).
+4. **`api/config.php` nunca vem pelo git** (está no `.gitignore` de propósito, só o
+   `api/config.example.php` fica versionado). Depois do primeiro deploy pela Hostinger, entre
+   no Gerenciador de Arquivos, copie `api/config.example.php` pra `api/config.php` e preencha
+   com os dados reais (passos 3 e 4 abaixo) — só precisa fazer isso uma vez.
+5. **Importante conferir**: depois de fazer um segundo push de teste e deixar a Hostinger
+   puxar de novo, confirme que `api/config.php` continua no ar (não foi apagado). A maioria
+   dos deploys via git faz só um `pull` (não mexe em arquivo que não está no repositório), mas
+   se o painel da Hostinger fizer uma "limpeza"/clone do zero a cada deploy, `config.php`
+   seria apagado toda vez — nesse caso me avisa que a gente ajusta a estratégia (ex: guardar
+   as credenciais fora da pasta que a Hostinger sobrescreve).
+
+Com isso configurado, o fluxo normal passa a ser: eu edito os arquivos aqui → você (ou eu, se
+pedir) roda `git add`, `git commit`, `git push` → a Hostinger atualiza sozinha (automaticamente
+ou com um clique de "Deploy" no hPanel, dependendo de como o painel dela funciona).
+
 ## 1. Criar o banco de dados
 
 1. No hPanel, vá em **Bancos de Dados → Bancos de Dados MySQL**.
@@ -36,14 +71,20 @@ define('DB_PASS', 'sua-senha-aqui');
 
 ## 4. Definir a senha de login
 
-1. Pelo navegador, acesse `https://seudominio.com/api/generate-password-hash.php`.
-2. Digite a senha que você quer usar pra entrar no DropList e clique em **Gerar hash**.
-3. Copie o texto gerado (começa com `$2y$...`) e cole em `api/config.php`:
+`api/generate-password-hash.php` não faz parte do deploy automático via git (está fora do
+repositório, veja `.gitignore`) — precisa subir ele manualmente só quando for gerar/trocar a
+senha.
+
+1. Suba `api/generate-password-hash.php` pro servidor manualmente (Gerenciador de Arquivos),
+   dentro da pasta `api/`.
+2. Pelo navegador, acesse `https://seudominio.com/api/generate-password-hash.php`.
+3. Digite a senha que você quer usar pra entrar no DropList e clique em **Gerar hash**.
+4. Copie o texto gerado (começa com `$2y$...`) e cole em `api/config.php`:
    ```php
    define('AUTH_PASSWORD_HASH', '$2y$10$....(o hash que você copiou)....');
    ```
-4. **Apague o arquivo `api/generate-password-hash.php` do servidor** — ele não deve ficar
-   no ar depois de gerar o hash.
+5. **Apague o arquivo `api/generate-password-hash.php` do servidor** — ele não deve ficar
+   no ar depois de gerar o hash (e como não está no git, não volta sozinho no próximo deploy).
 
 ## 5. Testar
 
@@ -69,18 +110,23 @@ navegador e mesmo endereço** de onde os dados antigos estão salvos — o naveg
 Live Server do VSCode) não aparecem sozinhos quando você abre `https://seudominio.com`,
 mesmo sendo o mesmo navegador e o mesmo projeto. Nesse caso, faça a transferência manual:
 
+`export-legacy-data.html` e `import-data.html` não fazem mais parte do deploy automático
+(ficam só no seu projeto local, fora do git — veja `.gitignore`), porque são ferramentas de
+uso pontual e não devem ficar publicadas permanentemente. Quando precisar:
+
 1. No navegador onde os dados antigos estão, abra o servidor local como antes (ex: Live
    Server na mesma porta de sempre) e navegue até `export-legacy-data.html` (em vez de
    `index.html`). Clique em **Exportar dados como .json** — baixa um arquivo
    `droplist-backup.json`.
-2. Acesse o site novo (`https://seudominio.com`) e faça login normalmente.
-3. Nesse mesmo navegador, acesse `https://seudominio.com/import-data.html`, escolha o
+2. Suba `export-legacy-data.html`/`import-data.html` manualmente pro servidor (Gerenciador
+   de Arquivos) só por enquanto.
+3. Acesse o site novo (`https://seudominio.com`) e faça login normalmente.
+4. Nesse mesmo navegador, acesse `https://seudominio.com/import-data.html`, escolha o
    arquivo `droplist-backup.json` baixado no passo 1, e clique em **Importar**.
-4. Volte pro `index.html` — os dados devem aparecer.
-5. Depois de confirmar que migrou tudo certo, apague `export-legacy-data.html` e
-   `import-data.html` do servidor (ferramentas de recuperação pontual, não precisam
-   ficar publicadas — qualquer um com a URL e uma sessão logada consegue sobrescrever
-   os dados do banco via `import-data.html`).
+5. Volte pro `index.html` — os dados devem aparecer.
+6. Apague os dois arquivos do servidor de novo (ferramenta de recuperação pontual — deixar
+   `import-data.html` no ar permite que qualquer sessão logada sobrescreva os dados do
+   banco por ele).
 
 ## Se algo der errado
 
