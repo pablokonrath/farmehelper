@@ -18,3 +18,7 @@ function require_login(): void {
     json_response(['error' => 'not_authenticated'], 401);
   }
 }
+
+function current_user_id(): int {
+  return (int) $_SESSION['user_id'];
+}

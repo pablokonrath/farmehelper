@@ -110,7 +110,7 @@ Object.assign(window, {
 const authenticated = await checkSession();
 if (!authenticated) {
   document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginPassword')?.focus();
+  document.getElementById('loginUsername')?.focus();
 } else {
   document.getElementById('appWrap').style.removeProperty('display');
   await loadPersistedState();

@@ -1,19 +1,26 @@
 <?php
 require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/db.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'method_not_allowed'], 405);
 
-if (empty(AUTH_PASSWORD_HASH)) {
-  json_response(['error' => 'server_not_configured', 'message' => 'AUTH_PASSWORD_HASH não configurado em config.php'], 500);
-}
-
 $body = read_json_body();
+$username = $body['username'] ?? '';
 $password = $body['password'] ?? '';
 
-if (!is_string($password) || $password === '' || !password_verify($password, AUTH_PASSWORD_HASH)) {
-  json_response(['error' => 'invalid_password'], 401);
+if (!is_string($username) || $username === '' || !is_string($password) || $password === '') {
+  json_response(['error' => 'invalid_credentials'], 401);
+}
+
+$stmt = get_db()->prepare('SELECT id, password_hash FROM users WHERE username = :username');
+$stmt->execute(['username' => $username]);
+$user = $stmt->fetch();
+
+if (!$user || !password_verify($password, $user['password_hash'])) {
+  json_response(['error' => 'invalid_credentials'], 401);
 }
 
 session_regenerate_id(true);
 $_SESSION['authenticated'] = true;
+$_SESSION['user_id'] = (int) $user['id'];
 json_response(['ok' => true]);

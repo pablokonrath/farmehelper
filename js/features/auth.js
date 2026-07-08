@@ -20,8 +20,8 @@ function showLoginError(message) {
 }
 
 export async function submitLogin() {
-  const input = document.getElementById('loginPassword');
-  const password = input?.value || '';
+  const username = document.getElementById('loginUsername')?.value || '';
+  const password = document.getElementById('loginPassword')?.value || '';
   const errorEl = document.getElementById('loginError');
   if (errorEl) errorEl.style.display = 'none';
 
@@ -30,18 +30,13 @@ export async function submitLogin() {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
     if (response.ok) {
       window.location.reload();
       return;
     }
-    const data = await response.json().catch(() => ({}));
-    showLoginError(
-      data.error === 'server_not_configured'
-        ? 'Backend ainda não configurado (falta o hash da senha em api/config.php).'
-        : 'Senha incorreta.'
-    );
+    showLoginError('Usuário ou senha incorretos.');
   } catch {
     showLoginError('Erro de conexão com o servidor.');
   }

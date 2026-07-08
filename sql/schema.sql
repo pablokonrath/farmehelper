@@ -1,30 +1,21 @@
--- DropList — esquema do banco (MySQL 5.7+/MariaDB). Espelha 1:1 o que hoje fica em
--- localStorage (ver js/state/persistence.js) — cada save*() do frontend vira um PUT que
--- apaga e reinsere o conteúdo inteiro da tabela correspondente, então não há necessidade
--- de updates granulares aqui.
+-- DropList — esquema do banco (MySQL 5.7+/MariaDB), pra uma instalação NOVA do zero.
+-- Se você já tem um banco em produção com dados (schema antigo, de usuário único), NÃO rode
+-- este arquivo nele — use sql/migrate_to_multiuser.sql, que preserva os dados existentes.
+--
+-- item_prices e dungeons são compartilhados entre todo mundo (catálogo comum). As demais
+-- tabelas são privadas por usuário (user_id), então cada conta só vê os próprios dados de
+-- farme/rush/alertas.
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS item_prices (
   item_name VARCHAR(255) NOT NULL PRIMARY KEY,
   price BIGINT NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS rush_history (
-  rush_date DATE NOT NULL PRIMARY KEY,
-  total BIGINT NOT NULL DEFAULT 0,
-  items JSON NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-CREATE TABLE IF NOT EXISTS tracked_keywords (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  word VARCHAR(255) NOT NULL,
-  alert_enabled TINYINT(1) NOT NULL DEFAULT 0
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Flags avulsas de configuração (hoje só filterByTrackedKeywords, mas dá pra crescer sem
--- precisar de tabela/coluna nova a cada nova flag booleana/simples).
-CREATE TABLE IF NOT EXISTS app_settings (
-  setting_key VARCHAR(100) NOT NULL PRIMARY KEY,
-  setting_value TEXT NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS dungeons (
@@ -35,33 +26,64 @@ CREATE TABLE IF NOT EXISTS dungeons (
   gems_per_run INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS rush_history (
+  user_id INT NOT NULL,
+  rush_date DATE NOT NULL,
+  total BIGINT NOT NULL DEFAULT 0,
+  items JSON NOT NULL,
+  PRIMARY KEY (user_id, rush_date),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS tracked_keywords (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  word VARCHAR(255) NOT NULL,
+  alert_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Flags avulsas de configuração por usuário (hoje só filterByTrackedKeywords, mas dá pra
+-- crescer sem precisar de tabela/coluna nova a cada nova flag booleana/simples).
+CREATE TABLE IF NOT EXISTS app_settings (
+  user_id INT NOT NULL,
+  setting_key VARCHAR(100) NOT NULL,
+  setting_value TEXT NOT NULL,
+  PRIMARY KEY (user_id, setting_key),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS manual_drops (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
   drop_date DATE NOT NULL,
   drop_time TIME NOT NULL,
   category INT NOT NULL DEFAULT 0,
   name VARCHAR(255) NOT NULL,
-  batch_id VARCHAR(50) NOT NULL
+  batch_id VARCHAR(50) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Uma linha por usuário (upsert via ON DUPLICATE KEY em user_id) — não precisa de seed, a
+-- primeira vez que o usuário salva as configs de alerta já cria a linha dele.
 CREATE TABLE IF NOT EXISTS alert_settings (
-  id TINYINT NOT NULL PRIMARY KEY DEFAULT 1,
+  user_id INT NOT NULL PRIMARY KEY,
   enabled TINYINT(1) NOT NULL DEFAULT 1,
   sound_enabled TINYINT(1) NOT NULL DEFAULT 1,
   repeat_sound_while_open TINYINT(1) NOT NULL DEFAULT 0,
   volume DECIMAL(3,2) NOT NULL DEFAULT 0.70,
   popup_duration_seconds INT NOT NULL DEFAULT 5,
   grouping_window_seconds INT NOT NULL DEFAULT 30,
-  CONSTRAINT single_row CHECK (id = 1)
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS alert_history (
   id VARCHAR(50) NOT NULL PRIMARY KEY,
+  user_id INT NOT NULL,
   ts DATETIME NOT NULL,
   item_name VARCHAR(255) NOT NULL,
   keyword VARCHAR(255) NOT NULL,
   quantity INT NOT NULL DEFAULT 1,
-  seen TINYINT(1) NOT NULL DEFAULT 0
+  seen TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
-INSERT INTO alert_settings (id) VALUES (1) ON DUPLICATE KEY UPDATE id = id;

@@ -5,20 +5,22 @@ require_login();
 
 $db = get_db();
 $method = $_SERVER['REQUEST_METHOD'];
+$uid = current_user_id();
 
 if ($method === 'GET') {
-  $rows = $db->query('SELECT word, alert_enabled FROM tracked_keywords ORDER BY id')->fetchAll();
-  $result = array_map(fn($r) => ['word' => $r['word'], 'alertEnabled' => (bool) $r['alert_enabled']], $rows);
+  $stmt = $db->prepare('SELECT word, alert_enabled FROM tracked_keywords WHERE user_id = :uid ORDER BY id');
+  $stmt->execute(['uid' => $uid]);
+  $result = array_map(fn($r) => ['word' => $r['word'], 'alertEnabled' => (bool) $r['alert_enabled']], $stmt->fetchAll());
   json_response($result);
 }
 
 if ($method === 'PUT') {
   $body = read_json_body();
   $db->beginTransaction();
-  $db->exec('DELETE FROM tracked_keywords');
-  $stmt = $db->prepare('INSERT INTO tracked_keywords (word, alert_enabled) VALUES (:word, :enabled)');
+  $db->prepare('DELETE FROM tracked_keywords WHERE user_id = :uid')->execute(['uid' => $uid]);
+  $stmt = $db->prepare('INSERT INTO tracked_keywords (user_id, word, alert_enabled) VALUES (:uid, :word, :enabled)');
   foreach ($body as $kw) {
-    $stmt->execute(['word' => $kw['word'] ?? '', 'enabled' => !empty($kw['alertEnabled']) ? 1 : 0]);
+    $stmt->execute(['uid' => $uid, 'word' => $kw['word'] ?? '', 'enabled' => !empty($kw['alertEnabled']) ? 1 : 0]);
   }
   $db->commit();
   json_response(['ok' => true]);

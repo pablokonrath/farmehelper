@@ -5,9 +5,20 @@ require_login();
 
 $db = get_db();
 $method = $_SERVER['REQUEST_METHOD'];
+$uid = current_user_id();
 
+// alert_settings tem no máximo uma linha por usuário, criada só quando ele salva pela
+// primeira vez (upsert no PUT) — sem linha ainda, GET devolve os defaults em vez de falhar.
 if ($method === 'GET') {
-  $row = $db->query('SELECT * FROM alert_settings WHERE id = 1')->fetch();
+  $stmt = $db->prepare('SELECT * FROM alert_settings WHERE user_id = :uid');
+  $stmt->execute(['uid' => $uid]);
+  $row = $stmt->fetch();
+  if (!$row) {
+    json_response([
+      'enabled' => true, 'soundEnabled' => true, 'repeatSoundWhileOpen' => false,
+      'volume' => 0.7, 'popupDurationSeconds' => 5, 'groupingWindowSeconds' => 30,
+    ]);
+  }
   json_response([
     'enabled' => (bool) $row['enabled'],
     'soundEnabled' => (bool) $row['sound_enabled'],
@@ -20,15 +31,15 @@ if ($method === 'GET') {
 
 if ($method === 'PUT') {
   $body = read_json_body();
-  $stmt = $db->prepare('UPDATE alert_settings SET
-    enabled = :enabled,
-    sound_enabled = :soundEnabled,
-    repeat_sound_while_open = :repeatSoundWhileOpen,
-    volume = :volume,
-    popup_duration_seconds = :popupDurationSeconds,
-    grouping_window_seconds = :groupingWindowSeconds
-    WHERE id = 1');
+  $stmt = $db->prepare('INSERT INTO alert_settings
+    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds)
+    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds)
+    ON DUPLICATE KEY UPDATE
+      enabled = VALUES(enabled), sound_enabled = VALUES(sound_enabled),
+      repeat_sound_while_open = VALUES(repeat_sound_while_open), volume = VALUES(volume),
+      popup_duration_seconds = VALUES(popup_duration_seconds), grouping_window_seconds = VALUES(grouping_window_seconds)');
   $stmt->execute([
+    'uid' => $uid,
     'enabled' => !empty($body['enabled']) ? 1 : 0,
     'soundEnabled' => !empty($body['soundEnabled']) ? 1 : 0,
     'repeatSoundWhileOpen' => !empty($body['repeatSoundWhileOpen']) ? 1 : 0,

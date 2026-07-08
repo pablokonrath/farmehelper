@@ -10,28 +10,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'method_not
 
 $body = read_json_body();
 $db = get_db();
+$uid = current_user_id();
 $db->beginTransaction();
 
+// itemPrices e dungeonList são globais/compartilhados (sem user_id) — sem mudança aqui.
 $itemPrices = $body['itemPrices'] ?? [];
 $db->exec('DELETE FROM item_prices');
 $stmt = $db->prepare('INSERT INTO item_prices (item_name, price) VALUES (:name, :price)');
 foreach ($itemPrices as $name => $price) $stmt->execute(['name' => $name, 'price' => (int) $price]);
-
-$rushHistory = $body['rushHistory'] ?? [];
-$db->exec('DELETE FROM rush_history');
-$stmt = $db->prepare('INSERT INTO rush_history (rush_date, total, items) VALUES (:date, :total, :items)');
-foreach ($rushHistory as $date => $entry) {
-  $stmt->execute(['date' => $date, 'total' => (int) ($entry['total'] ?? 0), 'items' => json_encode($entry['items'] ?? [])]);
-}
-
-$trackedKeywords = $body['trackedKeywords'] ?? [];
-$db->exec('DELETE FROM tracked_keywords');
-$stmt = $db->prepare('INSERT INTO tracked_keywords (word, alert_enabled) VALUES (:word, :enabled)');
-foreach ($trackedKeywords as $kw) $stmt->execute(['word' => $kw['word'] ?? '', 'enabled' => !empty($kw['alertEnabled']) ? 1 : 0]);
-
-$stmt = $db->prepare('INSERT INTO app_settings (setting_key, setting_value) VALUES (:key, :value)
-  ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
-$stmt->execute(['key' => 'filterByTrackedKeywords', 'value' => json_encode(!empty($body['filterByTrackedKeywords']))]);
 
 // dungeonList vem sempre preenchido do client (AppState nunca fica com a lista vazia — ver
 // DEFAULT_DUNGEONS em app-state.js), então não precisa de guarda contra lista vazia aqui.
@@ -48,13 +34,30 @@ foreach ($dungeonList as $dg) {
   ]);
 }
 
+// Daqui pra baixo é tudo privado do usuário logado (user_id).
+$rushHistory = $body['rushHistory'] ?? [];
+$db->prepare('DELETE FROM rush_history WHERE user_id = :uid')->execute(['uid' => $uid]);
+$stmt = $db->prepare('INSERT INTO rush_history (user_id, rush_date, total, items) VALUES (:uid, :date, :total, :items)');
+foreach ($rushHistory as $date => $entry) {
+  $stmt->execute(['uid' => $uid, 'date' => $date, 'total' => (int) ($entry['total'] ?? 0), 'items' => json_encode($entry['items'] ?? [])]);
+}
+
+$trackedKeywords = $body['trackedKeywords'] ?? [];
+$db->prepare('DELETE FROM tracked_keywords WHERE user_id = :uid')->execute(['uid' => $uid]);
+$stmt = $db->prepare('INSERT INTO tracked_keywords (user_id, word, alert_enabled) VALUES (:uid, :word, :enabled)');
+foreach ($trackedKeywords as $kw) $stmt->execute(['uid' => $uid, 'word' => $kw['word'] ?? '', 'enabled' => !empty($kw['alertEnabled']) ? 1 : 0]);
+
+$stmt = $db->prepare('INSERT INTO app_settings (user_id, setting_key, setting_value) VALUES (:uid, :key, :value)
+  ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)');
+$stmt->execute(['uid' => $uid, 'key' => 'filterByTrackedKeywords', 'value' => json_encode(!empty($body['filterByTrackedKeywords']))]);
+
 $manualDrops = $body['manualDrops'] ?? [];
-$db->exec('DELETE FROM manual_drops');
-$stmt = $db->prepare('INSERT INTO manual_drops (drop_date, drop_time, category, name, batch_id)
-  VALUES (:date, :time, :category, :name, :batchId)');
+$db->prepare('DELETE FROM manual_drops WHERE user_id = :uid')->execute(['uid' => $uid]);
+$stmt = $db->prepare('INSERT INTO manual_drops (user_id, drop_date, drop_time, category, name, batch_id)
+  VALUES (:uid, :date, :time, :category, :name, :batchId)');
 foreach ($manualDrops as $drop) {
   $stmt->execute([
-    'date' => $drop['date'] ?? '', 'time' => $drop['time'] ?? '00:00:00',
+    'uid' => $uid, 'date' => $drop['date'] ?? '', 'time' => $drop['time'] ?? '00:00:00',
     'category' => (int) ($drop['category'] ?? 0), 'name' => $drop['name'] ?? '',
     'batchId' => $drop['batchId'] ?? '',
   ]);
@@ -62,11 +65,15 @@ foreach ($manualDrops as $drop) {
 
 $alertSettings = $body['alertSettings'] ?? null;
 if ($alertSettings) {
-  $stmt = $db->prepare('UPDATE alert_settings SET
-    enabled = :enabled, sound_enabled = :soundEnabled, repeat_sound_while_open = :repeatSoundWhileOpen,
-    volume = :volume, popup_duration_seconds = :popupDurationSeconds, grouping_window_seconds = :groupingWindowSeconds
-    WHERE id = 1');
+  $stmt = $db->prepare('INSERT INTO alert_settings
+    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds)
+    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds)
+    ON DUPLICATE KEY UPDATE
+      enabled = VALUES(enabled), sound_enabled = VALUES(sound_enabled),
+      repeat_sound_while_open = VALUES(repeat_sound_while_open), volume = VALUES(volume),
+      popup_duration_seconds = VALUES(popup_duration_seconds), grouping_window_seconds = VALUES(grouping_window_seconds)');
   $stmt->execute([
+    'uid' => $uid,
     'enabled' => !empty($alertSettings['enabled']) ? 1 : 0,
     'soundEnabled' => !empty($alertSettings['soundEnabled']) ? 1 : 0,
     'repeatSoundWhileOpen' => !empty($alertSettings['repeatSoundWhileOpen']) ? 1 : 0,
@@ -77,12 +84,12 @@ if ($alertSettings) {
 }
 
 $alertHistory = $body['alertHistory'] ?? [];
-$db->exec('DELETE FROM alert_history');
-$stmt = $db->prepare('INSERT INTO alert_history (id, ts, item_name, keyword, quantity, seen)
-  VALUES (:id, :ts, :itemName, :keyword, :quantity, :seen)');
+$db->prepare('DELETE FROM alert_history WHERE user_id = :uid')->execute(['uid' => $uid]);
+$stmt = $db->prepare('INSERT INTO alert_history (id, user_id, ts, item_name, keyword, quantity, seen)
+  VALUES (:id, :uid, :ts, :itemName, :keyword, :quantity, :seen)');
 foreach ($alertHistory as $entry) {
   $stmt->execute([
-    'id' => $entry['id'] ?? '', 'ts' => str_replace('T', ' ', substr($entry['timestamp'] ?? '', 0, 19)),
+    'id' => $entry['id'] ?? '', 'uid' => $uid, 'ts' => str_replace('T', ' ', substr($entry['timestamp'] ?? '', 0, 19)),
     'itemName' => $entry['itemName'] ?? '', 'keyword' => $entry['keyword'] ?? '',
     'quantity' => (int) ($entry['quantity'] ?? 1), 'seen' => !empty($entry['seen']) ? 1 : 0,
   ]);

@@ -44,9 +44,13 @@ ou com um clique de "Deploy" no hPanel, dependendo de como o painel dela funcion
 2. Crie um banco novo (anote o nome) e um usuário com senha (anote usuário e senha) — a
    Hostinger geralmente prefixa o nome do banco/usuário com algo como `u123456789_`.
 3. Abra o **phpMyAdmin** (tem um atalho na mesma tela), selecione o banco criado, vá na aba
-   **SQL** e cole o conteúdo do arquivo `sql/schema.sql` deste projeto. Execute.
-4. Confirme que 8 tabelas apareceram: `item_prices`, `rush_history`, `tracked_keywords`,
-   `app_settings`, `dungeons`, `manual_drops`, `alert_settings`, `alert_history`.
+   **SQL** e cole o conteúdo do arquivo `sql/schema.sql` deste projeto (só pra instalação
+   **nova, do zero** — se seu banco já tem dados de uma versão anterior sem login
+   multiusuário, veja a seção **"Migrando de usuário único pra multiusuário"** mais abaixo
+   em vez de rodar o schema.sql). Execute.
+4. Confirme que 9 tabelas apareceram: `users`, `item_prices`, `rush_history`,
+   `tracked_keywords`, `app_settings`, `dungeons`, `manual_drops`, `alert_settings`,
+   `alert_history`.
 
 ## 2. Subir os arquivos
 
@@ -69,38 +73,65 @@ define('DB_PASS', 'sua-senha-aqui');
 
 `DB_HOST` quase sempre é `localhost` na Hostinger — só mude se o painel indicar outro host.
 
-## 4. Definir a senha de login
+## 4. Criar sua conta de login
 
-`api/generate-password-hash.php` não faz parte do deploy automático via git (está fora do
-repositório, veja `.gitignore`) — precisa subir ele manualmente só quando for gerar/trocar a
-senha.
+Login não usa mais uma senha única — cada pessoa tem sua própria conta (usuário + senha) na
+tabela `users`. `api/generate-password-hash.php` não faz parte do deploy automático via git
+(está fora do repositório, veja `.gitignore`) — precisa subir ele manualmente só quando for
+gerar/trocar uma senha.
 
 1. Suba `api/generate-password-hash.php` pro servidor manualmente (Gerenciador de Arquivos),
    dentro da pasta `api/`.
 2. Pelo navegador, acesse `https://seudominio.com/api/generate-password-hash.php`.
-3. Digite a senha que você quer usar pra entrar no DropList e clique em **Gerar hash**.
-4. Copie o texto gerado (começa com `$2y$...`) e cole em `api/config.php`:
-   ```php
-   define('AUTH_PASSWORD_HASH', '$2y$10$....(o hash que você copiou)....');
+3. Digite a senha que você quer usar e clique em **Gerar hash**. Copie o texto gerado
+   (começa com `$2y$...`).
+4. No phpMyAdmin, aba **SQL**, rode (trocando `seu_usuario` e o hash colado):
+   ```sql
+   INSERT INTO users (username, password_hash) VALUES ('seu_usuario', '$2y$10$....(cole aqui)....');
    ```
 5. **Apague o arquivo `api/generate-password-hash.php` do servidor** — ele não deve ficar
-   no ar depois de gerar o hash (e como não está no git, não volta sozinho no próximo deploy).
+   no ar (e como não está no git, não volta sozinho no próximo deploy). Reenvie ele só
+   quando precisar gerar outro hash (ex: pra criar a conta de mais alguém).
 
 ## 5. Testar
 
 1. Acesse `https://seudominio.com` — deve aparecer a **tela de login**, não o painel direto.
-2. Digite a senha configurada no passo 4. Deve entrar no app.
-   - Se aparecer "Backend ainda não configurado": esqueceu de preencher `AUTH_PASSWORD_HASH`.
-   - Se aparecer "Senha incorreta" mesmo com a senha certa: confira se colou o hash certo
-     (sem espaços extras) e se `generate-password-hash.php` gerou pra bcrypt mesmo.
+2. Digite o usuário e a senha criados no passo 4. Deve entrar no app.
+   - Se aparecer "Usuário ou senha incorretos": confira se o `INSERT` no passo 4 rodou sem
+     erro (veja no phpMyAdmin, tabela `users`, se a linha existe) e se colou o hash certo.
 3. **Se esse navegador já tinha dados salvos** (preços, rush, DGs) de quando o DropList
    ainda usava só localStorage: no primeiro login, o app deve migrar tudo automaticamente
-   pro banco (isso acontece sozinho, sem precisar apertar nada). Confira no phpMyAdmin se
-   as tabelas `item_prices`/`rush_history`/etc. ficaram com os dados esperados.
+   pro banco, associado à conta que você acabou de logar (isso acontece sozinho, sem
+   precisar apertar nada). Confira no phpMyAdmin se as tabelas `item_prices`/`rush_history`/
+   etc. ficaram com os dados esperados.
 4. Adicione um preço de item ou salve um rush, dê F5 na página — o dado deve continuar lá
    (agora vindo do banco, não mais do localStorage do navegador).
-5. Teste o botão **Sair** (logout) no rodapé da barra lateral, e confirme que a senha errada
-   é rejeitada.
+5. Teste o botão **Sair** (logout) no rodapé da barra lateral, e confirme que usuário/senha
+   errados são rejeitados.
+
+## Criando conta pra outra pessoa
+
+Repete o passo 4 (gerar hash pra senha da pessoa, apagar `generate-password-hash.php` depois)
+com um `username` diferente. Cada conta é totalmente isolada pra farme/rush/alertas — só os
+preços de item e a lista de DGs são compartilhados entre todo mundo.
+
+## Migrando de usuário único pra multiusuário
+
+Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
+**não rode `sql/schema.sql`** — ele recriaria as tabelas do zero e perderia tudo. Em vez
+disso:
+
+1. Abra `api/config.php` no servidor e copie o valor atual de `AUTH_PASSWORD_HASH` (a linha
+   toda, começando com `$2y$...`) — vai precisar dele no próximo passo.
+2. No phpMyAdmin, aba **SQL**, cole o conteúdo de `sql/migrate_to_multiuser.sql`, mas antes
+   troque `<COLE_O_HASH_ATUAL_AQUI>` pelo hash que você copiou no passo 1, e `pablokonrath`
+   pelo username que você quiser pra sua conta. Execute.
+3. Confirme no phpMyAdmin que a tabela `users` tem 1 linha, e que as tabelas `rush_history`,
+   `manual_drops`, `tracked_keywords`, `app_settings`, `alert_settings`, `alert_history`
+   ganharam a coluna `user_id` preenchida com o id dessa linha.
+4. Apague a linha `define('AUTH_PASSWORD_HASH', ...)` do `api/config.php` — não é mais usada.
+5. Teste o login com o username escolhido no passo 2 e a **mesma senha de sempre** (o hash
+   foi reaproveitado, não muda). Confirme que os dados antigos continuam todos lá.
 
 ## Recuperando dados de um endereço antigo (localhost, VSCode Live Server, etc)
 

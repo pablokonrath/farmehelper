@@ -5,9 +5,11 @@ require_login();
 
 $db = get_db();
 $method = $_SERVER['REQUEST_METHOD'];
+$uid = current_user_id();
 
 if ($method === 'GET') {
-  $rows = $db->query('SELECT id, ts, item_name, keyword, quantity, seen FROM alert_history ORDER BY ts')->fetchAll();
+  $stmt = $db->prepare('SELECT id, ts, item_name, keyword, quantity, seen FROM alert_history WHERE user_id = :uid ORDER BY ts');
+  $stmt->execute(['uid' => $uid]);
   // ts é guardado como o horário UTC (vem de toISOString() no client) sem marcador de fuso —
   // precisa reanexar o "Z" aqui, senão new Date(...) no client reinterpreta como hora local
   // e desloca o horário exibido pelo fuso do navegador.
@@ -18,7 +20,7 @@ if ($method === 'GET') {
     'keyword' => $r['keyword'],
     'quantity' => (int) $r['quantity'],
     'seen' => (bool) $r['seen'],
-  ], $rows);
+  ], $stmt->fetchAll());
   json_response($result);
 }
 
@@ -27,12 +29,13 @@ if ($method === 'GET') {
 if ($method === 'PUT') {
   $body = read_json_body();
   $db->beginTransaction();
-  $db->exec('DELETE FROM alert_history');
-  $stmt = $db->prepare('INSERT INTO alert_history (id, ts, item_name, keyword, quantity, seen)
-    VALUES (:id, :ts, :itemName, :keyword, :quantity, :seen)');
+  $db->prepare('DELETE FROM alert_history WHERE user_id = :uid')->execute(['uid' => $uid]);
+  $stmt = $db->prepare('INSERT INTO alert_history (id, user_id, ts, item_name, keyword, quantity, seen)
+    VALUES (:id, :uid, :ts, :itemName, :keyword, :quantity, :seen)');
   foreach ($body as $entry) {
     $stmt->execute([
       'id' => $entry['id'] ?? '',
+      'uid' => $uid,
       'ts' => str_replace('T', ' ', substr($entry['timestamp'] ?? '', 0, 19)),
       'itemName' => $entry['itemName'] ?? '',
       'keyword' => $entry['keyword'] ?? '',
