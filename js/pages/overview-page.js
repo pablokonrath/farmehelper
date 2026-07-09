@@ -129,11 +129,10 @@ ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti
     <div><label class="lbl">Dia A</label>${renderDateInputBR({ value: comparison.dayA, onChange: 'setCompareDayA' })}</div>
     <div><label class="lbl">Dia B</label>${renderDateInputBR({ value: comparison.dayB, onChange: 'setCompareDayB' })}</div>
     <div><label class="lbl">Item (opcional)</label>
-      <div style="display:flex;gap:6px">
-        <input class="inp" placeholder="Todos os itens" list="compareSugg" value="${AppState.compareItemFilter}" onchange="setCompareItemFilter(this.value)">
-        ${AppState.compareItemFilter ? `<button class="btn btn-d btn-xs" title="Voltar pra todos os itens" onclick="setCompareItemFilter('')"><i class="ti ti-x"></i></button>` : ''}
-      </div>
-      <datalist id="compareSugg">${compareItemSuggestions.map(it => `<option value="${it.name}">`).join('')}</datalist></div>
+      <select class="inp" onchange="setCompareItemFilter(this.value)">
+        <option value=""${AppState.compareItemFilter ? '' : ' selected'}>Todos os itens</option>
+        ${compareItemSuggestions.map(it => `<option value="${it.name}"${it.name === AppState.compareItemFilter ? ' selected' : ''}>${it.name}</option>`).join('')}
+      </select></div>
   </div>
   ${comparison.dates.length < 2 ? '<div class="empty">Carregue drops de pelo menos 2 dias diferentes para comparar.</div>' :
     !comparison.dayA || !comparison.dayB ? '<div class="empty">Escolha os dois dias que quer comparar acima.</div>' : `
