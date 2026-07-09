@@ -1,4 +1,4 @@
-import { AppState } from '../state/app-state.js';
+import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
@@ -63,6 +63,28 @@ export function renderRushPage() {
         onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCardCashPrice(this.value)">
       <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
   </div>
+</div>
+
+<!-- CRÉDITOS DE MACRO -->
+<div class="card">
+  <div class="ctitle"><i class="ti ti-clock-hour-4"></i>Créditos de macro</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia.</div>
+  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:150px">Preço de mercado (unidade)</th><th style="width:150px">Custo de fabricar</th><th>Subtotal</th></tr></thead><tbody>
+  ${CREDIT_CATEGORIES.map(cat => {
+    const { quantity, marketPrice } = AppState.rushCredits[cat.id];
+    const craftCost = AppState.rushCreditCraftCosts[cat.id] || 0;
+    const subtotal = quantity * (marketPrice + craftCost);
+    return `<tr>
+      <td style="font-weight:500">${cat.name}</td>
+      <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)"></td>
+      <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${marketPrice ? formatNumber(marketPrice) : ''}" placeholder="Ex: 30.000.000"
+        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCreditMarketPrice('${cat.id}', this.value)"></td>
+      <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${craftCost ? formatNumber(craftCost) : ''}" placeholder="Ex: 3.000.000"
+        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCreditCraftCost('${cat.id}', this.value)"></td>
+      <td>${renderAlzValue(subtotal, true)}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>
 </div>
 
 <!-- GERENCIAR DGs (colapsável) -->
@@ -155,6 +177,7 @@ export function renderRushPage() {
   <div class="metric"><div class="metric-lbl">Custo tickets</div><div class="metric-val" id="m-ct" style="color:${getAlzTierColor(cost.ticketCost)}" title="${formatNumber(cost.ticketCost)} Alz">${formatAlzGamer(cost.ticketCost)}</div></div>
   <div class="metric"><div class="metric-lbl">Gemas totais</div><div class="metric-val" id="m-g">${cost.gemCount}</div></div>
   <div class="metric"><div class="metric-lbl">Custo gemas (entrada + reset)</div><div class="metric-val" id="m-cg" style="color:${getAlzTierColor(cost.gemCost)}" title="${formatNumber(cost.gemCost)} Alz">${formatAlzGamer(cost.gemCost)}</div></div>
+  <div class="metric"><div class="metric-lbl">Custo dos créditos</div><div class="metric-val" id="m-cc" style="color:${getAlzTierColor(cost.creditsCost)}" title="${formatNumber(cost.creditsCost)} Alz">${formatAlzGamer(cost.creditsCost)}</div></div>
   <div class="metric hl"><div class="metric-lbl">Custo final geral</div><div class="metric-val" id="m-tot" style="color:${getAlzTierColor(cost.total)}" title="${formatNumber(cost.total)} Alz">${formatAlzGamer(cost.total)}</div></div>
 </div>
 

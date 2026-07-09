@@ -43,6 +43,9 @@ import {
   deleteRushForDay,
   editSavedRush,
   duplicateSavedRush,
+  setRushCreditQuantity,
+  setRushCreditMarketPrice,
+  setRushCreditCraftCost,
 } from './features/rush-cart.js';
 import { exportDropsToCSV } from './features/export.js';
 import { maskDateInputBR, parseDateInputBR } from './utils/formatting.js';
@@ -100,6 +103,9 @@ Object.assign(window, {
   deleteRushForDay,
   editSavedRush,
   duplicateSavedRush,
+  setRushCreditQuantity,
+  setRushCreditMarketPrice,
+  setRushCreditCraftCost,
   exportDropsToCSV,
   maskDateInputBR,
   parseDateInputBR,

@@ -1,5 +1,5 @@
-import { AppState } from '../state/app-state.js';
-import { saveRushHistory } from '../state/persistence.js';
+import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
+import { saveRushHistory, saveRushCreditCraftCosts } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
@@ -8,6 +8,18 @@ import { renderPage } from '../router.js';
 // 1.000 Cash custam AppState.rushCardCashPrice Alz, e 1 gema de reset custa o equivalente a 1 Cash.
 export function getCostPerGem() {
   return Math.round((+AppState.rushCardCashPrice || 0) / 1000);
+}
+
+// Crédito de macro = preço de mercado do item base (varia por categoria e por dia, comprado
+// direto no dia) + custo fixo de fabricar por cima (por categoria, configurável). Não é
+// consumido por DG específica — dá 1h de uso do macro em qualquer DG, então entra no total
+// do dia como um custo à parte, não vinculado a nenhum item do carrinho.
+export function calculateCreditsCost() {
+  return CREDIT_CATEGORIES.reduce((sum, cat) => {
+    const { quantity, marketPrice } = AppState.rushCredits[cat.id];
+    const craftCost = AppState.rushCreditCraftCosts[cat.id] || 0;
+    return sum + quantity * (marketPrice + craftCost);
+  }, 0);
 }
 
 // Custo de cada repetição de uma DG = alzCost/run + (ticketsPerRun × preço do ticket, para DGs que
@@ -43,6 +55,7 @@ export function calculateRushCartCost() {
   });
 
   const ticketCost = ticketCount * ticketPrice;
+  const creditsCost = calculateCreditsCost();
 
   return {
     alzFromDungeons,
@@ -50,7 +63,8 @@ export function calculateRushCartCost() {
     ticketCost,
     gemCount,
     gemCost,
-    total: alzFromDungeons + ticketCost + gemCost,
+    creditsCost,
+    total: alzFromDungeons + ticketCost + gemCost + creditsCost,
   };
 }
 
@@ -83,6 +97,24 @@ export function removeDungeonFromCart(index) {
   renderPage();
 }
 
+// Chama renderPage() (não só updateRushMetricsDisplay) porque a tabela de créditos mostra um
+// subtotal por linha que também precisa refletir a mudança, não só as métricas do topo.
+export function setRushCreditQuantity(categoryId, value) {
+  AppState.rushCredits[categoryId].quantity = Math.max(0, parseInt(value) || 0);
+  renderPage();
+}
+
+export function setRushCreditMarketPrice(categoryId, value) {
+  AppState.rushCredits[categoryId].marketPrice = parseAlzInput(value);
+  renderPage();
+}
+
+export function setRushCreditCraftCost(categoryId, value) {
+  AppState.rushCreditCraftCosts[categoryId] = parseAlzInput(value);
+  saveRushCreditCraftCosts();
+  renderPage();
+}
+
 export function updateRushMetricsDisplay() {
   const cost = calculateRushCartCost();
   const updateMetric = (id, value) => {
@@ -103,6 +135,7 @@ export function updateRushMetricsDisplay() {
   if (gemCountEl) gemCountEl.textContent = cost.gemCount;
 
   updateMetric('m-cg', cost.gemCost);
+  updateMetric('m-cc', cost.creditsCost);
   updateMetric('m-tot', cost.total);
 }
 

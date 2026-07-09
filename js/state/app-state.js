@@ -64,6 +64,24 @@ export const DEFAULT_ALERT_SETTINGS = {
   groupingWindowSeconds: 30,
 };
 
+// Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
+// fabricação por cima, dá 1h de uso de macro cada, usável em qualquer DG (não é por-DG como
+// tickets/gemas). Preço de mercado e quantidade comprada são inputs do dia (não persistem,
+// igual rushTicketPrice/rushCardCashPrice); só o custo de fabricar por categoria é salvo.
+export const CREDIT_CATEGORIES = [
+  { id: 'iniciante', name: 'Iniciante' },
+  { id: 'intermediario', name: 'Intermediário' },
+  { id: 'avancado', name: 'Avançado' },
+];
+
+export const DEFAULT_CREDIT_CRAFT_COSTS = { iniciante: 3000000, intermediario: 0, avancado: 0 };
+
+function buildDefaultRushCredits() {
+  const credits = {};
+  CREDIT_CATEGORIES.forEach(cat => (credits[cat.id] = { quantity: 0, marketPrice: 0 }));
+  return credits;
+}
+
 export const AppState = {
   drops: [],
   manualDrops: [],
@@ -87,6 +105,8 @@ export const AppState = {
   rushTicketPrice: '',
   rushCardCashPrice: '',
   rushCart: [],
+  rushCredits: buildDefaultRushCredits(),
+  rushCreditCraftCosts: { ...DEFAULT_CREDIT_CRAFT_COSTS },
   dungeonList: DEFAULT_DUNGEONS.map(dg => ({ ...dg })),
   isDungeonManagerOpen: false,
   editingDungeonId: null,

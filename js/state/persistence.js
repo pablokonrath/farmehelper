@@ -1,4 +1,4 @@
-import { AppState, DEFAULT_DUNGEONS } from './app-state.js';
+import { AppState, DEFAULT_DUNGEONS, DEFAULT_CREDIT_CRAFT_COSTS } from './app-state.js';
 import { hasLegacyData, buildLegacyStatePayload, manualDropForApi } from '../utils/legacy-migration.js';
 
 // Agora que existe backend (PHP/MySQL na Hostinger), este arquivo é a única ponte entre
@@ -68,6 +68,7 @@ export async function loadPersistedState() {
   AppState.rushHistory = rushHistory;
   AppState.trackedKeywords = trackedKeywords.length ? trackedKeywords : AppState.trackedKeywords;
   AppState.filterByTrackedKeywords = appSettings.filterByTrackedKeywords ?? false;
+  AppState.rushCreditCraftCosts = { ...DEFAULT_CREDIT_CRAFT_COSTS, ...(appSettings.rushCreditCraftCosts || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
@@ -88,6 +89,10 @@ export function saveTrackedKeywords() {
 
 export function saveFilterKeywordsFlag() {
   return put('app-settings.php', { filterByTrackedKeywords: AppState.filterByTrackedKeywords });
+}
+
+export function saveRushCreditCraftCosts() {
+  return put('app-settings.php', { rushCreditCraftCosts: AppState.rushCreditCraftCosts });
 }
 
 export function saveDungeonList() {
