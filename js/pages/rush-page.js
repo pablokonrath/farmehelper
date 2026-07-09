@@ -211,6 +211,7 @@ export function renderRushPage() {
     <td>${renderAlzValue(rush.total, true)}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-d btn-xs" onclick="editSavedRush('${date}')" title="Editar (adicionar/remover DGs)"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-d btn-xs" onclick="duplicateSavedRush('${date}')" title="Duplicar pra hoje"><i class="ti ti-copy"></i></button>
       <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushForDay('${date}')"><i class="ti ti-trash"></i></button>
     </div></td>
   </tr>`).join('')}

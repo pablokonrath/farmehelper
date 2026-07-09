@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveRushHistory } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
+import { todayISODate } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
 import { renderPage } from '../router.js';
 
@@ -203,6 +204,18 @@ export function editSavedRush(date) {
   const rush = AppState.rushHistory[date];
   if (!rush) return;
   AppState.rushCartDate = date;
+  AppState.rushCart = (rush.items || []).map(item => ({ ...item }));
+  renderPage();
+}
+
+// Igual editSavedRush, mas pra um rush novo em vez de editar o existente — carrega as mesmas
+// DGs no carrinho com a data de hoje, pra repetir um rush parecido sem montar tudo de novo.
+// Se hoje já tiver um rush salvo, o aviso de "já existe" (renderRushPage) cobre o aviso de
+// sobrescrita — o usuário pode trocar a data antes de salvar.
+export function duplicateSavedRush(date) {
+  const rush = AppState.rushHistory[date];
+  if (!rush) return;
+  AppState.rushCartDate = todayISODate();
   AppState.rushCart = (rush.items || []).map(item => ({ ...item }));
   renderPage();
 }

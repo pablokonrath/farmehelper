@@ -42,6 +42,7 @@ import {
   saveRushForDay,
   deleteRushForDay,
   editSavedRush,
+  duplicateSavedRush,
 } from './features/rush-cart.js';
 import { exportDropsToCSV } from './features/export.js';
 import { maskDateInputBR, parseDateInputBR } from './utils/formatting.js';
@@ -98,6 +99,7 @@ Object.assign(window, {
   saveRushForDay,
   deleteRushForDay,
   editSavedRush,
+  duplicateSavedRush,
   exportDropsToCSV,
   maskDateInputBR,
   parseDateInputBR,
