@@ -85,7 +85,7 @@ export async function loadPersistedState() {
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory] = await Promise.all([
+  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, wishlistItems] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('tracked-keywords.php'),
@@ -94,6 +94,7 @@ export async function loadPersistedState() {
     get('manual-drops.php'),
     get('alert-settings.php'),
     get('alert-history.php'),
+    get('wishlist-items.php'),
   ]);
 
   AppState.itemPrices = itemPrices;
@@ -105,6 +106,7 @@ export async function loadPersistedState() {
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
   AppState.alertHistory = alertHistory;
+  AppState.wishlistItems = wishlistItems;
   await loadGlobalOnlyState();
 }
 
@@ -118,6 +120,10 @@ export function saveRushHistory() {
 
 export function saveTrackedKeywords() {
   return put('tracked-keywords.php', AppState.trackedKeywords);
+}
+
+export function saveWishlistItems() {
+  return put('wishlist-items.php', AppState.wishlistItems);
 }
 
 export function saveFilterKeywordsFlag() {

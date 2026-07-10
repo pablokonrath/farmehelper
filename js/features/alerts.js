@@ -79,6 +79,48 @@ function fireAlert(entry) {
   }
 }
 
+function showWishlistToast(match) {
+  const container = document.getElementById('alertToastContainer');
+  if (!container) return;
+
+  const toastEl = document.createElement('div');
+  toastEl.className = 'alert-toast';
+  toastEl.innerHTML = `
+    <i class="ti ti-gift" style="color:var(--gold);flex-shrink:0;margin-top:1px"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${match.itemName}</div>
+      <div style="font-size:11px;color:var(--muted)">${match.dropperUsername}${match.dropperGuild ? ' (' + match.dropperGuild + ')' : ''} dropou um item da sua lista de desejos</div>
+    </div>
+    <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+  container.appendChild(toastEl);
+
+  const settings = AppState.alertSettings;
+  let soundInterval = null;
+  if (settings.soundEnabled) {
+    playAlertBeep(settings.volume);
+    if (settings.repeatSoundWhileOpen) soundInterval = setInterval(() => playAlertBeep(settings.volume), 1200);
+  }
+
+  setTimeout(() => {
+    if (soundInterval) clearInterval(soundInterval);
+    toastEl.remove();
+  }, Math.max(1, settings.popupDurationSeconds) * 1000);
+}
+
+// Chamada por presence.js quando o heartbeat traz matches novos da lista de desejos — mesmo
+// mecanismo de som/notificação do SO de fireAlert(), mas com um toast próprio (não é sobre
+// palavra rastreada, é "alguém dropou o que você queria").
+export function fireWishlistMatchAlert(match) {
+  showWishlistToast(match);
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    try {
+      new Notification('Lista de desejos: ' + match.itemName, { body: `${match.dropperUsername} dropou!`, tag: 'wishlist-' + match.id });
+    } catch {
+      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
+    }
+  }
+}
+
 function registerAlert(keyword, drop) {
   const groupKey = keyword + '|' + drop.name;
   const now = Date.now();

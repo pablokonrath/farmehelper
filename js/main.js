@@ -38,6 +38,7 @@ import {
 
 import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice } from './features/pricing.js';
 import { addTrackedKeyword, removeTrackedKeyword, resetTrackedKeywords, toggleKeywordAlert } from './features/keywords.js';
+import { addWishlistItem, removeWishlistItem, markAllWishlistMatchesSeen, clearWishlistMatches } from './features/wishlist.js';
 import { saveDungeonEdit, deleteDungeon, addNewDungeon, resetDungeonList } from './features/dungeon-manager.js';
 import {
   requestNotificationPermission,
@@ -98,6 +99,10 @@ Object.assign(window, {
   removeTrackedKeyword,
   resetTrackedKeywords,
   toggleKeywordAlert,
+  addWishlistItem,
+  removeWishlistItem,
+  markAllWishlistMatchesSeen,
+  clearWishlistMatches,
   requestNotificationPermission,
   testNotification,
   markAllAlertsSeen,

@@ -31,3 +31,16 @@ function insert_integrity_flag(PDO $db, int $userId, string $username, string $t
   $stmt = $db->prepare('INSERT INTO integrity_flags (user_id, username, flag_type, details) VALUES (:uid, :username, :type, :details)');
   $stmt->execute(['uid' => $userId, 'username' => $username, 'type' => $type, 'details' => $details]);
 }
+
+// Equivalente PHP de normalizeForSearch() em js/utils/parsing.js (NFD + remove marca de
+// acento + minúsculo) — usada em wishlist-check.php pra casar item desejado com item dropado
+// do mesmo jeito que o app já casa trackedKeywords/rankingItems no cliente. Depende da
+// extensão intl (Normalizer); sem ela, cai só pra minúsculo (funciona, só fica sensível a
+// acento nesse caso).
+function normalize_for_search(string $text): string {
+  if (class_exists('Normalizer')) {
+    $decomposed = Normalizer::normalize($text, Normalizer::FORM_D);
+    if ($decomposed !== false) $text = preg_replace('/\p{Mn}/u', '', $decomposed);
+  }
+  return mb_strtolower($text, 'UTF-8');
+}

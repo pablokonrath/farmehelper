@@ -177,3 +177,29 @@ CREATE TABLE IF NOT EXISTS admin_action_log (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Lista pessoal de itens que o usuário quer comprar — igual tracked_keywords, mas usada pro
+-- matching cross-usuário em wishlist_matches, não pros alertas pessoais de item rastreado.
+CREATE TABLE IF NOT EXISTS wishlist_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Um "correio": alguém dropou um item que outro usuário tinha na lista de desejos.
+-- dropper_username/dropper_guild desnormalizados (sem JOIN pra listar), mesmo padrão de
+-- leaderboard.php/integrity_flags. seen = usuário já olhou a página; delivered = o
+-- toast/som/notificação já disparou uma vez (heartbeat.php marca isso) — são dois estados
+-- independentes porque um match pode ficar "não visto" por dias mas só deve tocar uma vez.
+CREATE TABLE IF NOT EXISTS wishlist_matches (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  wishlist_user_id INT NOT NULL,
+  dropper_username VARCHAR(255) NOT NULL,
+  dropper_guild VARCHAR(100) NULL,
+  item_name VARCHAR(255) NOT NULL,
+  ts DATETIME NOT NULL,
+  seen TINYINT(1) NOT NULL DEFAULT 0,
+  delivered TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (wishlist_user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

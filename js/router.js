@@ -11,6 +11,8 @@ import { updateCartPreview } from './features/rush-cart.js';
 import { loadLeaderboardData } from './features/leaderboard.js';
 import { loadUsers } from './features/admin.js';
 import { loadAdminActionLog, loadIntegrityFlags } from './features/admin-log.js';
+import { loadWishlistMatches } from './features/wishlist.js';
+import { renderWishlistPage } from './pages/wishlist-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -26,7 +28,8 @@ export function navigateTo(page) {
     loadUsers();
     loadAdminActionLog();
     loadIntegrityFlags();
-  } else renderPage();
+  } else if (page === 'wishlist') loadWishlistMatches();
+  else renderPage();
 }
 
 export function renderPage() {
@@ -40,6 +43,7 @@ export function renderPage() {
   else if (AppState.currentPage === 'alertas') main.innerHTML = renderAlertsPage();
   else if (AppState.currentPage === 'admin') main.innerHTML = renderAdminPage();
   else if (AppState.currentPage === 'ranking') main.innerHTML = renderLeaderboardPage();
+  else if (AppState.currentPage === 'wishlist') main.innerHTML = renderWishlistPage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();

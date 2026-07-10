@@ -149,6 +149,9 @@ export const AppState = {
   isAdminActionLogLoading: false,
   integrityFlags: [],
   isIntegrityFlagsLoading: false,
+  wishlistItems: [],
+  wishlistMatches: [],
+  isWishlistMatchesLoading: false,
 };
 
 export function resetTrackedKeywordsToDefault() {

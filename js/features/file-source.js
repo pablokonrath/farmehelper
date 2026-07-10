@@ -3,6 +3,7 @@ import { parseDropLogLine } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog } from './alerts.js';
 import { syncTrackedDropCounts } from './leaderboard.js';
+import { checkWishlistMatches } from './wishlist.js';
 import { renderPage } from '../router.js';
 
 // Os arquivos de drop do Cabal Online são gerados em windows-1252, não UTF-8.
@@ -106,6 +107,7 @@ function handleWorkerMessage(event) {
     syncTrackedDropCounts();
     recordDropActivity(parsedDrops);
     processNewDropsForAlerts(parsedDrops);
+    checkWishlistMatches(parsedDrops);
     if (AppState.currentPage === 'overview') renderPage();
   }
 }

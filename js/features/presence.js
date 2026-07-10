@@ -1,3 +1,5 @@
+import { fireWishlistMatchAlert } from './alerts.js';
+
 const API_BASE = 'api';
 const HEARTBEAT_INTERVAL_MS = 60000;
 
@@ -57,6 +59,8 @@ async function sendHeartbeat() {
     if (valueEl) valueEl.textContent = data.onlineCount;
     if (badge) badge.style.display = 'flex';
     if (popoverOpen) updateOnlinePopoverContent();
+
+    (data.newWishlistMatches || []).forEach(fireWishlistMatchAlert);
   } catch (err) {
     console.error('Erro de conexão ao enviar heartbeat:', err);
   }

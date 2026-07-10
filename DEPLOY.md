@@ -274,6 +274,25 @@ inatividade pra agora, não conta o tempo parado antes de ligar.
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Lista de desejos + correio
+
+Se seu banco já rodou `sql/migrate_watchdog_toggle.sql`, rode agora
+`sql/migrate_wishlist.sql` no phpMyAdmin (aba SQL) — cria as tabelas `wishlist_items` e
+`wishlist_matches`. Nova página **Lista de desejos** no menu:
+
+- Cada jogador marca os itens que quer comprar (qualquer nome, não só os da lista de ranking
+  do admin).
+- Quando **qualquer outro** jogador da guild dropar um item que bate com a lista de alguém, o
+  dono recebe um aviso (som + pop-up + notificação do SO, igual os outros alertas) com o nick
+  de quem dropou — a negociação em si (preço, forma de pagamento) fica por fora do app.
+- O aviso chega pelo mesmo ping de presença de 1 min que já existe (`api/heartbeat.php`), então
+  pode demorar até 1 min pra aparecer depois do drop.
+- O casamento de nome usa a mesma normalização de acento/maiúscula do resto do app — depende
+  da extensão `intl` do PHP (`Normalizer`) pra funcionar direito; sem ela, ainda funciona mas
+  fica sensível a acento (a maioria dos hosts, incluindo Hostinger, já vem com `intl`).
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
