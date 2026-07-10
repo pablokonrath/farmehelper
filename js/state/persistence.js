@@ -25,7 +25,25 @@ async function apiFetch(path, options = {}) {
 }
 
 const get = path => apiFetch(path, { method: 'GET' });
-const put = (path, body) => apiFetch(path, { method: 'PUT', body: JSON.stringify(body) });
+
+// Cada save*() manda o AppState.xxx inteiro (replace-all no servidor). Se duas chamadas pro
+// MESMO endpoint saem em sequência rápida (ex: usuário clicando vários selects seguidos na
+// tabela de categorias do Admin), os PUTs podem chegar ao servidor fora de ordem — o último a
+// CHEGAR vence, não o último a SAIR, então uma requisição mais antiga podia sobrescrever uma
+// mais nova com dados incompletos. Uma fila por endpoint garante que só um PUT por vez esteja
+// em voo pra cada path, na ordem em que foram chamados; como cada chamada serializa o corpo só
+// na hora de disparar (não na hora de enfileirar), a requisição sempre carrega o estado mais
+// atual do AppState nesse momento, mesmo que tenha ficado esperando na fila.
+const pendingPutByPath = new Map();
+
+function put(path, body) {
+  const previous = pendingPutByPath.get(path) || Promise.resolve();
+  const next = previous
+    .catch(() => {})
+    .then(() => apiFetch(path, { method: 'PUT', body: JSON.stringify(body) }));
+  pendingPutByPath.set(path, next);
+  return next;
+}
 
 function hydrateManualDrops(rawDrops) {
   // JSON não preserva Date — reconstrói timestamp a partir de date/time ao carregar.
