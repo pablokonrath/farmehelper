@@ -13,7 +13,7 @@ import {
   removeItemCategory,
   setItemCategoryAssignment,
 } from './features/admin.js';
-import { setRankingFilterItem } from './features/leaderboard.js';
+import { setRankingFilterItem, setRankingCompareUsername } from './features/leaderboard.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
@@ -130,6 +130,7 @@ Object.assign(window, {
   removeItemCategory,
   setItemCategoryAssignment,
   setRankingFilterItem,
+  setRankingCompareUsername,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

@@ -52,6 +52,35 @@ export function setRankingFilterItem(value) {
   renderPage();
 }
 
+export function setRankingCompareUsername(value) {
+  AppState.rankingCompareUsername = value;
+  renderPage();
+}
+
+// Outras contas presentes no ranking (excluindo a própria) — só quem já tem alguma
+// contagem sincronizada aparece como opção pra comparar.
+export function getGuildUsernames() {
+  const data = AppState.leaderboardData || {};
+  const names = new Set();
+  Object.values(data).forEach(rows => rows.forEach(r => names.add(r.username)));
+  names.delete(AppState.currentUsername);
+  return [...names].sort();
+}
+
+// Comparação por quantidade dos itens rastreados — nunca por Alz, que é privado de cada um.
+export function buildPlayerComparison(otherUsername) {
+  const data = AppState.leaderboardData || {};
+  return Object.keys(data)
+    .sort()
+    .map(itemName => {
+      const rows = data[itemName];
+      const myQty = rows.find(r => r.username === AppState.currentUsername)?.quantity || 0;
+      const otherQty = rows.find(r => r.username === otherUsername)?.quantity || 0;
+      return { name: itemName, myQty, otherQty, delta: myQty - otherQty };
+    })
+    .filter(row => row.myQty > 0 || row.otherQty > 0);
+}
+
 export async function loadLeaderboardData() {
   AppState.isLeaderboardLoading = true;
   renderPage();

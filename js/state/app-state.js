@@ -125,6 +125,7 @@ export const AppState = {
   leaderboardData: null,
   isLeaderboardLoading: false,
   rankingFilterItem: '',
+  rankingCompareUsername: '',
   itemCategories: [],
   itemCategoryAssignments: {},
 };
