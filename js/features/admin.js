@@ -87,6 +87,82 @@ export function setUserGuild(id, guild) {
   updateUser(id, { guild });
 }
 
+// Exclusivo do admin mestre (checado também no servidor) — apaga a conta e, em cascata, todos
+// os dados dela (farme, rush, alertas etc.), já que as tabelas por-usuário têm ON DELETE CASCADE.
+export async function deleteUser(id, username) {
+  if (!confirm(`Excluir a conta "${username}"? Isso apaga todos os dados dela (farme, rush, alertas). Não dá pra desfazer.`)) return;
+  try {
+    const response = await fetch(`${API_BASE}/users.php`, {
+      method: 'DELETE',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    });
+    if (!response.ok) {
+      console.error('Falha ao excluir conta:', response.status, await response.text());
+      return;
+    }
+    logAdminAction('delete_user', `Excluiu a conta "${username}".`);
+    await loadUsers();
+  } catch (err) {
+    console.error('Erro de conexão ao excluir conta:', err);
+  }
+}
+
+// Preenche o campo de usuário do form "Editar login" com o valor atual da conta selecionada,
+// pra ficar claro o que vai ser sobrescrito (e dar pra editar só a senha sem trocar o usuário).
+export function prefillEditLoginUsername(id) {
+  const usernameInput = document.getElementById('editLoginUsername');
+  if (!usernameInput) return;
+  const user = AppState.adminUsers.find(u => u.id === Number(id));
+  usernameInput.value = user ? user.username : '';
+}
+
+export async function saveEditedLogin() {
+  const idInput = document.getElementById('editLoginUserId');
+  const usernameInput = document.getElementById('editLoginUsername');
+  const passwordInput = document.getElementById('editLoginPassword');
+  const errorEl = document.getElementById('editLoginError');
+  if (errorEl) errorEl.style.display = 'none';
+
+  const id = Number(idInput?.value || 0);
+  const username = usernameInput?.value.trim() || '';
+  const password = passwordInput?.value || '';
+
+  if (!id || !username) {
+    if (errorEl) {
+      errorEl.textContent = 'Selecione uma conta e informe o usuário.';
+      errorEl.style.display = 'block';
+    }
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/users.php`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, username, password }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (errorEl) {
+        errorEl.textContent = data.message || 'Erro ao salvar.';
+        errorEl.style.display = 'block';
+      }
+      return;
+    }
+    logAdminAction('edit_user_login', `Editou o login da conta "${username}"${password ? ' (com troca de senha)' : ''}.`);
+    if (passwordInput) passwordInput.value = '';
+    await loadUsers();
+  } catch {
+    if (errorEl) {
+      errorEl.textContent = 'Erro de conexão com o servidor.';
+      errorEl.style.display = 'block';
+    }
+  }
+}
+
 export function addGuild() {
   const input = document.getElementById('newGuild');
   const name = input?.value.trim();

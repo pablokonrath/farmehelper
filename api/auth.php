@@ -23,8 +23,15 @@ function current_user_id(): int {
   return (int) $_SESSION['user_id'];
 }
 
+// O admin mestre conta como admin mesmo que is_admin esteja 0 — rede de segurança: se ele
+// algum dia desmarcar o próprio "Admin" sem querer, não fica trancado fora do painel Admin
+// (só quem já é admin mestre consegue mexer na própria conta, ver users.php).
 function current_user_is_admin(): bool {
-  return !empty($_SESSION['is_admin']);
+  return !empty($_SESSION['is_admin']) || !empty($_SESSION['is_master_admin']);
+}
+
+function current_user_is_master_admin(): bool {
+  return !empty($_SESSION['is_master_admin']);
 }
 
 function current_username(): string {
@@ -35,5 +42,12 @@ function require_admin(): void {
   require_login();
   if (!current_user_is_admin()) {
     json_response(['error' => 'not_admin'], 403);
+  }
+}
+
+function require_master_admin(): void {
+  require_admin();
+  if (!current_user_is_master_admin()) {
+    json_response(['error' => 'not_master_admin'], 403);
   }
 }

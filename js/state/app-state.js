@@ -119,6 +119,7 @@ export const AppState = {
   alertHistoryFilter: '',
   pendingAlertGroups: {},
   isAdmin: false,
+  isMasterAdmin: false,
   currentUsername: '',
   currentGuild: '',
   guilds: [],

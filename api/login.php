@@ -12,7 +12,7 @@ if (!is_string($username) || $username === '' || !is_string($password) || $passw
   json_response(['error' => 'invalid_credentials'], 401);
 }
 
-$stmt = get_db()->prepare('SELECT id, password_hash, is_admin, guild FROM users WHERE username = :username');
+$stmt = get_db()->prepare('SELECT id, password_hash, is_admin, is_master_admin, guild FROM users WHERE username = :username');
 $stmt->execute(['username' => $username]);
 $user = $stmt->fetch();
 
@@ -24,6 +24,7 @@ session_regenerate_id(true);
 $_SESSION['authenticated'] = true;
 $_SESSION['user_id'] = (int) $user['id'];
 $_SESSION['is_admin'] = !empty($user['is_admin']);
+$_SESSION['is_master_admin'] = !empty($user['is_master_admin']);
 $_SESSION['username'] = $username;
 $_SESSION['guild'] = $user['guild'];
 json_response(['ok' => true]);

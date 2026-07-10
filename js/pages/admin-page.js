@@ -85,18 +85,50 @@ export function renderAdminPage() {
   <div class="ctitle"><i class="ti ti-users"></i>Contas existentes</div>
   ${AppState.isAdminUsersLoading ? '<div class="empty">Carregando...</div>' :
     !AppState.adminUsers.length ? '<div class="empty">Nenhuma conta encontrada.</div>' : `
-  <table><thead><tr><th>Usuário</th><th>Tipo</th><th style="width:160px">Guild</th><th>Criada em</th></tr></thead><tbody>
-  ${AppState.adminUsers.map(u => `<tr>
-    <td>${u.username}</td>
-    <td><button class="btn btn-xs ${u.isAdmin ? 'btn-p' : 'btn-d'}" onclick="toggleUserAdmin(${u.id}, ${u.isAdmin})">${u.isAdmin ? 'Admin' : 'Padrão'}</button></td>
-    <td><select class="inp inp-sm" onchange="setUserGuild(${u.id}, this.value)">
+  <table><thead><tr><th>Usuário</th><th>Tipo</th><th style="width:160px">Guild</th><th>Criada em</th>${AppState.isMasterAdmin ? '<th style="width:40px">Ações</th>' : ''}</tr></thead><tbody>
+  ${AppState.adminUsers.map(u => {
+    // Ninguém além do próprio admin mestre mexe na conta dele — mostra como texto simples
+    // pra quem não é mestre, em vez de um controle que o servidor vai rejeitar com 403.
+    const lockedForViewer = u.isMasterAdmin && !AppState.isMasterAdmin;
+    const typeCell = u.isMasterAdmin
+      ? '<span class="badge badge-warn">Admin mestre</span>'
+      : lockedForViewer
+      ? (u.isAdmin ? 'Admin' : 'Padrão')
+      : `<button class="btn btn-xs ${u.isAdmin ? 'btn-p' : 'btn-d'}" onclick="toggleUserAdmin(${u.id}, ${u.isAdmin})">${u.isAdmin ? 'Admin' : 'Padrão'}</button>`;
+    const guildCell = lockedForViewer
+      ? (u.guild || 'Sem guild')
+      : `<select class="inp inp-sm" onchange="setUserGuild(${u.id}, this.value)">
       <option value="">Sem guild</option>
       ${AppState.guilds.map(g => `<option value="${g}"${u.guild === g ? ' selected' : ''}>${g}</option>`).join('')}
-    </select></td>
+    </select>`;
+    return `<tr>
+    <td>${u.username}</td>
+    <td>${typeCell}</td>
+    <td>${guildCell}</td>
     <td>${formatDateTimeBR(u.createdAt)}</td>
-  </tr>`).join('')}
+    ${AppState.isMasterAdmin ? `<td>${u.username === AppState.currentUsername ? '' : `<button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteUser(${u.id}, '${u.username}')" title="Excluir conta"><i class="ti ti-trash"></i></button>`}</td>` : ''}
+  </tr>`;
+  }).join('')}
   </tbody></table>`}
 </div>
+
+${AppState.isMasterAdmin ? `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-user-cog"></i>Editar login (admin mestre)</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Só você pode trocar o usuário/senha de qualquer conta.</div>
+  <div class="g3" style="align-items:end;margin-bottom:10px">
+    <div><label class="lbl">Conta</label>
+      <select class="inp" id="editLoginUserId" onchange="prefillEditLoginUsername(this.value)">
+        <option value="">Selecione...</option>
+        ${AppState.adminUsers.map(u => `<option value="${u.id}">${u.username}</option>`).join('')}
+      </select>
+    </div>
+    <div><label class="lbl">Novo usuário</label><input class="inp" id="editLoginUsername" placeholder="usuário atual"></div>
+    <div><label class="lbl">Nova senha</label><input class="inp" id="editLoginPassword" type="password" placeholder="deixe em branco pra não mudar"></div>
+  </div>
+  <button class="btn btn-p" onclick="saveEditedLogin()"><i class="ti ti-device-floppy"></i>Salvar</button>
+  <div id="editLoginError" style="display:none;color:var(--err);font-size:12px;margin-top:8px"></div>
+</div>` : ''}
 
 <div class="card">
   <div class="ctitle"><i class="ti ti-trophy"></i>Itens do ranking</div>

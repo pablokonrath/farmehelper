@@ -16,6 +16,9 @@ import {
   setUserGuild,
   addGuild,
   removeGuild,
+  deleteUser,
+  prefillEditLoginUsername,
+  saveEditedLogin,
 } from './features/admin.js';
 import { setRankingFilterItem, setRankingCompareUsername, setRankingPeriod } from './features/leaderboard.js';
 
@@ -140,6 +143,9 @@ Object.assign(window, {
   setUserGuild,
   addGuild,
   removeGuild,
+  deleteUser,
+  prefillEditLoginUsername,
+  saveEditedLogin,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

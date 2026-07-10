@@ -8,6 +8,7 @@ export async function checkSession() {
     if (!response.ok) return false;
     const data = await response.json();
     AppState.isAdmin = !!data.isAdmin;
+    AppState.isMasterAdmin = !!data.isMasterAdmin;
     AppState.currentUsername = data.username || '';
     AppState.currentGuild = data.guild || '';
     return !!data.authenticated;

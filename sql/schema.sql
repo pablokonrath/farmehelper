@@ -6,11 +6,14 @@
 -- tabelas são privadas por usuário (user_id), então cada conta só vê os próprios dados de
 -- farme/rush/alertas.
 
+-- is_master_admin nunca é setável pela API (só via SQL direto) — é quem pode excluir contas
+-- e editar login (usuário/senha) de qualquer conta, inclusive de outros admins.
 CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   is_admin TINYINT(1) NOT NULL DEFAULT 0,
+  is_master_admin TINYINT(1) NOT NULL DEFAULT 0,
   guild VARCHAR(100) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -210,9 +210,26 @@ Se seu banco já rodou `sql/migrate_ranking_periods.sql`, rode agora
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
-Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+## Admin mestre
 
-Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+Se seu banco já rodou `sql/migrate_integrity_and_admin_log.sql`, rode agora
+`sql/migrate_master_admin.sql` no phpMyAdmin (aba SQL) — adiciona a coluna `is_master_admin`
+em `users` e já marca a conta `pablokonrath` como mestre (se quiser outro usuário como mestre,
+edite o `UPDATE` do script antes de rodar). O admin mestre é um nível acima dos demais
+admins/líderes:
+
+- **Excluir conta**: só o admin mestre vê o botão de excluir na tabela "Contas existentes" —
+  apaga a conta e todos os dados dela (farme, rush, alertas). Não dá pra excluir a própria
+  conta.
+- **Editar login de qualquer conta**: card novo "Editar login (admin mestre)" — troca usuário
+  e/ou senha de qualquer conta, inclusive de outros admins.
+- A conta do admin mestre fica protegida: nenhum outro admin consegue promovê-la/rebaixá-la
+  ou mudar a guild dela — só o próprio mestre.
+- `is_master_admin` só é setável direto no banco (nunca pela API), pra não ter caminho de
+  escalar privilégio pelo app.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`, mas
+ninguém fica como mestre automaticamente; rode o `UPDATE` manualmente pra promover sua conta.
 
 ## Migrando de usuário único pra multiusuário
 
