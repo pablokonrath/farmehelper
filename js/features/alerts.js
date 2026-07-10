@@ -125,6 +125,74 @@ export function processNewDropsForAlerts(drops) {
   });
 }
 
+function fireWatchdogAlert(itemName, keyword) {
+  const entry = {
+    id: 'w' + Date.now() + Math.random().toString(36).slice(2, 7),
+    timestamp: new Date().toISOString(),
+    itemName,
+    keyword,
+    quantity: 1,
+    seen: false,
+  };
+  AppState.alertHistory.push(entry);
+  saveAlertHistory();
+  fireAlert(entry);
+  if (AppState.currentPage === 'alertas') renderPage();
+}
+
+// Atualiza os "relógios" de última vez visto — chamado com os drops recém-chegados do poll ao
+// vivo (nunca com uma recarga completa, senão qualquer upload resetaria os relógios pra datas
+// do passado). "Qualquer drop" e "por palavra rastreada" são relógios independentes.
+export function recordDropActivity(drops) {
+  if (!drops.length) return;
+  const now = Date.now();
+  AppState.lastAnyDropAt = now;
+  AppState.noDropAlertFired = false;
+
+  const activeKeywords = AppState.trackedKeywords.filter(kw => kw.alertEnabled);
+  drops.forEach(drop => {
+    const normalizedName = normalizeForSearch(drop.name);
+    activeKeywords.forEach(kw => {
+      if (normalizedName.includes(normalizeForSearch(kw.word))) {
+        AppState.lastSeenByKeyword[kw.word] = now;
+        delete AppState.staleKeywordAlerted[kw.word];
+      }
+    });
+  });
+}
+
+// Disparado a cada "heartbeat" do worker (a cada ~5s, inclusive com a aba em segundo plano) —
+// avalia se faz tempo demais sem nenhum drop, ou sem um item rastreado específico, e alerta
+// uma vez por período de silêncio (não repete a cada heartbeat enquanto continuar parado).
+export function checkDropWatchdog() {
+  if (!AppState.alertSettings.enabled || !AppState.liveFileHandle) return;
+  const now = Date.now();
+
+  if (!AppState.lastAnyDropAt) {
+    AppState.lastAnyDropAt = now;
+  } else {
+    const noDropMs = Math.max(1, AppState.alertSettings.noDropThresholdMinutes) * 60000;
+    if (!AppState.noDropAlertFired && now - AppState.lastAnyDropAt > noDropMs) {
+      AppState.noDropAlertFired = true;
+      fireWatchdogAlert(`Sem nenhum drop há ${AppState.alertSettings.noDropThresholdMinutes} min — confere se o helper travou`, 'watchdog');
+    }
+  }
+
+  const itemMs = Math.max(1, AppState.alertSettings.itemSilenceThresholdMinutes) * 60000;
+  AppState.trackedKeywords.filter(kw => kw.alertEnabled).forEach(kw => {
+    if (AppState.staleKeywordAlerted[kw.word]) return;
+    const lastSeen = AppState.lastSeenByKeyword[kw.word];
+    if (!lastSeen) {
+      AppState.lastSeenByKeyword[kw.word] = now;
+      return;
+    }
+    if (now - lastSeen > itemMs) {
+      AppState.staleKeywordAlerted[kw.word] = true;
+      fireWatchdogAlert(`Sem dropar "${kw.word}" há ${AppState.alertSettings.itemSilenceThresholdMinutes} min`, kw.word);
+    }
+  });
+}
+
 export function testNotification() {
   fireAlert({ id: 'test-' + Date.now(), timestamp: new Date().toISOString(), itemName: 'Item de teste', keyword: 'teste', quantity: 1, seen: false });
 }
@@ -198,5 +266,15 @@ export function setAlertPopupDuration(value) {
 
 export function setAlertGroupingWindow(value) {
   AppState.alertSettings.groupingWindowSeconds = Math.max(0, parseInt(value) || 0);
+  saveAlertSettings();
+}
+
+export function setNoDropThresholdMinutes(value) {
+  AppState.alertSettings.noDropThresholdMinutes = Math.max(1, parseInt(value) || 1);
+  saveAlertSettings();
+}
+
+export function setItemSilenceThresholdMinutes(value) {
+  AppState.alertSettings.itemSilenceThresholdMinutes = Math.max(1, parseInt(value) || 1);
   saveAlertSettings();
 }

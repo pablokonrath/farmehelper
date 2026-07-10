@@ -86,6 +86,8 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   volume DECIMAL(3,2) NOT NULL DEFAULT 0.70,
   popup_duration_seconds INT NOT NULL DEFAULT 5,
   grouping_window_seconds INT NOT NULL DEFAULT 30,
+  no_drop_threshold_minutes INT NOT NULL DEFAULT 1,
+  item_silence_threshold_minutes INT NOT NULL DEFAULT 60,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

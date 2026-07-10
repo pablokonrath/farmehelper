@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { parseDropLogLine } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
-import { processNewDropsForAlerts } from './alerts.js';
+import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog } from './alerts.js';
 import { syncTrackedDropCounts } from './leaderboard.js';
 import { renderPage } from '../router.js';
 
@@ -72,6 +72,13 @@ async function reportIntegrityFlag(type, details) {
 function handleWorkerMessage(event) {
   const { type, lines } = event.data;
 
+  // Batimento do worker (a cada ~5s, com ou sem conteúdo novo) — reavalia o alerta de
+  // inatividade (helper travado / item rastreado sumiu). Ver checkDropWatchdog em alerts.js.
+  if (type === 'heartbeat') {
+    checkDropWatchdog();
+    return;
+  }
+
   // O worker detectou que o trecho já lido do arquivo mudou entre duas leituras — o polling
   // normal só deveria crescer, então isso indica edição manual (ver live-poll-worker.js).
   // Reporta pro admin revisar; não impede o app de continuar usando o arquivo.
@@ -97,6 +104,7 @@ function handleWorkerMessage(event) {
     AppState.drops = [...AppState.drops, ...parsedDrops];
     updateBalanceSidebar();
     syncTrackedDropCounts();
+    recordDropActivity(parsedDrops);
     processNewDropsForAlerts(parsedDrops);
     if (AppState.currentPage === 'overview') renderPage();
   }
@@ -112,6 +120,13 @@ async function startLiveFilePolling(fileHandle) {
   AppState.drops = parseLogLines(LOG_FILE_DECODER.decode(await file.arrayBuffer()));
   AppState.lastReadFileSize = file.size;
   AppState.pendingLineBuffer = '';
+
+  // Zera os relógios do alerta de inatividade — sem isso, um estado travado de uma conexão
+  // anterior (ex: já tinha passado do limite antes de reconectar) dispararia o alerta na hora.
+  AppState.lastAnyDropAt = null;
+  AppState.noDropAlertFired = false;
+  AppState.lastSeenByKeyword = {};
+  AppState.staleKeywordAlerted = {};
 
   if (AppState.liveFilePollWorker) AppState.liveFilePollWorker.terminate();
   AppState.liveFilePollWorker = new Worker('js/workers/live-poll-worker.js');

@@ -51,6 +51,8 @@ import {
   setAlertPopupDuration,
   setAlertGroupingWindow,
   unlockAlertAudio,
+  setNoDropThresholdMinutes,
+  setItemSilenceThresholdMinutes,
 } from './features/alerts.js';
 import {
   addDungeonToCart,
@@ -103,6 +105,8 @@ Object.assign(window, {
   setAlertVolume,
   setAlertPopupDuration,
   setAlertGroupingWindow,
+  setNoDropThresholdMinutes,
+  setItemSilenceThresholdMinutes,
   setRushCartDate,
   setRushTicketPrice,
   setRushCardCashPrice,

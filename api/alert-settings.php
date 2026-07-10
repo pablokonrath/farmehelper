@@ -17,6 +17,7 @@ if ($method === 'GET') {
     json_response([
       'enabled' => true, 'soundEnabled' => true, 'repeatSoundWhileOpen' => false,
       'volume' => 0.7, 'popupDurationSeconds' => 5, 'groupingWindowSeconds' => 30,
+      'noDropThresholdMinutes' => 1, 'itemSilenceThresholdMinutes' => 60,
     ]);
   }
   json_response([
@@ -26,18 +27,21 @@ if ($method === 'GET') {
     'volume' => (float) $row['volume'],
     'popupDurationSeconds' => (int) $row['popup_duration_seconds'],
     'groupingWindowSeconds' => (int) $row['grouping_window_seconds'],
+    'noDropThresholdMinutes' => (int) $row['no_drop_threshold_minutes'],
+    'itemSilenceThresholdMinutes' => (int) $row['item_silence_threshold_minutes'],
   ]);
 }
 
 if ($method === 'PUT') {
   $body = read_json_body();
   $stmt = $db->prepare('INSERT INTO alert_settings
-    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds)
-    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds)
+    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds, no_drop_threshold_minutes, item_silence_threshold_minutes)
+    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds, :noDropThresholdMinutes, :itemSilenceThresholdMinutes)
     ON DUPLICATE KEY UPDATE
       enabled = VALUES(enabled), sound_enabled = VALUES(sound_enabled),
       repeat_sound_while_open = VALUES(repeat_sound_while_open), volume = VALUES(volume),
-      popup_duration_seconds = VALUES(popup_duration_seconds), grouping_window_seconds = VALUES(grouping_window_seconds)');
+      popup_duration_seconds = VALUES(popup_duration_seconds), grouping_window_seconds = VALUES(grouping_window_seconds),
+      no_drop_threshold_minutes = VALUES(no_drop_threshold_minutes), item_silence_threshold_minutes = VALUES(item_silence_threshold_minutes)');
   $stmt->execute([
     'uid' => $uid,
     'enabled' => !empty($body['enabled']) ? 1 : 0,
@@ -46,6 +50,8 @@ if ($method === 'PUT') {
     'volume' => (float) ($body['volume'] ?? 0.7),
     'popupDurationSeconds' => (int) ($body['popupDurationSeconds'] ?? 5),
     'groupingWindowSeconds' => (int) ($body['groupingWindowSeconds'] ?? 30),
+    'noDropThresholdMinutes' => (int) ($body['noDropThresholdMinutes'] ?? 1),
+    'itemSilenceThresholdMinutes' => (int) ($body['itemSilenceThresholdMinutes'] ?? 60),
   ]);
   json_response(['ok' => true]);
 }

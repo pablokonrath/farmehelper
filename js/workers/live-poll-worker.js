@@ -21,6 +21,10 @@ async function sha256Hex(buffer) {
 
 async function pollOnce() {
   if (!fileHandle) return;
+  // "Batimento" a cada tick (5s), tenha ou não conteúdo novo — é o que permite o main thread
+  // reavaliar "quanto tempo faz que não cai nada" (alerta de inatividade, ver checkDropWatchdog
+  // em alerts.js), já que sem isso o worker só manda mensagem quando o arquivo cresce.
+  postMessage({ type: 'heartbeat' });
   try {
     const latestFile = await fileHandle.getFile();
 

@@ -62,6 +62,8 @@ export const DEFAULT_ALERT_SETTINGS = {
   volume: 0.7,
   popupDurationSeconds: 5,
   groupingWindowSeconds: 30,
+  noDropThresholdMinutes: 1,
+  itemSilenceThresholdMinutes: 60,
 };
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
@@ -118,6 +120,12 @@ export const AppState = {
   alertHistory: [],
   alertHistoryFilter: '',
   pendingAlertGroups: {},
+  // Relógios do alerta de inatividade (watchdog) — resetados a cada (re)conexão do arquivo
+  // ao vivo, ver startLiveFilePolling() em file-source.js.
+  lastAnyDropAt: null,
+  noDropAlertFired: false,
+  lastSeenByKeyword: {},
+  staleKeywordAlerted: {},
   isAdmin: false,
   isMasterAdmin: false,
   currentUsername: '',

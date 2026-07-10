@@ -43,6 +43,12 @@ ${permission === 'unsupported'
     <div style="grid-column:span 2"><label class="lbl">Anti-spam: agrupar repetições em (segundos)</label><input class="inp" type="number" min="0" value="${settings.groupingWindowSeconds}" onchange="setAlertGroupingWindow(this.value)">
     <div class="hint">Se o mesmo item cair várias vezes dentro deste intervalo, gera uma única notificação agrupada.</div></div>
   </div>
+  <div class="g3" style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+    <div><label class="lbl">Alertar sem nenhum drop por (minutos)</label><input class="inp" type="number" min="1" value="${settings.noDropThresholdMinutes}" onchange="setNoDropThresholdMinutes(this.value)">
+    <div class="hint">O arquivo só grava quando dropa algo, então silêncio total é forte indício de que o helper travou.</div></div>
+    <div style="grid-column:span 2"><label class="lbl">Alertar sem dropar um item rastreado por (minutos)</label><input class="inp" type="number" min="1" value="${settings.itemSilenceThresholdMinutes}" onchange="setItemSilenceThresholdMinutes(this.value)">
+    <div class="hint">Item específico (ex: joia) pode legitimamente demorar mais — use um limite mais alto que o de cima.</div></div>
+  </div>
   <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <button class="btn btn-d" onclick="testNotification()"><i class="ti ti-player-play"></i>Testar notificação</button>
     <span style="font-size:12px;color:var(--muted)">Palavras com alerta ativo: <strong>${activeAlertCount}</strong> — <a href="#" onclick="navigateTo('calculo');return false" style="color:var(--acc)">gerenciar em Cálculo de farme</a></span>

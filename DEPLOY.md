@@ -231,6 +231,25 @@ admins/líderes:
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`, mas
 ninguém fica como mestre automaticamente; rode o `UPDATE` manualmente pra promover sua conta.
 
+## Alerta de inatividade (watchdog)
+
+Se seu banco já rodou `sql/migrate_master_admin.sql`, rode agora
+`sql/migrate_watchdog_alerts.sql` no phpMyAdmin (aba SQL) — adiciona 2 colunas em
+`alert_settings`. Dois alertas novos, configuráveis em minutos na página Alertas (mesmo card
+"Configuração" de sempre):
+
+- **Sem nenhum drop** (padrão 1 min): o arquivo só grava linha quando dropa algo, então
+  silêncio total é forte indício de que o helper/macro travou.
+- **Item rastreado sumiu** (padrão 60 min): um item específico com alerta ativo não aparece
+  há muito tempo — limite bem mais alto que o de cima, já que um item raro pode legitimamente
+  demorar mais mesmo com tudo funcionando.
+
+Cada alerta dispara uma vez por período de silêncio (não fica repetindo a cada poll) e volta
+a valer normalmente assim que o item/qualquer drop aparecer de novo. Só funciona com o arquivo
+conectado ao vivo (não se aplica a upload manual/CSV).
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
