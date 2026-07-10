@@ -24,17 +24,19 @@ export function computeTrackedItemCounts() {
 
 // Sincroniza só as contagens agregadas (não os drops individuais) pro ranking entre contas —
 // best-effort, uma falha aqui não deve travar o resto do app (o log local continua sendo a
-// fonte de verdade pro próprio usuário).
+// fonte de verdade pro próprio usuário). Loga no console em caso de erro (inclusive erro HTTP,
+// não só falha de rede) pra não esconder silenciosamente uma sincronização que não aconteceu.
 export async function syncTrackedDropCounts() {
   try {
-    await fetch(`${API_BASE}/drop-counts.php`, {
+    const response = await fetch(`${API_BASE}/drop-counts.php`, {
       method: 'PUT',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(computeTrackedItemCounts()),
     });
-  } catch {
-    // sem conexão/erro do servidor — tenta de novo na próxima sincronização
+    if (!response.ok) console.error('Falha ao sincronizar ranking:', response.status, await response.text());
+  } catch (err) {
+    console.error('Erro de conexão ao sincronizar ranking:', err);
   }
 }
 
