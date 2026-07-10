@@ -52,13 +52,17 @@ export async function createUser() {
   }
 }
 
+// save*() aqui são "fire and forget" (não bloqueiam a UI), mas o .catch garante que um erro
+// do servidor (ex: 403 se a sessão não for mais admin) apareça no console em vez de sumir
+// como uma promise rejeitada silenciosa — foi exatamente isso que escondeu o bug do ranking
+// numa rodada anterior de debug.
 export function addRankingItem() {
   const input = document.getElementById('newRankingItem');
   const featuredInput = document.getElementById('newRankingItemFeatured');
   const word = input?.value.trim();
   if (!word || AppState.rankingItems.some(r => r.word === word)) return;
   AppState.rankingItems.push({ word, featured: !!featuredInput?.checked });
-  saveRankingItems();
+  saveRankingItems().catch(err => console.error('Falha ao salvar itens do ranking:', err));
   input.value = '';
   if (featuredInput) featuredInput.checked = false;
   renderPage();
@@ -66,7 +70,7 @@ export function addRankingItem() {
 
 export function removeRankingItem(word) {
   AppState.rankingItems = AppState.rankingItems.filter(r => r.word !== word);
-  saveRankingItems();
+  saveRankingItems().catch(err => console.error('Falha ao salvar itens do ranking:', err));
   renderPage();
 }
 
@@ -74,7 +78,7 @@ export function toggleRankingItemFeatured(word) {
   const item = AppState.rankingItems.find(r => r.word === word);
   if (!item) return;
   item.featured = !item.featured;
-  saveRankingItems();
+  saveRankingItems().catch(err => console.error('Falha ao salvar itens do ranking:', err));
   renderPage();
 }
 
@@ -83,20 +87,20 @@ export function addItemCategory() {
   const name = input?.value.trim();
   if (!name || AppState.itemCategories.includes(name)) return;
   AppState.itemCategories.push(name);
-  saveItemCategories();
+  saveItemCategories().catch(err => console.error('Falha ao salvar categorias:', err));
   input.value = '';
   renderPage();
 }
 
 export function removeItemCategory(name) {
   AppState.itemCategories = AppState.itemCategories.filter(c => c !== name);
-  saveItemCategories();
+  saveItemCategories().catch(err => console.error('Falha ao salvar categorias:', err));
   renderPage();
 }
 
 export function setItemCategoryAssignment(itemName, categoryName) {
   if (categoryName) AppState.itemCategoryAssignments[itemName] = categoryName;
   else delete AppState.itemCategoryAssignments[itemName];
-  saveItemCategoryAssignments();
+  saveItemCategoryAssignments().catch(err => console.error('Falha ao salvar atribuição de categoria:', err));
   renderPage();
 }
