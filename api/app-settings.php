@@ -12,7 +12,8 @@ if ($method === 'GET') {
   $stmt->execute(['uid' => $uid]);
   $result = [];
   foreach ($stmt->fetchAll() as $row) $result[$row['setting_key']] = json_decode($row['setting_value'], true);
-  json_response($result);
+  // (object) garante {} no JSON quando vazio — ver comentário em item-category-assignments.php.
+  json_response((object) $result);
 }
 
 // Faz upsert só das chaves enviadas — não apaga flags não mencionadas no body, ao contrário

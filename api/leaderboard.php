@@ -20,4 +20,5 @@ foreach ($rows as $row) {
   $result[$row['item_name']] ??= [];
   $result[$row['item_name']][] = ['username' => $row['username'], 'quantity' => (int) $row['quantity']];
 }
-json_response($result);
+// (object) garante {} no JSON quando vazio — ver comentário em item-category-assignments.php.
+json_response((object) $result);

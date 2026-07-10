@@ -12,7 +12,10 @@ if ($method === 'GET') {
   $rows = $db->query('SELECT item_name, category_name FROM item_category_assignments')->fetchAll();
   $result = [];
   foreach ($rows as $row) $result[$row['item_name']] = $row['category_name'];
-  json_response($result);
+  // (object) garante {} no JSON quando vazio — um array PHP vazio vira [] (lista) em vez de
+  // {} (mapa), e um array JS não guarda propriedades de texto no JSON.stringify, perdendo
+  // silenciosamente qualquer atribuição feita em cima de um AppState.x inicializado errado.
+  json_response((object) $result);
 }
 
 if ($method === 'PUT') {

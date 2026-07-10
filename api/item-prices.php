@@ -10,7 +10,8 @@ if ($method === 'GET') {
   $rows = $db->query('SELECT item_name, price FROM item_prices')->fetchAll();
   $result = [];
   foreach ($rows as $row) $result[$row['item_name']] = (int) $row['price'];
-  json_response($result);
+  // (object) garante {} no JSON quando vazio — ver comentário em item-category-assignments.php.
+  json_response((object) $result);
 }
 
 if ($method === 'PUT') {

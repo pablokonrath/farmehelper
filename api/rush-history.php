@@ -14,7 +14,8 @@ if ($method === 'GET') {
   foreach ($stmt->fetchAll() as $row) {
     $result[$row['rush_date']] = ['total' => (int) $row['total'], 'items' => json_decode($row['items'], true) ?? []];
   }
-  json_response($result);
+  // (object) garante {} no JSON quando vazio — ver comentário em item-category-assignments.php.
+  json_response((object) $result);
 }
 
 if ($method === 'PUT') {
