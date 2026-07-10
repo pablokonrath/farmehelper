@@ -62,14 +62,16 @@ function applyStateFromPayload(payload) {
 }
 
 async function loadGlobalOnlyState() {
-  const [rankingItems, itemCategories, itemCategoryAssignments] = await Promise.all([
+  const [rankingItems, itemCategories, itemCategoryAssignments, guilds] = await Promise.all([
     get('ranking-items.php'),
     get('item-categories.php'),
     get('item-category-assignments.php'),
+    get('guilds.php'),
   ]);
   AppState.rankingItems = rankingItems;
   AppState.itemCategories = itemCategories;
   AppState.itemCategoryAssignments = itemCategoryAssignments;
+  AppState.guilds = guilds;
 }
 
 export async function loadPersistedState() {
@@ -140,6 +142,10 @@ export function saveItemCategories() {
 
 export function saveItemCategoryAssignments() {
   return put('item-category-assignments.php', AppState.itemCategoryAssignments);
+}
+
+export function saveGuilds() {
+  return put('guilds.php', AppState.guilds);
 }
 
 export function saveManualDrops() {

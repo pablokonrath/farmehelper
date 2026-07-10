@@ -5,4 +5,5 @@ json_response([
   'authenticated' => !empty($_SESSION['authenticated']),
   'isAdmin' => !empty($_SESSION['is_admin']),
   'username' => $_SESSION['username'] ?? '',
+  'guild' => $_SESSION['guild'] ?? '',
 ]);

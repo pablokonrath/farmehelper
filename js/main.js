@@ -12,6 +12,10 @@ import {
   addItemCategory,
   removeItemCategory,
   setItemCategoryAssignment,
+  toggleUserAdmin,
+  setUserGuild,
+  addGuild,
+  removeGuild,
 } from './features/admin.js';
 import { setRankingFilterItem, setRankingCompareUsername } from './features/leaderboard.js';
 
@@ -131,6 +135,10 @@ Object.assign(window, {
   setItemCategoryAssignment,
   setRankingFilterItem,
   setRankingCompareUsername,
+  toggleUserAdmin,
+  setUserGuild,
+  addGuild,
+  removeGuild,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

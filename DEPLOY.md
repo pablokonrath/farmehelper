@@ -162,6 +162,24 @@ Se seu banco já rodou `sql/migrate_admin_and_leaderboard.sql`, rode agora
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Guilds + múltiplos admins/líderes
+
+Se seu banco já rodou `sql/migrate_ranking_featured_and_categories.sql`, rode agora
+`sql/migrate_guilds.sql` no phpMyAdmin (aba SQL) — adiciona:
+
+- **Guilds**: novo card na tela Admin pra cadastrar nomes de guild (lista controlada, evita
+  duplicidade tipo "Guild XYZ" vs "guild xyz").
+- **Criar conta** ganha um seletor de guild e um checkbox "Admin/Líder" — agora dá pra criar
+  contas já marcadas como admin, não só a sua.
+- **Contas existentes**: o "Tipo" (Admin/Padrão) virou um botão — clique pra promover ou
+  rebaixar uma conta já existente, sem precisar recriar. A guild de cada conta também fica
+  editável ali.
+
+O Ranking em si não muda nesta rodada — continua por jogador. Um filtro "por guild" fica pra
+uma próxima atualização.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

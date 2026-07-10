@@ -9,6 +9,7 @@ export async function checkSession() {
     const data = await response.json();
     AppState.isAdmin = !!data.isAdmin;
     AppState.currentUsername = data.username || '';
+    AppState.currentGuild = data.guild || '';
     return !!data.authenticated;
   } catch {
     return false;

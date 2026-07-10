@@ -120,6 +120,8 @@ export const AppState = {
   pendingAlertGroups: {},
   isAdmin: false,
   currentUsername: '',
+  currentGuild: '',
+  guilds: [],
   adminUsers: [],
   isAdminUsersLoading: false,
   leaderboardData: null,

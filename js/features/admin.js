@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveRankingItems, saveItemCategories, saveItemCategoryAssignments } from '../state/persistence.js';
+import { saveRankingItems, saveItemCategories, saveItemCategoryAssignments, saveGuilds } from '../state/persistence.js';
 import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
@@ -20,18 +20,22 @@ export async function loadUsers() {
 export async function createUser() {
   const usernameInput = document.getElementById('newUserUsername');
   const passwordInput = document.getElementById('newUserPassword');
+  const guildInput = document.getElementById('newUserGuild');
+  const isAdminInput = document.getElementById('newUserIsAdmin');
   const errorEl = document.getElementById('createUserError');
   if (errorEl) errorEl.style.display = 'none';
 
   const username = usernameInput?.value.trim() || '';
   const password = passwordInput?.value || '';
+  const guild = guildInput?.value || '';
+  const isAdmin = !!isAdminInput?.checked;
 
   try {
     const response = await fetch(`${API_BASE}/users.php`, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, guild, isAdmin }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -43,6 +47,8 @@ export async function createUser() {
     }
     if (usernameInput) usernameInput.value = '';
     if (passwordInput) passwordInput.value = '';
+    if (guildInput) guildInput.value = '';
+    if (isAdminInput) isAdminInput.checked = false;
     await loadUsers();
   } catch {
     if (errorEl) {
@@ -50,6 +56,45 @@ export async function createUser() {
       errorEl.style.display = 'block';
     }
   }
+}
+
+async function updateUser(id, patch) {
+  try {
+    const response = await fetch(`${API_BASE}/users.php`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...patch }),
+    });
+    if (!response.ok) console.error('Falha ao atualizar conta:', response.status, await response.text());
+    await loadUsers();
+  } catch (err) {
+    console.error('Erro de conexão ao atualizar conta:', err);
+  }
+}
+
+export function toggleUserAdmin(id, currentlyAdmin) {
+  updateUser(id, { isAdmin: !currentlyAdmin });
+}
+
+export function setUserGuild(id, guild) {
+  updateUser(id, { guild });
+}
+
+export function addGuild() {
+  const input = document.getElementById('newGuild');
+  const name = input?.value.trim();
+  if (!name || AppState.guilds.includes(name)) return;
+  AppState.guilds.push(name);
+  saveGuilds().catch(err => console.error('Falha ao salvar guilds:', err));
+  input.value = '';
+  renderPage();
+}
+
+export function removeGuild(name) {
+  AppState.guilds = AppState.guilds.filter(g => g !== name);
+  saveGuilds().catch(err => console.error('Falha ao salvar guilds:', err));
+  renderPage();
 }
 
 // save*() aqui são "fire and forget" (não bloqueiam a UI), mas o .catch garante que um erro

@@ -8,22 +8,51 @@ export function renderAdminPage() {
 
 <div class="card">
   <div class="ctitle"><i class="ti ti-user-plus"></i>Criar conta</div>
-  <div class="g3" style="align-items:end">
+  <div class="g3" style="align-items:end;margin-bottom:10px">
     <div><label class="lbl">Usuário</label><input class="inp" id="newUserUsername" placeholder="ex: fulano"></div>
     <div><label class="lbl">Senha</label><input class="inp" id="newUserPassword" type="password" placeholder="mínimo 4 caracteres"></div>
+    <div><label class="lbl">Guild</label>
+      <select class="inp" id="newUserGuild">
+        <option value="">Sem guild</option>
+        ${AppState.guilds.map(g => `<option value="${g}">${g}</option>`).join('')}
+      </select>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <div style="display:flex;align-items:center;gap:6px">
+      <input type="checkbox" id="newUserIsAdmin" style="width:16px;height:16px;accent-color:var(--acc)">
+      <label for="newUserIsAdmin" style="font-size:12px;cursor:pointer">Admin/Líder</label>
+    </div>
     <button class="btn btn-p" onclick="createUser()"><i class="ti ti-plus"></i>Criar</button>
   </div>
   <div id="createUserError" style="display:none;color:var(--err);font-size:12px;margin-top:8px"></div>
 </div>
 
 <div class="card">
+  <div class="ctitle"><i class="ti ti-shield"></i>Guilds</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lista global de guilds (texto controlado, evita nomes duplicados escritos diferente).</div>
+  ${!AppState.guilds.length ? '<div class="empty" style="padding:14px 0">Nenhuma guild cadastrada ainda.</div>' : `
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+  ${AppState.guilds.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${name}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeGuild('${name}')"><i class="ti ti-x"></i></button></span>`).join('')}
+  </div>`}
+  <div class="row">
+    <div style="flex:1"><label class="lbl">Nova guild</label><input class="inp" id="newGuild" placeholder="ex: Elysium"></div>
+    <button class="btn btn-p" onclick="addGuild()"><i class="ti ti-plus"></i>Adicionar</button>
+  </div>
+</div>
+
+<div class="card">
   <div class="ctitle"><i class="ti ti-users"></i>Contas existentes</div>
   ${AppState.isAdminUsersLoading ? '<div class="empty">Carregando...</div>' :
     !AppState.adminUsers.length ? '<div class="empty">Nenhuma conta encontrada.</div>' : `
-  <table><thead><tr><th>Usuário</th><th>Tipo</th><th>Criada em</th></tr></thead><tbody>
+  <table><thead><tr><th>Usuário</th><th>Tipo</th><th style="width:160px">Guild</th><th>Criada em</th></tr></thead><tbody>
   ${AppState.adminUsers.map(u => `<tr>
     <td>${u.username}</td>
-    <td>${u.isAdmin ? '<span class="badge badge-acc">Admin</span>' : '<span class="badge badge-muted">Padrão</span>'}</td>
+    <td><button class="btn btn-xs ${u.isAdmin ? 'btn-p' : 'btn-d'}" onclick="toggleUserAdmin(${u.id}, ${u.isAdmin})">${u.isAdmin ? 'Admin' : 'Padrão'}</button></td>
+    <td><select class="inp inp-sm" onchange="setUserGuild(${u.id}, this.value)">
+      <option value="">Sem guild</option>
+      ${AppState.guilds.map(g => `<option value="${g}"${u.guild === g ? ' selected' : ''}>${g}</option>`).join('')}
+    </select></td>
     <td>${formatDateTimeBR(u.createdAt)}</td>
   </tr>`).join('')}
   </tbody></table>`}
