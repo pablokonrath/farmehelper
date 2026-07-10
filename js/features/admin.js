@@ -1,4 +1,5 @@
 import { AppState } from '../state/app-state.js';
+import { saveRankingItems } from '../state/persistence.js';
 import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
@@ -49,4 +50,20 @@ export async function createUser() {
       errorEl.style.display = 'block';
     }
   }
+}
+
+export function addRankingItem() {
+  const input = document.getElementById('newRankingItem');
+  const word = input?.value.trim();
+  if (!word || AppState.rankingItems.includes(word)) return;
+  AppState.rankingItems.push(word);
+  saveRankingItems();
+  input.value = '';
+  renderPage();
+}
+
+export function removeRankingItem(word) {
+  AppState.rankingItems = AppState.rankingItems.filter(w => w !== word);
+  saveRankingItems();
+  renderPage();
 }

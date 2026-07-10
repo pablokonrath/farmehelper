@@ -122,8 +122,9 @@ DGs são compartilhados entre todo mundo.
 ## Admin: conta administradora e ranking
 
 Duas coisas novas: (1) marcar sua conta como admin, o que libera uma tela **Admin** pra criar
-contas direto pelo site em vez de phpMyAdmin; (2) um **Ranking** que mostra, pra cada item da
-sua lista de "palavras rastreadas" (Cálculo de farme), quem da guild dropou mais — só a
+contas direto pelo site em vez de phpMyAdmin; (2) um **Ranking** que mostra, pra cada item de
+uma lista **global** controlada só pelo admin (não a lista pessoal de "palavras rastreadas"
+de cada um, que continua só pros alertas de cada pessoa), quem da guild dropou mais — só a
 quantidade aparece, não o valor em Alz.
 
 Se seu banco já tem a tabela `users` (ou seja, você já rodou a migração multiusuário):
@@ -134,9 +135,11 @@ Se seu banco já tem a tabela `users` (ou seja, você já rodou a migração mul
 2. Recarregue o DropList e loga de novo — deve aparecer um item **Admin** novo na barra
    lateral, só na sua conta.
 3. Pra criar conta de outra pessoa, usa essa tela em vez do phpMyAdmin daqui pra frente.
-4. O ranking (item **Ranking** na barra lateral) começa vazio — ele se preenche sozinho
-   conforme o arquivo de log de cada pessoa for lido/atualizado (sincroniza contagem dos
-   itens rastreados automaticamente, sem precisar fazer nada manual).
+4. Na tela **Admin**, card **"Itens do ranking"**, cadastre os itens que devem entrar no
+   ranking (ex: "Extensor Altíssimo") — essa lista é global, só admin edita.
+5. O ranking (item **Ranking** na barra lateral) começa vazio pra cada item cadastrado — ele
+   se preenche sozinho conforme o arquivo de log de cada pessoa for lido/atualizado
+   (sincroniza a contagem automaticamente, sem precisar fazer nada manual em cada conta).
 
 Se você está instalando o DropList do zero (nunca rodou nenhuma migração antes), não precisa
 desse script — `sql/schema.sql` já cria tudo pronto. Só lembre de rodar

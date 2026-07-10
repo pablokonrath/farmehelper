@@ -13,3 +13,11 @@ CREATE TABLE drop_counts (
   PRIMARY KEY (user_id, item_name),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Lista global (não por usuário) de itens que entram no ranking, controlada só pelo admin —
+-- separada da lista pessoal de "palavras rastreadas" de cada um (essa continua só pros
+-- alertas de cada pessoa, privada).
+CREATE TABLE ranking_items (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  word VARCHAR(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -90,6 +90,7 @@ export const AppState = {
   rushHistory: {},
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
+  rankingItems: [],
   currentPage: 'overview',
   dateFrom: '',
   dateTo: '',

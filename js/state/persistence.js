@@ -48,12 +48,13 @@ export async function loadPersistedState() {
     const payload = buildLegacyStatePayload();
     await apiFetch('migrate.php', { method: 'POST', body: JSON.stringify(payload) });
     applyStateFromPayload(payload);
+    AppState.rankingItems = await get('ranking-items.php');
     localStorage.setItem(MIGRATION_FLAG_KEY, '1');
     return;
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory] = await Promise.all([
+  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, rankingItems] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('tracked-keywords.php'),
@@ -62,6 +63,7 @@ export async function loadPersistedState() {
     get('manual-drops.php'),
     get('alert-settings.php'),
     get('alert-history.php'),
+    get('ranking-items.php'),
   ]);
 
   AppState.itemPrices = itemPrices;
@@ -73,6 +75,7 @@ export async function loadPersistedState() {
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
   AppState.alertHistory = alertHistory;
+  AppState.rankingItems = rankingItems;
 }
 
 export function saveItemPrices() {
@@ -97,6 +100,10 @@ export function saveRushCreditCraftCosts() {
 
 export function saveDungeonList() {
   return put('dungeon-list.php', AppState.dungeonList);
+}
+
+export function saveRankingItems() {
+  return put('ranking-items.php', AppState.rankingItems);
 }
 
 export function saveManualDrops() {

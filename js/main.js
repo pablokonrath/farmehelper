@@ -4,7 +4,7 @@ import { updateBalanceSidebar } from './features/drops.js';
 import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
 import { checkSession, submitLogin, logout } from './features/auth.js';
-import { createUser } from './features/admin.js';
+import { createUser, addRankingItem, removeRankingItem } from './features/admin.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
@@ -114,6 +114,8 @@ Object.assign(window, {
   submitLogin,
   logout,
   createUser,
+  addRankingItem,
+  removeRankingItem,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

@@ -27,5 +27,21 @@ export function renderAdminPage() {
     <td>${formatDateTimeBR(u.createdAt)}</td>
   </tr>`).join('')}
   </tbody></table>`}
+</div>
+
+<div class="card">
+  <div class="ctitle"><i class="ti ti-trophy"></i>Itens do ranking</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lista global — decide quais itens aparecem no Ranking pra todas as contas. Diferente da lista pessoal de "palavras rastreadas" (Cálculo de farme), que cada um configura pros próprios alertas.</div>
+  ${!AppState.rankingItems.length ? '<div class="empty" style="padding:14px 0">Nenhum item no ranking ainda.</div>' : `
+  <table style="margin-bottom:12px"><thead><tr><th>Item</th><th style="width:40px">Ações</th></tr></thead><tbody>
+  ${AppState.rankingItems.map(word => `<tr>
+    <td style="font-weight:500">${word}</td>
+    <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeRankingItem('${word}')"><i class="ti ti-x"></i></button></td>
+  </tr>`).join('')}
+  </tbody></table>`}
+  <div class="row">
+    <div style="flex:1"><label class="lbl">Adicionar item</label><input class="inp" id="newRankingItem" placeholder="ex: Extensor Altíssimo"></div>
+    <button class="btn btn-p" onclick="addRankingItem()"><i class="ti ti-plus"></i>Adicionar</button>
+  </div>
 </div>`;
 }

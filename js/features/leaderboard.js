@@ -5,17 +5,18 @@ import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
 
-// Diferente de applyTrackedKeywordFilter (drops.js), que só filtra quando o toggle "Filtrar
-// apenas itens rastreados" está ligado — aqui o ranking sempre é só de itens rastreados,
-// independente desse toggle (que controla a exibição da lista principal, outra coisa).
-function filterToTrackedItems(drops) {
-  if (!AppState.trackedKeywords.length) return [];
-  const keywords = AppState.trackedKeywords.map(kw => normalizeForSearch(kw.word));
+// AppState.rankingItems é uma lista GLOBAL controlada só pelo admin (api/ranking-items.php) —
+// diferente de AppState.trackedKeywords, que é pessoal e controla só os alertas de cada um.
+// O ranking usa a lista global, não a de cada usuário, senão cada pessoa só apareceria no
+// ranking dos itens que ELA MESMA escolheu rastrear pros próprios alertas.
+function filterToRankingItems(drops) {
+  if (!AppState.rankingItems.length) return [];
+  const keywords = AppState.rankingItems.map(normalizeForSearch);
   return drops.filter(d => keywords.some(k => normalizeForSearch(d.name).includes(k)));
 }
 
 export function computeTrackedItemCounts() {
-  const trackedDrops = filterToTrackedItems(getAllDrops());
+  const trackedDrops = filterToRankingItems(getAllDrops());
   const counts = {};
   summarizeDropsByItem(trackedDrops).forEach(item => (counts[item.name] = item.qty));
   return counts;
