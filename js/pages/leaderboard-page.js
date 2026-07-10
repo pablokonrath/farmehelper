@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { isItemFeatured, getGuildUsernames, buildPlayerComparison } from '../features/leaderboard.js';
 
 const MEDAL_COLORS = ['#ffd700', '#c0c0c0', '#cd7f32'];
+const PODIUM_TITLES = ['Rei do Farm', 'Grinder Implacável', 'Caçador Dedicado'];
 
 const PERIOD_TABS = [
   { value: 'all', label: 'Geral' },
@@ -59,6 +60,7 @@ function renderPodiumSlot(row, position) {
   return `
   <div class="podium-slot p${position}">
     <div class="podium-medal"><i class="ti ti-medal" style="color:${MEDAL_COLORS[position - 1]}"></i></div>
+    <div class="podium-title" style="color:${MEDAL_COLORS[position - 1]}">${PODIUM_TITLES[position - 1]}</div>
     <div class="podium-name">${row.username}</div>
     ${row.guild ? `<div class="podium-guild">${row.guild}</div>` : ''}
     <div class="podium-qty">${row.quantity}×</div>
@@ -68,7 +70,6 @@ function renderPodiumSlot(row, position) {
 
 function renderItemCard(itemName, rows) {
   const featured = isItemFeatured(itemName);
-  const combinedTotal = rows.reduce((sum, r) => sum + r.quantity, 0);
   const [first, second, third] = rows;
   const rest = rows.slice(3);
   const myIndex = AppState.currentUsername ? rows.findIndex(r => r.username === AppState.currentUsername) : -1;
@@ -82,7 +83,7 @@ function renderItemCard(itemName, rows) {
   return `
 <div class="card${featured ? ' card-featured' : ''}">
   <div class="ctitle">${featured ? '<i class="ti ti-star-filled" style="color:var(--gold)"></i>' : '<i class="ti ti-target-arrow"></i>'} ${itemName}</div>
-  <div class="guild-total">Total combinado: <b>${combinedTotal}×</b></div>
+  <div class="guild-total">Top 3</div>
   <div class="podium">
     ${renderPodiumSlot(second, 2)}
     ${renderPodiumSlot(first, 1)}

@@ -127,6 +127,7 @@ tbody tr:hover{background:var(--surf2)}
 .podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:16px}
 .podium-slot{display:flex;flex-direction:column;align-items:center;width:120px}
 .podium-medal{font-size:26px;margin-bottom:6px}
+.podium-title{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:center;margin-bottom:2px}
 .podium-name{font-weight:700;font-size:13px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;margin-bottom:2px}
 .podium-guild{font-size:10px;color:var(--muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;margin-bottom:4px}
 .podium-qty{font-size:18px;font-weight:700;font-family:var(--font-display)}
@@ -135,7 +136,7 @@ tbody tr:hover{background:var(--surf2)}
 .podium-slot.p2 .podium-stand{height:62px;background:linear-gradient(180deg,rgba(198,206,224,.14),rgba(198,206,224,.24));border:1px solid rgba(198,206,224,.4);color:#c6cee0}
 .podium-slot.p3 .podium-stand{height:44px;background:linear-gradient(180deg,rgba(205,127,50,.14),rgba(205,127,50,.24));border:1px solid rgba(205,127,50,.4);color:#cd7f32}
 .podium-slot.p1 .podium-name{color:var(--gold)}
-.guild-total{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px}
+.guild-total{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
 .guild-total b{color:var(--txt);font-family:var(--font-display)}
 .your-rank{margin-top:10px;padding:8px 12px;border-radius:var(--r);background:var(--acc-bg);border:1px solid var(--acc-border);font-size:12px;color:var(--acc);text-align:center}
 .card-featured{border-color:var(--gold-border);box-shadow:0 0 24px rgba(255,176,32,.14),0 8px 24px rgba(0,0,0,.25)}
