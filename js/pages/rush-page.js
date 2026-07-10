@@ -56,11 +56,11 @@ export function renderRushPage() {
     <div><label class="lbl">Data do rush</label>${renderDateInputBR({ value: AppState.rushCartDate, onChange: 'setRushCartDate' })}</div>
     <div><label class="lbl">Valor unitário do ticket (Alz)</label>
       <input class="inp" id="tkp" type="text" inputmode="numeric" value="${AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : ''}" placeholder="Ex: 1.000.000"
-        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushTicketPrice(this.value)">
+        oninput="maskAlzInputLive(this)" onblur="setRushTicketPrice(this.value)">
       <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).</div></div>
     <div><label class="lbl">Card Cash (1.000 Cash em Alz)</label>
       <input class="inp" id="ccp" type="text" inputmode="numeric" value="${AppState.rushCardCashPrice ? formatNumber(AppState.rushCardCashPrice) : ''}" placeholder="Ex: 550.000.000"
-        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCardCashPrice(this.value)">
+        oninput="maskAlzInputLive(this)" onblur="setRushCardCashPrice(this.value)">
       <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
   </div>
 </div>
@@ -78,9 +78,9 @@ export function renderRushPage() {
       <td style="font-weight:500">${cat.name}</td>
       <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)"></td>
       <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${marketPrice ? formatNumber(marketPrice) : ''}" placeholder="Ex: 30.000.000"
-        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCreditMarketPrice('${cat.id}', this.value)"></td>
+        oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)"></td>
       <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${craftCost ? formatNumber(craftCost) : ''}" placeholder="Ex: 3.000.000"
-        onfocus="this.value = this.value.replace(/\D/g,'')" oninput="this.value = this.value.replace(/\D/g,'')" onblur="setRushCreditCraftCost('${cat.id}', this.value)"></td>
+        oninput="maskAlzInputLive(this)" onblur="setRushCreditCraftCost('${cat.id}', this.value)"></td>
       <td>${renderAlzValue(subtotal, true)}</td>
     </tr>`;
   }).join('')}
@@ -98,7 +98,7 @@ export function renderRushPage() {
     ${AppState.dungeonList.map(dg => AppState.isAdmin && AppState.editingDungeonId === dg.id ? `
       <tr style="background:var(--acc-bg)">
         <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${dg.name}" style="min-width:160px"></td>
-        <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="number" min="0" value="${dg.alzCost}" style="width:110px"></td>
+        <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="text" inputmode="numeric" value="${dg.alzCost ? formatNumber(dg.alzCost) : ''}" placeholder="0" style="width:110px" oninput="maskAlzInputLive(this)"></td>
         <td><input class="inp inp-sm" id="ed-tk-${dg.id}" type="number" min="0" value="${dg.ticketsPerRun || 0}" style="width:80px"></td>
         <td><input class="inp inp-sm" id="ed-g-${dg.id}" type="number" min="0" value="${dg.gemsPerRun || 0}" style="width:80px"></td>
         <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveDungeonEdit('${dg.id}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingDungeon()">✕</button></div></td>
@@ -117,7 +117,7 @@ export function renderRushPage() {
     ${AppState.isAdmin ? `<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--txt2)"><i class="ti ti-plus"></i> Nova DG</div>
     <div class="row">
       <div style="flex:1"><input class="inp" id="new-dg-n" placeholder="Nome da DG"></div>
-      <div style="width:150px"><input class="inp" id="new-dg-a" type="number" min="0" placeholder="Custo Alz (0 se ticket/gema)"></div>
+      <div style="width:150px"><input class="inp" id="new-dg-a" type="text" inputmode="numeric" placeholder="Custo Alz (0 se ticket/gema)" oninput="maskAlzInputLive(this)"></div>
       <div style="width:110px"><input class="inp" id="new-dg-tk" type="number" min="0" placeholder="Qtd. tickets"></div>
       <div style="width:110px"><input class="inp" id="new-dg-g" type="number" min="0" placeholder="Qtd. gemas"></div>
       <button class="btn btn-p" onclick="addNewDungeon()"><i class="ti ti-plus"></i>Adicionar</button>
@@ -154,9 +154,7 @@ export function renderRushPage() {
         <input class="inp" id="dgGemQty" type="number" min="1" value="1" oninput="updateCartPreview()"></div>
       <div><label class="lbl">Valor Unitário da Gema (Alz)</label>
         <input class="inp" id="dgGemPrice" type="text" inputmode="numeric" value="${formatNumber(getCostPerGem())}"
-          onfocus="this.value = this.value.replace(/\D/g,'')"
-          oninput="this.value = this.value.replace(/\D/g,''); updateCartPreview()"
-          onblur="this.value = this.value ? Number(this.value).toLocaleString('pt-BR') : ''">
+          oninput="maskAlzInputLive(this); updateCartPreview()">
         <div class="hint">Preenchido em Alz, conforme unidade do jogo.</div></div>
       <div><label class="lbl">Custo do Reset (previsão)</label>
         <div id="resetCostPreview" style="background:var(--warn-bg,rgba(234,88,12,.1));border:1px solid var(--warn);border-radius:8px;padding:8px 12px;font-family:var(--mono,monospace)"></div>

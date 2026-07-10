@@ -93,6 +93,7 @@ export const AppState = {
   manualDrops: [],
   isManualDropsOpen: false,
   itemPrices: {},
+  editingItemPriceName: null,
   rushHistory: {},
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,

@@ -19,6 +19,18 @@ export function getAlzTierColor(value) {
   return '#fb923c';
 }
 
+// Reformata um <input> de Alz a cada tecla digitada (ponto de milhar + cor de faixa), sem
+// disparar nenhum setState/renderPage — só mexe no próprio elemento. Mesma lógica de
+// maskDateInputBR: não tenta preservar a posição exata do cursor no meio de um texto já
+// formatado (o padrão real de uso é sempre digitar do começo/fim, nunca editar no meio).
+export function maskAlzInputLive(input) {
+  const digits = input.value.replace(/\D/g, '');
+  const value = digits ? parseInt(digits, 10) : 0;
+  input.value = digits ? value.toLocaleString('pt-BR') : '';
+  input.style.color = getAlzTierColor(value);
+  return value;
+}
+
 function trimTrailingZeros(num) {
   return num.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
 }

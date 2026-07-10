@@ -2,7 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveManualDrops, saveItemPrices } from '../state/persistence.js';
 import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts } from './alerts.js';
-import { parseDateInputBR } from '../utils/formatting.js';
+import { parseDateInputBR, parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
@@ -22,9 +22,9 @@ export function addManualDrop() {
   const date = parseDateInputBR(dateInput?.value) || todayISODate();
   const batchId = 'm' + Date.now();
 
-  const price = parseInt(priceInput?.value);
-  if (!isNaN(price) && price >= 0) {
-    AppState.itemPrices[name] = price;
+  const rawPrice = priceInput?.value.trim();
+  if (rawPrice) {
+    AppState.itemPrices[name] = parseAlzInput(rawPrice);
     saveItemPrices();
   }
 

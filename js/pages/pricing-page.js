@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveFilterKeywordsFlag } from '../state/persistence.js';
 import { summarizeDropsByItem, getAllDrops } from '../features/drops.js';
-import { renderAlzValue } from '../utils/formatting.js';
+import { renderAlzValue, formatNumber } from '../utils/formatting.js';
 import { renderPage } from '../router.js';
 
 const SUGGESTED_ITEM_NAMES = ['Nucleo de Aprimoramento', 'Set de Nucleo de Aprimoramento', 'Joia Enfraquecida', 'Nucleo Arcano (Alto)', 'Nucleo Arcano (Altissimo)'];
@@ -24,7 +24,7 @@ export function renderPricingPage() {
   <div style="flex:1"><label class="lbl">Nome do item</label>
     <input class="inp" id="cN" placeholder="ex: Nucleo de Aprimoramento" list="sugg">
     <datalist id="sugg">${allItems.slice(0, 40).map(i => `<option value="${i.name}">`).join('')}</datalist></div>
-  <div style="width:165px"><label class="lbl">Valor (Alz)</label><input class="inp" id="cP" type="number" placeholder="0"></div>
+  <div style="width:165px"><label class="lbl">Valor (Alz)</label><input class="inp" id="cP" type="text" inputmode="numeric" placeholder="0" oninput="maskAlzInputLive(this)"></div>
   <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addItemPrice()"><i class="ti ti-plus"></i>Salvar</button></div>
 </div>
 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
@@ -35,9 +35,13 @@ ${itemsWithoutPrice.length ? `<div class="notice"><i class="ti ti-alert-circle" 
 <div class="card"><div class="ctitle"><i class="ti ti-list"></i>Itens cadastrados <span style="color:var(--muted);font-size:12px;font-weight:400">${Object.keys(AppState.itemPrices).length} itens</span></div>
 ${!Object.keys(AppState.itemPrices).length ? '<div class="empty">Nenhum item cadastrado ainda.</div>' : `
 <table><thead><tr><th>Item</th><th>Valor</th><th style="width:90px">Ações</th></tr></thead><tbody>
-${Object.entries(AppState.itemPrices).sort(([a], [b]) => a.localeCompare(b)).map(([name, price]) => `<tr>
+${Object.entries(AppState.itemPrices).sort(([a], [b]) => a.localeCompare(b)).map(([name, price]) => AppState.editingItemPriceName === name ? `<tr style="background:var(--acc-bg)">
+  <td>${name}</td>
+  <td><input class="inp inp-sm" id="editItemPriceInput" type="text" inputmode="numeric" value="${price ? formatNumber(price) : ''}" style="width:140px" oninput="maskAlzInputLive(this)"></td>
+  <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveItemPriceEdit('${name}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingItemPrice()">✕</button></div></td>
+</tr>` : `<tr>
   <td>${name}</td><td>${renderAlzValue(price)}</td>
-  <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" onclick="editItemPrice('${name}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${name}')"><i class="ti ti-trash"></i></button></div></td>
+  <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" onclick="startEditingItemPrice('${name}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${name}')"><i class="ti ti-trash"></i></button></div></td>
 </tr>`).join('')}
 </tbody></table>`}
 </div>

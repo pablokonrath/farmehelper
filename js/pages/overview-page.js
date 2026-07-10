@@ -68,7 +68,7 @@ export function renderOverviewPage() {
       <div style="flex:1"><label class="lbl">Nome do item</label>
         <input class="inp" id="mdName" placeholder="ex: Nucleo de Aprimoramento" list="mdSugg">
         <datalist id="mdSugg">${manualSuggestions.map(name => `<option value="${name}">`).join('')}</datalist></div>
-      <div style="width:140px"><label class="lbl">Valor unitário (Alz)</label><input class="inp" id="mdPrice" type="number" min="0" placeholder="opcional"></div>
+      <div style="width:140px"><label class="lbl">Valor unitário (Alz)</label><input class="inp" id="mdPrice" type="text" inputmode="numeric" placeholder="opcional" oninput="maskAlzInputLive(this)"></div>
       <div style="width:100px"><label class="lbl">Quantidade</label><input class="inp" id="mdQty" type="number" min="1" value="1"></div>
       <div style="width:150px"><label class="lbl">Data</label>${renderDateInputBR({ id: 'mdDate', value: todayISODate() })}</div>
       <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addManualDrop()"><i class="ti ti-plus"></i>Adicionar</button></div>

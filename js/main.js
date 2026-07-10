@@ -36,7 +36,7 @@ import {
   cancelEditingDungeon,
 } from './pages/rush-page.js';
 
-import { addItemPrice, editItemPrice, deleteItemPrice } from './features/pricing.js';
+import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice } from './features/pricing.js';
 import { addTrackedKeyword, removeTrackedKeyword, resetTrackedKeywords, toggleKeywordAlert } from './features/keywords.js';
 import { saveDungeonEdit, deleteDungeon, addNewDungeon, resetDungeonList } from './features/dungeon-manager.js';
 import {
@@ -70,7 +70,7 @@ import {
   setRushCreditCraftCost,
 } from './features/rush-cart.js';
 import { exportDropsToCSV } from './features/export.js';
-import { maskDateInputBR, parseDateInputBR } from './utils/formatting.js';
+import { maskDateInputBR, parseDateInputBR, maskAlzInputLive } from './utils/formatting.js';
 
 // As páginas são geradas via template string com atributos onclick/onchange/oninput
 // (em vez de addEventListener), então cada função referenciada neles precisa existir
@@ -90,7 +90,9 @@ Object.assign(window, {
   setCompareItemFilter,
   toggleFilterByKeywords,
   addItemPrice,
-  editItemPrice,
+  startEditingItemPrice,
+  cancelEditingItemPrice,
+  saveItemPriceEdit,
   deleteItemPrice,
   addTrackedKeyword,
   removeTrackedKeyword,
@@ -134,6 +136,7 @@ Object.assign(window, {
   exportDropsToCSV,
   maskDateInputBR,
   parseDateInputBR,
+  maskAlzInputLive,
   submitLogin,
   logout,
   createUser,
