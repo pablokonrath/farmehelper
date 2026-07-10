@@ -8,6 +8,7 @@ export async function checkSession() {
     if (!response.ok) return false;
     const data = await response.json();
     AppState.isAdmin = !!data.isAdmin;
+    AppState.currentUsername = data.username || '';
     return !!data.authenticated;
   } catch {
     return false;

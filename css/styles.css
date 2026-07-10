@@ -122,3 +122,18 @@ tbody tr:hover{background:var(--surf2)}
 /* Legenda cores Alz */
 .alz-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;font-size:11px;color:var(--muted)}
 .alz-dot{width:7px;height:7px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:3px;box-shadow:0 0 6px currentColor}
+
+/* Pódio do ranking */
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin-bottom:16px}
+.podium-slot{display:flex;flex-direction:column;align-items:center;width:120px}
+.podium-medal{font-size:26px;margin-bottom:6px}
+.podium-name{font-weight:700;font-size:13px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;margin-bottom:2px}
+.podium-qty{font-size:18px;font-weight:700;font-family:var(--font-display)}
+.podium-stand{width:100%;border-radius:8px 8px 0 0;margin-top:8px;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-size:20px;font-weight:700;font-family:var(--font-display)}
+.podium-slot.p1 .podium-stand{height:88px;background:linear-gradient(180deg,var(--gold-bg),rgba(255,176,32,.22));border:1px solid var(--gold-border);color:var(--gold);box-shadow:0 0 20px rgba(255,176,32,.18)}
+.podium-slot.p2 .podium-stand{height:62px;background:linear-gradient(180deg,rgba(198,206,224,.14),rgba(198,206,224,.24));border:1px solid rgba(198,206,224,.4);color:#c6cee0}
+.podium-slot.p3 .podium-stand{height:44px;background:linear-gradient(180deg,rgba(205,127,50,.14),rgba(205,127,50,.24));border:1px solid rgba(205,127,50,.4);color:#cd7f32}
+.podium-slot.p1 .podium-name{color:var(--gold)}
+.guild-total{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px}
+.guild-total b{color:var(--txt);font-family:var(--font-display)}
+.your-rank{margin-top:10px;padding:8px 12px;border-radius:var(--r);background:var(--acc-bg);border:1px solid var(--acc-border);font-size:12px;color:var(--acc);text-align:center}

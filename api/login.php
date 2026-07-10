@@ -24,4 +24,5 @@ session_regenerate_id(true);
 $_SESSION['authenticated'] = true;
 $_SESSION['user_id'] = (int) $user['id'];
 $_SESSION['is_admin'] = !empty($user['is_admin']);
+$_SESSION['username'] = $username;
 json_response(['ok' => true]);

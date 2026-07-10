@@ -119,6 +119,7 @@ export const AppState = {
   alertHistoryFilter: '',
   pendingAlertGroups: {},
   isAdmin: false,
+  currentUsername: '',
   adminUsers: [],
   isAdminUsersLoading: false,
   leaderboardData: null,
