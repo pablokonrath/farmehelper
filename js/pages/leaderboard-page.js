@@ -46,6 +46,7 @@ function renderPodiumSlot(row, position) {
   <div class="podium-slot p${position}">
     <div class="podium-medal"><i class="ti ti-medal" style="color:${MEDAL_COLORS[position - 1]}"></i></div>
     <div class="podium-name">${row.username}</div>
+    ${row.guild ? `<div class="podium-guild">${row.guild}</div>` : ''}
     <div class="podium-qty">${row.quantity}×</div>
     <div class="podium-stand">${position}º</div>
   </div>`;
@@ -53,7 +54,7 @@ function renderPodiumSlot(row, position) {
 
 function renderItemCard(itemName, rows) {
   const featured = isItemFeatured(itemName);
-  const guildTotal = rows.reduce((sum, r) => sum + r.quantity, 0);
+  const combinedTotal = rows.reduce((sum, r) => sum + r.quantity, 0);
   const [first, second, third] = rows;
   const rest = rows.slice(3);
   const myIndex = AppState.currentUsername ? rows.findIndex(r => r.username === AppState.currentUsername) : -1;
@@ -67,7 +68,7 @@ function renderItemCard(itemName, rows) {
   return `
 <div class="card${featured ? ' card-featured' : ''}">
   <div class="ctitle">${featured ? '<i class="ti ti-star-filled" style="color:var(--gold)"></i>' : '<i class="ti ti-target-arrow"></i>'} ${itemName}</div>
-  <div class="guild-total">Total da guild: <b>${guildTotal}×</b></div>
+  <div class="guild-total">Total combinado: <b>${combinedTotal}×</b></div>
   <div class="podium">
     ${renderPodiumSlot(second, 2)}
     ${renderPodiumSlot(first, 1)}
@@ -77,7 +78,7 @@ function renderItemCard(itemName, rows) {
   <table><thead><tr><th style="width:50px">#</th><th>Usuário</th><th>Quantidade</th></tr></thead><tbody>
   ${rest.map((row, i) => `<tr>
     <td class="rank">${i + 4}</td>
-    <td>${row.username}</td>
+    <td>${row.username}${row.guild ? `<div style="font-size:10px;color:var(--muted)">${row.guild}</div>` : ''}</td>
     <td>${row.quantity}</td>
   </tr>`).join('')}
   </tbody></table>` : ''}

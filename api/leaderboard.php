@@ -8,7 +8,7 @@ require_login();
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') json_response(['error' => 'method_not_allowed'], 405);
 
 $rows = get_db()->query('
-  SELECT dc.item_name, u.username, dc.quantity
+  SELECT dc.item_name, u.username, u.guild, dc.quantity
   FROM drop_counts dc
   JOIN users u ON u.id = dc.user_id
   WHERE dc.quantity > 0
@@ -18,7 +18,7 @@ $rows = get_db()->query('
 $result = [];
 foreach ($rows as $row) {
   $result[$row['item_name']] ??= [];
-  $result[$row['item_name']][] = ['username' => $row['username'], 'quantity' => (int) $row['quantity']];
+  $result[$row['item_name']][] = ['username' => $row['username'], 'guild' => $row['guild'], 'quantity' => (int) $row['quantity']];
 }
 // (object) garante {} no JSON quando vazio — ver comentário em item-category-assignments.php.
 json_response((object) $result);
