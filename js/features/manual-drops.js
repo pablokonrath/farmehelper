@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveManualDrops, saveItemPrices } from '../state/persistence.js';
 import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts } from './alerts.js';
+import { checkWishlistMatches } from './wishlist.js';
 import { parseDateInputBR, parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
@@ -49,6 +50,7 @@ export function addManualDrop() {
   saveManualDrops();
   updateBalanceSidebar();
   processNewDropsForAlerts(newEntries);
+  checkWishlistMatches(newEntries);
   renderPage();
 }
 
