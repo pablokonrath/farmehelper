@@ -43,18 +43,29 @@ function applyStateFromPayload(payload) {
   AppState.alertHistory = payload.alertHistory;
 }
 
+async function loadGlobalOnlyState() {
+  const [rankingItems, itemCategories, itemCategoryAssignments] = await Promise.all([
+    get('ranking-items.php'),
+    get('item-categories.php'),
+    get('item-category-assignments.php'),
+  ]);
+  AppState.rankingItems = rankingItems;
+  AppState.itemCategories = itemCategories;
+  AppState.itemCategoryAssignments = itemCategoryAssignments;
+}
+
 export async function loadPersistedState() {
   if (!localStorage.getItem(MIGRATION_FLAG_KEY) && hasLegacyData()) {
     const payload = buildLegacyStatePayload();
     await apiFetch('migrate.php', { method: 'POST', body: JSON.stringify(payload) });
     applyStateFromPayload(payload);
-    AppState.rankingItems = await get('ranking-items.php');
+    await loadGlobalOnlyState();
     localStorage.setItem(MIGRATION_FLAG_KEY, '1');
     return;
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, rankingItems] = await Promise.all([
+  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('tracked-keywords.php'),
@@ -63,7 +74,6 @@ export async function loadPersistedState() {
     get('manual-drops.php'),
     get('alert-settings.php'),
     get('alert-history.php'),
-    get('ranking-items.php'),
   ]);
 
   AppState.itemPrices = itemPrices;
@@ -75,7 +85,7 @@ export async function loadPersistedState() {
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
   AppState.alertHistory = alertHistory;
-  AppState.rankingItems = rankingItems;
+  await loadGlobalOnlyState();
 }
 
 export function saveItemPrices() {
@@ -104,6 +114,14 @@ export function saveDungeonList() {
 
 export function saveRankingItems() {
   return put('ranking-items.php', AppState.rankingItems);
+}
+
+export function saveItemCategories() {
+  return put('item-categories.php', AppState.itemCategories);
+}
+
+export function saveItemCategoryAssignments() {
+  return put('item-category-assignments.php', AppState.itemCategoryAssignments);
 }
 
 export function saveManualDrops() {

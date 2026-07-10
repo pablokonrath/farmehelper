@@ -6,6 +6,10 @@ export function getItemPrice(itemName) {
   return AppState.itemPrices[itemName] ?? AppState.itemPrices[stripEnhancementSuffix(itemName)] ?? 0;
 }
 
+export function getItemCategory(itemName) {
+  return AppState.itemCategoryAssignments[itemName] ?? AppState.itemCategoryAssignments[stripEnhancementSuffix(itemName)] ?? null;
+}
+
 // Drops vêm do log do jogo (AppState.drops, recarregado por inteiro a cada upload/conexão
 // de arquivo) + itens adicionados manualmente (AppState.manualDrops, persistidos à parte
 // porque um novo upload de arquivo substitui AppState.drops inteiro).

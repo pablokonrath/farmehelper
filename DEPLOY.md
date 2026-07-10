@@ -146,6 +146,22 @@ desse script — `sql/schema.sql` já cria tudo pronto. Só lembre de rodar
 `UPDATE users SET is_admin = 1 WHERE username = 'seu_usuario';` depois de criar sua conta no
 passo 4 lá em cima, se quiser que ela seja admin.
 
+## Destaque no ranking + categorias de item no Relatório
+
+Se seu banco já rodou `sql/migrate_admin_and_leaderboard.sql`, rode agora
+`sql/migrate_ranking_featured_and_categories.sql` no phpMyAdmin (aba SQL) — adiciona:
+
+- **Destaque no Ranking**: na tela Admin, cada item do ranking ganha uma estrela pra marcar
+  como destaque — fica fixado no topo da página Ranking com um brilho dourado, mesmo que
+  você filtre por outro item.
+- **Filtro no Ranking**: um seletor no topo da página Ranking pra ver só um item específico.
+- **Categorias de item**: dois cards novos na tela Admin — "Categorias de item" (cria nomes
+  livres tipo Sets/Armas/Dragonas) e "Atribuir categorias" (escolhe a categoria de cada item
+  com preço cadastrado). O Relatório passa a agrupar por categoria em vez de por dia, com a
+  data aparecendo em cada linha.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

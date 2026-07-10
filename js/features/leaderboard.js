@@ -11,7 +11,7 @@ const API_BASE = 'api';
 // ranking dos itens que ELA MESMA escolheu rastrear pros próprios alertas.
 function filterToRankingItems(drops) {
   if (!AppState.rankingItems.length) return [];
-  const keywords = AppState.rankingItems.map(normalizeForSearch);
+  const keywords = AppState.rankingItems.map(r => normalizeForSearch(r.word));
   return drops.filter(d => keywords.some(k => normalizeForSearch(d.name).includes(k)));
 }
 
@@ -20,6 +20,13 @@ export function computeTrackedItemCounts() {
   const counts = {};
   summarizeDropsByItem(trackedDrops).forEach(item => (counts[item.name] = item.qty));
   return counts;
+}
+
+// Um nome de item "conta" como destaque se bater (mesma lógica de substring) com alguma
+// palavra da lista global marcada featured=true.
+export function isItemFeatured(itemName) {
+  const normalizedName = normalizeForSearch(itemName);
+  return AppState.rankingItems.some(r => r.featured && normalizedName.includes(normalizeForSearch(r.word)));
 }
 
 // Sincroniza só as contagens agregadas (não os drops individuais) pro ranking entre contas —
@@ -38,6 +45,11 @@ export async function syncTrackedDropCounts() {
   } catch (err) {
     console.error('Erro de conexão ao sincronizar ranking:', err);
   }
+}
+
+export function setRankingFilterItem(value) {
+  AppState.rankingFilterItem = value;
+  renderPage();
 }
 
 export async function loadLeaderboardData() {

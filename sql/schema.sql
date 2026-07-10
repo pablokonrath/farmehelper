@@ -102,8 +102,25 @@ CREATE TABLE IF NOT EXISTS drop_counts (
 
 -- Lista global (não por usuário) de itens que entram no ranking, controlada só pelo admin —
 -- separada da lista pessoal de "palavras rastreadas" de cada um (essa continua só pros
--- alertas de cada pessoa, privada).
+-- alertas de cada pessoa, privada). featured = fica fixado no topo do Ranking com destaque
+-- visual, mesmo sem selecionar no filtro.
 CREATE TABLE IF NOT EXISTS ranking_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  word VARCHAR(255) NOT NULL
+  word VARCHAR(255) NOT NULL,
+  featured TINYINT(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Lista global de nomes de categoria (texto livre, ex: Sets/Armas/Dragonas), gerida só pelo
+-- admin — mesmo padrão de ranking_items (substitui a lista inteira a cada PUT).
+CREATE TABLE IF NOT EXISTS item_categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Atribuição item → categoria por NOME (não id) — evita depender de FK estável quando o
+-- admin renomeia/remove uma categoria; item sem entrada aqui cai em "Sem categoria" no
+-- Relatório.
+CREATE TABLE IF NOT EXISTS item_category_assignments (
+  item_name VARCHAR(255) NOT NULL PRIMARY KEY,
+  category_name VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

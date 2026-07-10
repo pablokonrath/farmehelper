@@ -124,6 +124,9 @@ export const AppState = {
   isAdminUsersLoading: false,
   leaderboardData: null,
   isLeaderboardLoading: false,
+  rankingFilterItem: '',
+  itemCategories: [],
+  itemCategoryAssignments: {},
 };
 
 export function resetTrackedKeywordsToDefault() {

@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveRankingItems } from '../state/persistence.js';
+import { saveRankingItems, saveItemCategories, saveItemCategoryAssignments } from '../state/persistence.js';
 import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
@@ -54,16 +54,49 @@ export async function createUser() {
 
 export function addRankingItem() {
   const input = document.getElementById('newRankingItem');
+  const featuredInput = document.getElementById('newRankingItemFeatured');
   const word = input?.value.trim();
-  if (!word || AppState.rankingItems.includes(word)) return;
-  AppState.rankingItems.push(word);
+  if (!word || AppState.rankingItems.some(r => r.word === word)) return;
+  AppState.rankingItems.push({ word, featured: !!featuredInput?.checked });
   saveRankingItems();
   input.value = '';
+  if (featuredInput) featuredInput.checked = false;
   renderPage();
 }
 
 export function removeRankingItem(word) {
-  AppState.rankingItems = AppState.rankingItems.filter(w => w !== word);
+  AppState.rankingItems = AppState.rankingItems.filter(r => r.word !== word);
   saveRankingItems();
+  renderPage();
+}
+
+export function toggleRankingItemFeatured(word) {
+  const item = AppState.rankingItems.find(r => r.word === word);
+  if (!item) return;
+  item.featured = !item.featured;
+  saveRankingItems();
+  renderPage();
+}
+
+export function addItemCategory() {
+  const input = document.getElementById('newItemCategory');
+  const name = input?.value.trim();
+  if (!name || AppState.itemCategories.includes(name)) return;
+  AppState.itemCategories.push(name);
+  saveItemCategories();
+  input.value = '';
+  renderPage();
+}
+
+export function removeItemCategory(name) {
+  AppState.itemCategories = AppState.itemCategories.filter(c => c !== name);
+  saveItemCategories();
+  renderPage();
+}
+
+export function setItemCategoryAssignment(itemName, categoryName) {
+  if (categoryName) AppState.itemCategoryAssignments[itemName] = categoryName;
+  else delete AppState.itemCategoryAssignments[itemName];
+  saveItemCategoryAssignments();
   renderPage();
 }

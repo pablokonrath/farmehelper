@@ -1,4 +1,5 @@
 import { AppState } from '../state/app-state.js';
+import { isItemFeatured } from '../features/leaderboard.js';
 
 const MEDAL_COLORS = ['#ffd700', '#c0c0c0', '#cd7f32'];
 
@@ -14,6 +15,7 @@ function renderPodiumSlot(row, position) {
 }
 
 function renderItemCard(itemName, rows) {
+  const featured = isItemFeatured(itemName);
   const guildTotal = rows.reduce((sum, r) => sum + r.quantity, 0);
   const [first, second, third] = rows;
   const rest = rows.slice(3);
@@ -26,8 +28,8 @@ function renderItemCard(itemName, rows) {
     : '';
 
   return `
-<div class="card">
-  <div class="ctitle"><i class="ti ti-target-arrow"></i>${itemName}</div>
+<div class="card${featured ? ' card-featured' : ''}">
+  <div class="ctitle">${featured ? '<i class="ti ti-star-filled" style="color:var(--gold)"></i>' : '<i class="ti ti-target-arrow"></i>'} ${itemName}</div>
   <div class="guild-total">Total da guild: <b>${guildTotal}×</b></div>
   <div class="podium">
     ${renderPodiumSlot(second, 2)}
@@ -48,13 +50,30 @@ function renderItemCard(itemName, rows) {
 
 export function renderLeaderboardPage() {
   const data = AppState.leaderboardData || {};
-  const items = Object.keys(data).sort();
+  const items = Object.keys(data).sort((a, b) => {
+    const fa = isItemFeatured(a), fb = isItemFeatured(b);
+    if (fa !== fb) return fa ? -1 : 1;
+    return a.localeCompare(b);
+  });
+
+  // Itens em destaque ficam sempre visíveis, mesmo com um item específico selecionado no filtro.
+  const visibleItems = AppState.rankingFilterItem
+    ? items.filter(name => name === AppState.rankingFilterItem || isItemFeatured(name))
+    : items;
 
   return `
 <div class="pg-title"><i class="ti ti-trophy"></i>Ranking</div>
 <div class="pg-sub">Quem mais dropou cada item rastreado, entre todas as contas da guild.</div>
 
+${items.length ? `<div class="card">
+  <label class="lbl">Filtrar item</label>
+  <select class="inp" onchange="setRankingFilterItem(this.value)">
+    <option value="">Todos os itens</option>
+    ${items.map(name => `<option value="${name}"${AppState.rankingFilterItem === name ? ' selected' : ''}>${name}</option>`).join('')}
+  </select>
+</div>` : ''}
+
 ${AppState.isLeaderboardLoading ? '<div class="card"><div class="empty">Carregando...</div></div>' :
   !items.length ? '<div class="card"><div class="empty">Nenhum item rastreado com drops registrados ainda. Peça pro admin cadastrar itens em Admin → Itens do ranking, e conecte um arquivo de log com esses itens pra aparecer aqui.</div></div>' :
-  items.map(itemName => renderItemCard(itemName, data[itemName])).join('')}`;
+  visibleItems.map(itemName => renderItemCard(itemName, data[itemName])).join('')}`;
 }
