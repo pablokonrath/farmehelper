@@ -8,15 +8,21 @@ export function parseAlzInput(rawValue) {
   return digits ? parseInt(digits, 10) : 0;
 }
 
-// Escala de cores por faixa de valor em Alz (tons neon, pensados pro fundo escuro):
-// < 1B laranja, 1B–9,9B ciano, 10B–99,9B verde neon, 100B+ magenta, negativo vermelho, zero cinza.
+// Escala de cores por faixa de valor em Alz (tons neon, pensados pro fundo escuro; mimetiza a
+// escala de raridade do próprio jogo — quanto maior o valor, mais "chamativa" a cor):
+// < 1kk amarelo bem fraco, 1kk–9,9kk azul bem fraco, 10kk–99,9kk verde clarinho,
+// 100kk–999,9kk laranja, 1B–9,9B ciano, 10B–99,9B verde neon, 100B+ magenta,
+// negativo vermelho, zero cinza.
 export function getAlzTierColor(value) {
   if (value < 0) return '#fb4570';
   if (value === 0 || !value) return 'var(--muted)';
   if (value >= 100_000_000_000) return '#f472b6';
   if (value >= 10_000_000_000) return '#4ade80';
   if (value >= 1_000_000_000) return '#38bdf8';
-  return '#fb923c';
+  if (value >= 100_000_000) return '#fb923c';
+  if (value >= 10_000_000) return '#86efac';
+  if (value >= 1_000_000) return '#93c5fd';
+  return '#fde68a';
 }
 
 // Reformata um <input> de Alz a cada tecla digitada (ponto de milhar + cor de faixa), sem
@@ -54,11 +60,16 @@ export function renderAlzValue(value, bold) {
   return `<span class="mono" style="color:${getAlzTierColor(value)};${bold ? 'font-weight:700;' : ''}" title="${formatNumber(value)} Alz">${formatAlzGamer(value)}</span>`;
 }
 
+// Mesma escala de getAlzTierColor(), em rgba (pro Chart.js aceitar transparência) — precisa
+// ficar sincronizada à mão sempre que a escala de cores mudar.
 export function getChartBarColor(value, alpha) {
   if (value >= 100e9) return `rgba(244,114,182,${alpha})`;
   if (value >= 10e9) return `rgba(74,222,128,${alpha})`;
   if (value >= 1e9) return `rgba(56,189,248,${alpha})`;
-  return `rgba(251,146,60,${alpha})`;
+  if (value >= 100e6) return `rgba(251,146,60,${alpha})`;
+  if (value >= 10e6) return `rgba(134,239,172,${alpha})`;
+  if (value >= 1e6) return `rgba(147,197,253,${alpha})`;
+  return `rgba(253,230,138,${alpha})`;
 }
 
 export function formatDateBR(isoDate) {

@@ -104,7 +104,10 @@ ${manualDropsCard}
   </div>
   <div class="alz-legend">
     <span>Escala Alz:</span>
-    <span><span class="alz-dot" style="background:#fb923c"></span>&lt; 1B</span>
+    <span><span class="alz-dot" style="background:#fde68a"></span>&lt; 1kk</span>
+    <span><span class="alz-dot" style="background:#93c5fd"></span>1kk – 9,9kk</span>
+    <span><span class="alz-dot" style="background:#86efac"></span>10kk – 99,9kk</span>
+    <span><span class="alz-dot" style="background:#fb923c"></span>100kk – 999,9kk</span>
     <span><span class="alz-dot" style="background:#38bdf8"></span>1B – 9,9B</span>
     <span><span class="alz-dot" style="background:#4ade80"></span>10B – 99,9B</span>
     <span><span class="alz-dot" style="background:#f472b6"></span>100B+</span>
