@@ -94,8 +94,8 @@ export function renderRushPage() {
     <i class="ti ti-chevron-${AppState.isDungeonManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
   </div>
   ${AppState.isDungeonManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-    <table style="margin-bottom:14px"><thead><tr><th>Nome da DG</th><th>Custo Alz (por run)</th><th>Tickets (por run)</th><th>Gemas de entrada (por run)</th><th style="width:100px">Ações</th></tr></thead><tbody>
-    ${AppState.dungeonList.map(dg => AppState.editingDungeonId === dg.id ? `
+    <table style="margin-bottom:14px"><thead><tr><th>Nome da DG</th><th>Custo Alz (por run)</th><th>Tickets (por run)</th><th>Gemas de entrada (por run)</th>${AppState.isAdmin ? '<th style="width:100px">Ações</th>' : ''}</tr></thead><tbody>
+    ${AppState.dungeonList.map(dg => AppState.isAdmin && AppState.editingDungeonId === dg.id ? `
       <tr style="background:var(--acc-bg)">
         <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${dg.name}" style="min-width:160px"></td>
         <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="number" min="0" value="${dg.alzCost}" style="width:110px"></td>
@@ -108,13 +108,13 @@ export function renderRushPage() {
         <td>${dg.alzCost > 0 ? renderAlzValue(dg.alzCost) : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${dg.ticketsPerRun > 0 ? `<span class="badge badge-acc">${dg.ticketsPerRun}× Ticket</span>` : '<span class="badge badge-muted">—</span>'}</td>
         <td>${dg.gemsPerRun > 0 ? `<span class="badge badge-warn">${dg.gemsPerRun}× Gema</span>` : '<span class="badge badge-muted">—</span>'}</td>
-        <td><div style="display:flex;gap:4px">
+        ${AppState.isAdmin ? `<td><div style="display:flex;gap:4px">
           <button class="btn btn-d btn-xs" onclick="startEditingDungeon('${dg.id}')"><i class="ti ti-edit"></i></button>
           <button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteDungeon('${dg.id}')"><i class="ti ti-trash"></i></button>
-        </div></td>
+        </div></td>` : ''}
       </tr>`).join('')}
     </tbody></table>
-    <div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--txt2)"><i class="ti ti-plus"></i> Nova DG</div>
+    ${AppState.isAdmin ? `<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--txt2)"><i class="ti ti-plus"></i> Nova DG</div>
     <div class="row">
       <div style="flex:1"><input class="inp" id="new-dg-n" placeholder="Nome da DG"></div>
       <div style="width:150px"><input class="inp" id="new-dg-a" type="number" min="0" placeholder="Custo Alz (0 se ticket/gema)"></div>
@@ -122,7 +122,7 @@ export function renderRushPage() {
       <div style="width:110px"><input class="inp" id="new-dg-g" type="number" min="0" placeholder="Qtd. gemas"></div>
       <button class="btn btn-p" onclick="addNewDungeon()"><i class="ti ti-plus"></i>Adicionar</button>
       <button class="btn btn-d" onclick="resetDungeonList()" title="Restaurar padrão"><i class="ti ti-refresh"></i></button>
-    </div></div>
+    </div></div>` : '<div style="font-size:12px;color:var(--muted)">Só admins podem editar essa lista.</div>'}
   </div>` : ''}
 </div>
 

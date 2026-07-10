@@ -19,6 +19,9 @@ if ($method === 'GET') {
 }
 
 if ($method === 'PUT') {
+  // Catálogo global (sem user_id) usado por todo mundo no carrinho de rush — só admin edita,
+  // senão qualquer conta padrão poderia mudar custo/tickets/gemas pra todo mundo.
+  require_admin();
   $body = read_json_body();
   $db->beginTransaction();
   $db->exec('DELETE FROM dungeons');
