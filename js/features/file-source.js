@@ -129,7 +129,10 @@ async function startLiveFilePolling(fileHandle) {
   AppState.staleKeywordAlerted = {};
 
   if (AppState.liveFilePollWorker) AppState.liveFilePollWorker.terminate();
-  AppState.liveFilePollWorker = new Worker('js/workers/live-poll-worker.js');
+  // Query string com timestamp força o navegador a buscar o worker de novo no servidor toda
+  // vez que conecta, em vez de servir uma cópia antiga do cache HTTP — sem isso, uma
+  // atualização nesse arquivo só passava a valer depois de um hard-refresh manual (Ctrl+F5).
+  AppState.liveFilePollWorker = new Worker(`js/workers/live-poll-worker.js?v=${Date.now()}`);
   AppState.liveFilePollWorker.onmessage = handleWorkerMessage;
   AppState.liveFilePollWorker.postMessage({
     type: 'start',
