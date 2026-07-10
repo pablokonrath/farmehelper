@@ -144,3 +144,29 @@ CREATE TABLE IF NOT EXISTS item_category_assignments (
   item_name VARCHAR(255) NOT NULL PRIMARY KEY,
   category_name VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Sinalizações heurísticas de possível dado forjado: 'file_tamper' (o trecho já lido do
+-- arquivo de log mudou entre duas leituras — provável edição manual) ou 'drop_spike' (uma
+-- sincronização aumentou a contagem de um item muito mais do que o normal pra um poll de 5s).
+-- Não bloqueia nada — só dá visibilidade pro admin revisar manualmente.
+CREATE TABLE IF NOT EXISTS integrity_flags (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  username VARCHAR(255) NOT NULL,
+  flag_type VARCHAR(30) NOT NULL,
+  details TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Registro do que cada admin criou/alterou (contas, guilds, itens do ranking, categorias,
+-- atribuições) — rastreabilidade entre múltiplos admins/líderes com acesso compartilhado.
+CREATE TABLE IF NOT EXISTS admin_action_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  admin_user_id INT NOT NULL,
+  admin_username VARCHAR(255) NOT NULL,
+  action VARCHAR(60) NOT NULL,
+  details TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

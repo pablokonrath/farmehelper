@@ -10,6 +10,7 @@ import { renderDropChart, destroyDropChart, renderCompareChart, destroyCompareCh
 import { updateCartPreview } from './features/rush-cart.js';
 import { loadLeaderboardData } from './features/leaderboard.js';
 import { loadUsers } from './features/admin.js';
+import { loadAdminActionLog, loadIntegrityFlags } from './features/admin-log.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -18,11 +19,14 @@ export function navigateTo(page) {
   if (navButton) navButton.classList.add('on');
 
   // Ranking e Admin dependem de dado cross-usuário que não vem do loadPersistedState()
-  // normal — essas duas funções já cuidam do próprio renderPage() (estado de carregando +
-  // dado pronto), então não precisam do renderPage() genérico abaixo.
+  // normal — essas funções já cuidam do próprio renderPage() (estado de carregando + dado
+  // pronto), então não precisam do renderPage() genérico abaixo.
   if (page === 'ranking') loadLeaderboardData();
-  else if (page === 'admin') loadUsers();
-  else renderPage();
+  else if (page === 'admin') {
+    loadUsers();
+    loadAdminActionLog();
+    loadIntegrityFlags();
+  } else renderPage();
 }
 
 export function renderPage() {

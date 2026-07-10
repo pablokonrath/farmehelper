@@ -27,6 +27,10 @@ function current_user_is_admin(): bool {
   return !empty($_SESSION['is_admin']);
 }
 
+function current_username(): string {
+  return (string) ($_SESSION['username'] ?? '');
+}
+
 function require_admin(): void {
   require_login();
   if (!current_user_is_admin()) {

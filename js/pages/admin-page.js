@@ -1,6 +1,46 @@
 import { AppState } from '../state/app-state.js';
 import { formatDateTimeBR, renderAlzValue } from '../utils/formatting.js';
 
+const FLAG_TYPE_BADGES = {
+  drop_spike: '<span class="badge badge-warn">Pico de drops</span>',
+  file_tamper: '<span class="badge" style="background:var(--err-bg);color:var(--err);border:1px solid var(--err-border)">Arquivo editado</span>',
+};
+
+function renderIntegrityFlagsCard() {
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-shield-exclamation"></i>Alertas de integridade</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Sinalizações automáticas de possível dado forjado (arquivo editado manualmente ou pico de drops numa sincronização). É heurística, não prova de trapaça — revise caso a caso.</div>
+  ${AppState.isIntegrityFlagsLoading ? '<div class="empty">Carregando...</div>' :
+    !AppState.integrityFlags.length ? '<div class="empty" style="padding:14px 0">Nenhum alerta registrado.</div>' : `
+  <table><thead><tr><th>Usuário</th><th style="width:120px">Tipo</th><th>Detalhe</th><th style="width:140px">Quando</th></tr></thead><tbody>
+  ${AppState.integrityFlags.map(f => `<tr>
+    <td>${f.username}</td>
+    <td>${FLAG_TYPE_BADGES[f.type] || f.type}</td>
+    <td style="font-size:12px">${f.details || ''}</td>
+    <td style="font-size:12px;color:var(--muted)">${formatDateTimeBR(f.createdAt)}</td>
+  </tr>`).join('')}
+  </tbody></table>`}
+</div>`;
+}
+
+function renderAdminActionLogCard() {
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-history"></i>Log de atividade</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Registro do que cada admin criou ou alterou.</div>
+  ${AppState.isAdminActionLogLoading ? '<div class="empty">Carregando...</div>' :
+    !AppState.adminActionLog.length ? '<div class="empty" style="padding:14px 0">Nenhuma ação registrada ainda.</div>' : `
+  <table><thead><tr><th style="width:120px">Admin</th><th>Ação</th><th style="width:140px">Quando</th></tr></thead><tbody>
+  ${AppState.adminActionLog.map(a => `<tr>
+    <td style="font-weight:500">${a.adminUsername}</td>
+    <td style="font-size:12px">${a.details || a.action}</td>
+    <td style="font-size:12px;color:var(--muted)">${formatDateTimeBR(a.createdAt)}</td>
+  </tr>`).join('')}
+  </tbody></table>`}
+</div>`;
+}
+
 export function renderAdminPage() {
   return `
 <div class="pg-title"><i class="ti ti-shield-lock"></i>Admin</div>
@@ -103,5 +143,9 @@ export function renderAdminPage() {
     </select></td>
   </tr>`).join('')}
   </tbody></table>`}
-</div>`;
+</div>
+
+${renderIntegrityFlagsCard()}
+
+${renderAdminActionLogCard()}`;
 }

@@ -7,6 +7,7 @@ import { renderPage } from '../router.js';
 
 // Os arquivos de drop do Cabal Online são gerados em windows-1252, não UTF-8.
 const LOG_FILE_DECODER = new TextDecoder('windows-1252');
+const API_BASE = 'api';
 
 // FileSystemFileHandle não sobrevive a um F5 (todo o contexto JS é recriado), mas pode ser
 // clonado para o IndexedDB e recuperado depois — é assim que a conexão ao vivo resiste a um
@@ -52,8 +53,34 @@ function setLiveStatus(html) {
   if (el) el.innerHTML = html;
 }
 
+// Fire-and-forget — best-effort, igual syncTrackedDropCounts: uma falha aqui não deve
+// impedir o usuário de continuar farmando, só perde a sinalização pro admin dessa vez.
+async function reportIntegrityFlag(type, details) {
+  try {
+    const response = await fetch(`${API_BASE}/integrity-flags.php`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, details }),
+    });
+    if (!response.ok) console.error('Falha ao reportar alerta de integridade:', response.status, await response.text());
+  } catch (err) {
+    console.error('Erro de conexão ao reportar alerta de integridade:', err);
+  }
+}
+
 function handleWorkerMessage(event) {
   const { type, lines } = event.data;
+
+  // O worker detectou que o trecho já lido do arquivo mudou entre duas leituras — o polling
+  // normal só deveria crescer, então isso indica edição manual (ver live-poll-worker.js).
+  // Reporta pro admin revisar; não impede o app de continuar usando o arquivo.
+  if (type === 'tamper-detected') {
+    setLiveStatus('<span style="color:var(--err)"><i class="ti ti-alert-triangle"></i> Possível edição manual detectada no arquivo</span>');
+    reportIntegrityFlag('file_tamper', 'O trecho já lido do arquivo de log mudou entre duas leituras do polling — possível edição manual.');
+    return;
+  }
+
   if (type !== 'new-lines' && type !== 'full-reload') return;
 
   const parsedDrops = lines.map(parseDropLogLine).filter(Boolean);

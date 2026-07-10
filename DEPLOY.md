@@ -194,6 +194,24 @@ uma linha por dia em vez de um total acumulado. Isso alimenta as novas abas do R
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Alertas de integridade + log de atividade do admin
+
+Se seu banco já rodou `sql/migrate_ranking_periods.sql`, rode agora
+`sql/migrate_integrity_and_admin_log.sql` no phpMyAdmin (aba SQL) — cria as tabelas
+`integrity_flags` e `admin_action_log`. Duas coisas novas na página Admin:
+
+- **Alertas de integridade**: sinalizações heurísticas de possível dado forjado — o polling
+  detecta se o trecho já lido do arquivo de log mudou entre duas leituras (indício de edição
+  manual) e o servidor sinaliza sincronizações que aumentam a contagem de um item muito acima
+  do normal pra um poll de 5s. Não bloqueia nada, é só um ponto de atenção pro admin revisar
+  manualmente — falso positivo é esperado (ex: alguém que ficou dias sem sincronizar).
+- **Log de atividade**: registra o que cada admin criou/alterou (contas, guilds, itens do
+  ranking, categorias, atribuições), com quem fez e quando.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
 ## Migrando de usuário único pra multiusuário

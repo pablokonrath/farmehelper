@@ -131,6 +131,10 @@ export const AppState = {
   rankingPeriod: 'all',
   itemCategories: [],
   itemCategoryAssignments: {},
+  adminActionLog: [],
+  isAdminActionLogLoading: false,
+  integrityFlags: [],
+  isIntegrityFlagsLoading: false,
 };
 
 export function resetTrackedKeywordsToDefault() {

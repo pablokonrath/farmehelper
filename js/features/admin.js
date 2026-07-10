@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveRankingItems, saveItemCategories, saveItemCategoryAssignments, saveGuilds } from '../state/persistence.js';
 import { renderPage } from '../router.js';
+import { logAdminAction } from './admin-log.js';
 
 const API_BASE = 'api';
 
@@ -49,6 +50,7 @@ export async function createUser() {
     if (passwordInput) passwordInput.value = '';
     if (guildInput) guildInput.value = '';
     if (isAdminInput) isAdminInput.checked = false;
+    logAdminAction('create_user', `Criou a conta "${username}"${guild ? ` (guild ${guild})` : ''}${isAdmin ? ' como admin' : ''}.`);
     await loadUsers();
   } catch {
     if (errorEl) {
@@ -74,10 +76,14 @@ async function updateUser(id, patch) {
 }
 
 export function toggleUserAdmin(id, currentlyAdmin) {
+  const username = AppState.adminUsers.find(u => u.id === id)?.username || `#${id}`;
+  logAdminAction(currentlyAdmin ? 'demote_user' : 'promote_user', `${currentlyAdmin ? 'Rebaixou' : 'Promoveu'} "${username}" ${currentlyAdmin ? 'de' : 'a'} admin.`);
   updateUser(id, { isAdmin: !currentlyAdmin });
 }
 
 export function setUserGuild(id, guild) {
+  const username = AppState.adminUsers.find(u => u.id === id)?.username || `#${id}`;
+  logAdminAction('set_user_guild', `Definiu a guild de "${username}" como "${guild || 'sem guild'}".`);
   updateUser(id, { guild });
 }
 
@@ -87,6 +93,7 @@ export function addGuild() {
   if (!name || AppState.guilds.includes(name)) return;
   AppState.guilds.push(name);
   saveGuilds().catch(err => console.error('Falha ao salvar guilds:', err));
+  logAdminAction('add_guild', `Adicionou a guild "${name}".`);
   input.value = '';
   renderPage();
 }
@@ -94,6 +101,7 @@ export function addGuild() {
 export function removeGuild(name) {
   AppState.guilds = AppState.guilds.filter(g => g !== name);
   saveGuilds().catch(err => console.error('Falha ao salvar guilds:', err));
+  logAdminAction('remove_guild', `Removeu a guild "${name}".`);
   renderPage();
 }
 
@@ -108,6 +116,7 @@ export function addRankingItem() {
   if (!word || AppState.rankingItems.some(r => r.word === word)) return;
   AppState.rankingItems.push({ word, featured: !!featuredInput?.checked });
   saveRankingItems().catch(err => console.error('Falha ao salvar itens do ranking:', err));
+  logAdminAction('add_ranking_item', `Adicionou "${word}" ao ranking${featuredInput?.checked ? ' (destaque)' : ''}.`);
   input.value = '';
   if (featuredInput) featuredInput.checked = false;
   renderPage();
@@ -116,6 +125,7 @@ export function addRankingItem() {
 export function removeRankingItem(word) {
   AppState.rankingItems = AppState.rankingItems.filter(r => r.word !== word);
   saveRankingItems().catch(err => console.error('Falha ao salvar itens do ranking:', err));
+  logAdminAction('remove_ranking_item', `Removeu "${word}" do ranking.`);
   renderPage();
 }
 
@@ -124,6 +134,7 @@ export function toggleRankingItemFeatured(word) {
   if (!item) return;
   item.featured = !item.featured;
   saveRankingItems().catch(err => console.error('Falha ao salvar itens do ranking:', err));
+  logAdminAction('toggle_ranking_item_featured', `${item.featured ? 'Marcou' : 'Desmarcou'} "${word}" como destaque no ranking.`);
   renderPage();
 }
 
@@ -133,6 +144,7 @@ export function addItemCategory() {
   if (!name || AppState.itemCategories.includes(name)) return;
   AppState.itemCategories.push(name);
   saveItemCategories().catch(err => console.error('Falha ao salvar categorias:', err));
+  logAdminAction('add_item_category', `Criou a categoria "${name}".`);
   input.value = '';
   renderPage();
 }
@@ -140,6 +152,7 @@ export function addItemCategory() {
 export function removeItemCategory(name) {
   AppState.itemCategories = AppState.itemCategories.filter(c => c !== name);
   saveItemCategories().catch(err => console.error('Falha ao salvar categorias:', err));
+  logAdminAction('remove_item_category', `Removeu a categoria "${name}".`);
   renderPage();
 }
 
@@ -147,5 +160,6 @@ export function setItemCategoryAssignment(itemName, categoryName) {
   if (categoryName) AppState.itemCategoryAssignments[itemName] = categoryName;
   else delete AppState.itemCategoryAssignments[itemName];
   saveItemCategoryAssignments().catch(err => console.error('Falha ao salvar atribuição de categoria:', err));
+  logAdminAction('set_item_category', `Definiu a categoria de "${itemName}" como "${categoryName || 'sem categoria'}".`);
   renderPage();
 }
