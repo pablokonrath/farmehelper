@@ -4,6 +4,7 @@ import { updateBalanceSidebar } from './features/drops.js';
 import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
 import { checkSession, submitLogin, logout } from './features/auth.js';
+import { startPresenceHeartbeat } from './features/presence.js';
 import {
   createUser,
   addRankingItem,
@@ -166,6 +167,7 @@ if (!authenticated) {
   initFileInputListener();
   renderPage();
   resumeLiveFileConnection();
+  startPresenceHeartbeat();
 
   // Navegadores só liberam áudio depois de um gesto do usuário na página — destrava o
   // AudioContext do alerta sonoro no primeiro clique, em vez de esperar o primeiro alerta.

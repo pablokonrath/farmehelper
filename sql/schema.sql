@@ -15,7 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
   is_admin TINYINT(1) NOT NULL DEFAULT 0,
   is_master_admin TINYINT(1) NOT NULL DEFAULT 0,
   guild VARCHAR(100) NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  last_seen_at DATETIME NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Lista global de guilds (texto controlado, cadastrado pelo admin) — evita "Guild XYZ" vs

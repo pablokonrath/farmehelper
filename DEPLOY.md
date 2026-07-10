@@ -250,6 +250,17 @@ conectado ao vivo (não se aplica a upload manual/CSV).
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Jogadores online
+
+Se seu banco já rodou `sql/migrate_watchdog_alerts.sql`, rode agora
+`sql/migrate_online_presence.sql` no phpMyAdmin (aba SQL) — adiciona a coluna `last_seen_at`
+em `users`. Badge verde no topo do menu lateral mostrando quantas contas estiveram ativas nos
+últimos 3 minutos: o app manda um ping pro servidor a cada 1 min enquanto a aba está aberta
+(`api/heartbeat.php`), então o número pode ficar levemente atrasado, nunca em tempo real
+exato.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
