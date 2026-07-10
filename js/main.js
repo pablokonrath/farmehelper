@@ -17,7 +17,7 @@ import {
   addGuild,
   removeGuild,
 } from './features/admin.js';
-import { setRankingFilterItem, setRankingCompareUsername } from './features/leaderboard.js';
+import { setRankingFilterItem, setRankingCompareUsername, setRankingPeriod } from './features/leaderboard.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
@@ -135,6 +135,7 @@ Object.assign(window, {
   setItemCategoryAssignment,
   setRankingFilterItem,
   setRankingCompareUsername,
+  setRankingPeriod,
   toggleUserAdmin,
   setUserGuild,
   addGuild,

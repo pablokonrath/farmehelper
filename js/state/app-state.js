@@ -128,6 +128,7 @@ export const AppState = {
   isLeaderboardLoading: false,
   rankingFilterItem: '',
   rankingCompareUsername: '',
+  rankingPeriod: 'all',
   itemCategories: [],
   itemCategoryAssignments: {},
 };

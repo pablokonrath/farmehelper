@@ -3,6 +3,20 @@ import { isItemFeatured, getGuildUsernames, buildPlayerComparison } from '../fea
 
 const MEDAL_COLORS = ['#ffd700', '#c0c0c0', '#cd7f32'];
 
+const PERIOD_TABS = [
+  { value: 'all', label: 'Geral' },
+  { value: 'week', label: 'Semanal' },
+  { value: 'biweek', label: 'Quinzenal' },
+  { value: 'month', label: 'Mensal' },
+];
+
+function renderPeriodTabs() {
+  return `
+<div style="display:flex;gap:6px;margin-bottom:12px">
+  ${PERIOD_TABS.map(tab => `<button class="btn ${AppState.rankingPeriod === tab.value ? 'btn-p' : 'btn-d'}" onclick="setRankingPeriod('${tab.value}')">${tab.label}</button>`).join('')}
+</div>`;
+}
+
 function renderCompareRow(row) {
   const higherIsMine = row.myQty > row.otherQty;
   const higherIsTheirs = row.otherQty > row.myQty;
@@ -102,6 +116,8 @@ export function renderLeaderboardPage() {
   return `
 <div class="pg-title"><i class="ti ti-trophy"></i>Ranking</div>
 <div class="pg-sub">Quem mais dropou cada item rastreado, entre todas as contas da guild.</div>
+
+${renderPeriodTabs()}
 
 ${items.length ? `<div class="card">
   <label class="lbl">Filtrar item</label>

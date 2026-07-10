@@ -108,6 +108,18 @@ CREATE TABLE IF NOT EXISTS drop_counts (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Igual drop_counts, mas com granularidade por dia — alimenta as abas Semanal/Quinzenal/
+-- Mensal do Ranking (soma os últimos N dias), sem afetar a aba Geral (que continua lendo
+-- só de drop_counts, inalterada).
+CREATE TABLE IF NOT EXISTS drop_counts_daily (
+  user_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  drop_date DATE NOT NULL,
+  quantity INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, item_name, drop_date),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Lista global (não por usuário) de itens que entram no ranking, controlada só pelo admin —
 -- separada da lista pessoal de "palavras rastreadas" de cada um (essa continua só pros
 -- alertas de cada pessoa, privada). featured = fica fixado no topo do Ranking com destaque

@@ -22,6 +22,21 @@ export function computeTrackedItemCounts() {
   return counts;
 }
 
+// Mesma contagem, mas quebrada por dia — alimenta drop-counts-daily.php, que por sua vez
+// alimenta as abas Semanal/Quinzenal/Mensal do Ranking (drop_counts, o total geral, não tem
+// data nenhuma pra fazer esse recorte).
+export function computeTrackedItemCountsByDate() {
+  const trackedDrops = filterToRankingItems(getAllDrops());
+  const dates = [...new Set(trackedDrops.map(d => d.date))];
+  const result = {};
+  dates.forEach(date => {
+    const counts = {};
+    summarizeDropsByItem(trackedDrops.filter(d => d.date === date)).forEach(item => (counts[item.name] = item.qty));
+    result[date] = counts;
+  });
+  return result;
+}
+
 // Um nome de item "conta" como destaque se bater (mesma lógica de substring) com alguma
 // palavra da lista global marcada featured=true.
 export function isItemFeatured(itemName) {
@@ -29,27 +44,41 @@ export function isItemFeatured(itemName) {
   return AppState.rankingItems.some(r => r.featured && normalizedName.includes(normalizeForSearch(r.word)));
 }
 
+async function putCounts(path, body, label) {
+  try {
+    const response = await fetch(`${API_BASE}/${path}`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) console.error(`Falha ao sincronizar ${label}:`, response.status, await response.text());
+  } catch (err) {
+    console.error(`Erro de conexão ao sincronizar ${label}:`, err);
+  }
+}
+
 // Sincroniza só as contagens agregadas (não os drops individuais) pro ranking entre contas —
 // best-effort, uma falha aqui não deve travar o resto do app (o log local continua sendo a
 // fonte de verdade pro próprio usuário). Loga no console em caso de erro (inclusive erro HTTP,
 // não só falha de rede) pra não esconder silenciosamente uma sincronização que não aconteceu.
+// Manda tanto o total geral (drop-counts.php) quanto a quebra por dia (drop-counts-daily.php,
+// usada pelas abas de período do Ranking).
 export async function syncTrackedDropCounts() {
-  try {
-    const response = await fetch(`${API_BASE}/drop-counts.php`, {
-      method: 'PUT',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(computeTrackedItemCounts()),
-    });
-    if (!response.ok) console.error('Falha ao sincronizar ranking:', response.status, await response.text());
-  } catch (err) {
-    console.error('Erro de conexão ao sincronizar ranking:', err);
-  }
+  await Promise.all([
+    putCounts('drop-counts.php', computeTrackedItemCounts(), 'ranking'),
+    putCounts('drop-counts-daily.php', computeTrackedItemCountsByDate(), 'ranking por dia'),
+  ]);
 }
 
 export function setRankingFilterItem(value) {
   AppState.rankingFilterItem = value;
   renderPage();
+}
+
+export function setRankingPeriod(period) {
+  AppState.rankingPeriod = period;
+  loadLeaderboardData();
 }
 
 export function setRankingCompareUsername(value) {
@@ -85,7 +114,8 @@ export async function loadLeaderboardData() {
   AppState.isLeaderboardLoading = true;
   renderPage();
   try {
-    const response = await fetch(`${API_BASE}/leaderboard.php`, { credentials: 'same-origin' });
+    const period = AppState.rankingPeriod && AppState.rankingPeriod !== 'all' ? `?period=${AppState.rankingPeriod}` : '';
+    const response = await fetch(`${API_BASE}/leaderboard.php${period}`, { credentials: 'same-origin' });
     AppState.leaderboardData = response.ok ? await response.json() : {};
   } catch {
     AppState.leaderboardData = {};

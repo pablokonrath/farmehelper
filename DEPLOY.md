@@ -180,6 +180,22 @@ uma próxima atualização.
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Ranking por período (Geral/Semanal/Quinzenal/Mensal) + guild no ranking
+
+Se seu banco já rodou `sql/migrate_guilds.sql`, rode agora `sql/migrate_ranking_periods.sql`
+no phpMyAdmin (aba SQL) — cria a tabela `drop_counts_daily`, igual `drop_counts` só que com
+uma linha por dia em vez de um total acumulado. Isso alimenta as novas abas do Ranking:
+
+- **Abas Geral/Semanal/Quinzenal/Mensal**: o jogador escolhe o recorte (últimos 7/15/30 dias,
+  ou o total desde sempre). A aba Geral continua lendo de `drop_counts`, sem mudança nenhuma;
+  as outras três somam `drop_counts_daily` dos últimos N dias.
+- **Nome da guild no ranking**: aparece abaixo do nome de usuário (no pódio e na tabela), com
+  o nome do jogador sempre em destaque.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
