@@ -43,7 +43,11 @@ ${permission === 'unsupported'
     <div style="grid-column:span 2"><label class="lbl">Anti-spam: agrupar repetições em (segundos)</label><input class="inp" type="number" min="0" value="${settings.groupingWindowSeconds}" onchange="setAlertGroupingWindow(this.value)">
     <div class="hint">Se o mesmo item cair várias vezes dentro deste intervalo, gera uma única notificação agrupada.</div></div>
   </div>
-  <div class="g3" style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+  <div class="sh" style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;padding-bottom:10px">
+    <div><div style="font-weight:600;font-size:13px">Vigilância de inatividade (watchdog)</div><div style="font-size:11px;color:var(--muted)">Ative só quando estiver rodando o helper/macro — farmar manual tem pausas normais que não são "helper travado".</div></div>
+    <label class="tgl"><input type="checkbox" ${settings.watchdogEnabled ? 'checked' : ''} onchange="setWatchdogEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+  </div>
+  <div class="g3" style="padding-top:12px">
     <div><label class="lbl">Alertar sem nenhum drop por (minutos)</label><input class="inp" type="number" min="1" value="${settings.noDropThresholdMinutes}" onchange="setNoDropThresholdMinutes(this.value)">
     <div class="hint">O arquivo só grava quando dropa algo, então silêncio total é forte indício de que o helper travou.</div></div>
     <div style="grid-column:span 2"><label class="lbl">Alertar sem dropar um item rastreado por (minutos)</label><input class="inp" type="number" min="1" value="${settings.itemSilenceThresholdMinutes}" onchange="setItemSilenceThresholdMinutes(this.value)">

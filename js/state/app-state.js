@@ -64,6 +64,10 @@ export const DEFAULT_ALERT_SETTINGS = {
   groupingWindowSeconds: 30,
   noDropThresholdMinutes: 1,
   itemSilenceThresholdMinutes: 60,
+  // Desligado por padrão de propósito: o watchdog (sem drop nenhum / item sumiu) só deveria
+  // rodar quando o usuário está de fato usando um helper/macro — farmar manual tem pausas
+  // normais (navegar menu, andar, lutar mob mais forte) que não são "helper travado".
+  watchdogEnabled: false,
 };
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de

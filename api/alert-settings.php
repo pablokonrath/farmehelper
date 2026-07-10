@@ -18,6 +18,7 @@ if ($method === 'GET') {
       'enabled' => true, 'soundEnabled' => true, 'repeatSoundWhileOpen' => false,
       'volume' => 0.7, 'popupDurationSeconds' => 5, 'groupingWindowSeconds' => 30,
       'noDropThresholdMinutes' => 1, 'itemSilenceThresholdMinutes' => 60,
+      'watchdogEnabled' => false,
     ]);
   }
   json_response([
@@ -29,19 +30,21 @@ if ($method === 'GET') {
     'groupingWindowSeconds' => (int) $row['grouping_window_seconds'],
     'noDropThresholdMinutes' => (int) $row['no_drop_threshold_minutes'],
     'itemSilenceThresholdMinutes' => (int) $row['item_silence_threshold_minutes'],
+    'watchdogEnabled' => (bool) $row['watchdog_enabled'],
   ]);
 }
 
 if ($method === 'PUT') {
   $body = read_json_body();
   $stmt = $db->prepare('INSERT INTO alert_settings
-    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds, no_drop_threshold_minutes, item_silence_threshold_minutes)
-    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds, :noDropThresholdMinutes, :itemSilenceThresholdMinutes)
+    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds, no_drop_threshold_minutes, item_silence_threshold_minutes, watchdog_enabled)
+    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds, :noDropThresholdMinutes, :itemSilenceThresholdMinutes, :watchdogEnabled)
     ON DUPLICATE KEY UPDATE
       enabled = VALUES(enabled), sound_enabled = VALUES(sound_enabled),
       repeat_sound_while_open = VALUES(repeat_sound_while_open), volume = VALUES(volume),
       popup_duration_seconds = VALUES(popup_duration_seconds), grouping_window_seconds = VALUES(grouping_window_seconds),
-      no_drop_threshold_minutes = VALUES(no_drop_threshold_minutes), item_silence_threshold_minutes = VALUES(item_silence_threshold_minutes)');
+      no_drop_threshold_minutes = VALUES(no_drop_threshold_minutes), item_silence_threshold_minutes = VALUES(item_silence_threshold_minutes),
+      watchdog_enabled = VALUES(watchdog_enabled)');
   $stmt->execute([
     'uid' => $uid,
     'enabled' => !empty($body['enabled']) ? 1 : 0,
@@ -52,6 +55,7 @@ if ($method === 'PUT') {
     'groupingWindowSeconds' => (int) ($body['groupingWindowSeconds'] ?? 30),
     'noDropThresholdMinutes' => (int) ($body['noDropThresholdMinutes'] ?? 1),
     'itemSilenceThresholdMinutes' => (int) ($body['itemSilenceThresholdMinutes'] ?? 60),
+    'watchdogEnabled' => !empty($body['watchdogEnabled']) ? 1 : 0,
   ]);
   json_response(['ok' => true]);
 }

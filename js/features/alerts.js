@@ -165,7 +165,7 @@ export function recordDropActivity(drops) {
 // avalia se faz tempo demais sem nenhum drop, ou sem um item rastreado específico, e alerta
 // uma vez por período de silêncio (não repete a cada heartbeat enquanto continuar parado).
 export function checkDropWatchdog() {
-  if (!AppState.alertSettings.enabled || !AppState.liveFileHandle) return;
+  if (!AppState.alertSettings.enabled || !AppState.alertSettings.watchdogEnabled || !AppState.liveFileHandle) return;
   const now = Date.now();
 
   if (!AppState.lastAnyDropAt) {
@@ -237,6 +237,20 @@ export function getFilteredAlertHistory() {
 
 export function setAlertsEnabled(checked) {
   AppState.alertSettings.enabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
+export function setWatchdogEnabled(checked) {
+  AppState.alertSettings.watchdogEnabled = checked;
+  // Ligar o watchdog no meio de uma sessão não deveria contar o tempo parado de antes —
+  // reseta o relógio pra agora, mesmo padrão de startLiveFilePolling() em file-source.js.
+  if (checked) {
+    AppState.lastAnyDropAt = null;
+    AppState.noDropAlertFired = false;
+    AppState.lastSeenByKeyword = {};
+    AppState.staleKeywordAlerted = {};
+  }
   saveAlertSettings();
   renderPage();
 }

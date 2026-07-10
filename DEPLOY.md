@@ -261,6 +261,19 @@ exato.
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Interruptor manual do watchdog
+
+Se seu banco já rodou `sql/migrate_online_presence.sql`, rode agora
+`sql/migrate_watchdog_toggle.sql` no phpMyAdmin (aba SQL) — adiciona a coluna
+`watchdog_enabled` em `alert_settings`. Os alertas de inatividade (sem drop nenhum / item
+sumiu) agora ficam **desligados por padrão** atrás de um interruptor próprio na página Alertas
+("Vigilância de inatividade"), separado do "Ativar notificações" geral — farmar manual tem
+pausas normais que não deveriam soar como "helper travado", então o usuário liga esse
+interruptor só quando estiver de fato rodando o helper/macro. Ligar reseta o relógio de
+inatividade pra agora, não conta o tempo parado antes de ligar.
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
