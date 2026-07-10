@@ -1,8 +1,10 @@
+import { AppState } from './state/app-state.js';
 import { loadPersistedState } from './state/persistence.js';
 import { updateBalanceSidebar } from './features/drops.js';
 import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
 import { checkSession, submitLogin, logout } from './features/auth.js';
+import { createUser } from './features/admin.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
@@ -111,6 +113,7 @@ Object.assign(window, {
   parseDateInputBR,
   submitLogin,
   logout,
+  createUser,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
@@ -121,6 +124,7 @@ if (!authenticated) {
   document.getElementById('loginUsername')?.focus();
 } else {
   document.getElementById('appWrap').style.removeProperty('display');
+  if (AppState.isAdmin) document.getElementById('nb-admin').style.removeProperty('display');
   await loadPersistedState();
   updateBalanceSidebar();
   initFileInputListener();

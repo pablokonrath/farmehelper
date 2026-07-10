@@ -1,3 +1,5 @@
+import { AppState } from '../state/app-state.js';
+
 const API_BASE = 'api';
 
 export async function checkSession() {
@@ -5,6 +7,7 @@ export async function checkSession() {
     const response = await fetch(`${API_BASE}/session-check.php`, { credentials: 'same-origin' });
     if (!response.ok) return false;
     const data = await response.json();
+    AppState.isAdmin = !!data.isAdmin;
     return !!data.authenticated;
   } catch {
     return false;

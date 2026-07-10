@@ -12,7 +12,7 @@ if (!is_string($username) || $username === '' || !is_string($password) || $passw
   json_response(['error' => 'invalid_credentials'], 401);
 }
 
-$stmt = get_db()->prepare('SELECT id, password_hash FROM users WHERE username = :username');
+$stmt = get_db()->prepare('SELECT id, password_hash, is_admin FROM users WHERE username = :username');
 $stmt->execute(['username' => $username]);
 $user = $stmt->fetch();
 
@@ -23,4 +23,5 @@ if (!$user || !password_verify($password, $user['password_hash'])) {
 session_regenerate_id(true);
 $_SESSION['authenticated'] = true;
 $_SESSION['user_id'] = (int) $user['id'];
+$_SESSION['is_admin'] = !empty($user['is_admin']);
 json_response(['ok' => true]);

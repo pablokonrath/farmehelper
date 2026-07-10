@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { parseDropLogLine } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts } from './alerts.js';
+import { syncTrackedDropCounts } from './leaderboard.js';
 import { renderPage } from '../router.js';
 
 // Os arquivos de drop do Cabal Online são gerados em windows-1252, não UTF-8.
@@ -60,6 +61,7 @@ function handleWorkerMessage(event) {
   if (type === 'full-reload') {
     AppState.drops = parsedDrops;
     updateBalanceSidebar();
+    syncTrackedDropCounts();
     if (AppState.currentPage === 'overview') renderPage();
     return;
   }
@@ -67,6 +69,7 @@ function handleWorkerMessage(event) {
   if (parsedDrops.length) {
     AppState.drops = [...AppState.drops, ...parsedDrops];
     updateBalanceSidebar();
+    syncTrackedDropCounts();
     processNewDropsForAlerts(parsedDrops);
     if (AppState.currentPage === 'overview') renderPage();
   }
@@ -96,6 +99,7 @@ async function startLiveFilePolling(fileHandle) {
   setLiveStatus('<span style="color:var(--ok)"><i class="ti ti-wifi"></i> Ao vivo — ' + AppState.drops.length.toLocaleString('pt-BR') + ' drops</span>');
   document.getElementById('liveRow').className = 'file-btn active';
   updateBalanceSidebar();
+  syncTrackedDropCounts();
   renderPage();
 }
 
@@ -117,6 +121,7 @@ export function initFileInputListener() {
     document.getElementById('fstat').textContent = AppState.drops.length.toLocaleString('pt-BR') + ' drops carregados';
     document.getElementById('upRow').className = 'file-btn active';
     updateBalanceSidebar();
+    syncTrackedDropCounts();
     renderPage();
   });
 }

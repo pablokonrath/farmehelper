@@ -22,3 +22,14 @@ function require_login(): void {
 function current_user_id(): int {
   return (int) $_SESSION['user_id'];
 }
+
+function current_user_is_admin(): bool {
+  return !empty($_SESSION['is_admin']);
+}
+
+function require_admin(): void {
+  require_login();
+  if (!current_user_is_admin()) {
+    json_response(['error' => 'not_admin'], 403);
+  }
+}

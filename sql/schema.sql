@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   id INT AUTO_INCREMENT PRIMARY KEY,
   username VARCHAR(100) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  is_admin TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -85,5 +86,16 @@ CREATE TABLE IF NOT EXISTS alert_history (
   keyword VARCHAR(255) NOT NULL,
   quantity INT NOT NULL DEFAULT 1,
   seen TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Contagens agregadas (não os drops individuais) dos itens rastreados de cada usuário —
+-- alimenta o ranking entre contas da guild. Substituída por inteiro a cada sincronização
+-- (mesmo padrão "apaga e reinsere" dos outros endpoints privados).
+CREATE TABLE IF NOT EXISTS drop_counts (
+  user_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  quantity INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, item_name),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

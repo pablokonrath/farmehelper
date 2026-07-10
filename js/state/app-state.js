@@ -117,6 +117,11 @@ export const AppState = {
   alertHistory: [],
   alertHistoryFilter: '',
   pendingAlertGroups: {},
+  isAdmin: false,
+  adminUsers: [],
+  isAdminUsersLoading: false,
+  leaderboardData: null,
+  isLeaderboardLoading: false,
 };
 
 export function resetTrackedKeywordsToDefault() {
