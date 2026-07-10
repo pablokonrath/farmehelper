@@ -4,7 +4,7 @@ import { updateBalanceSidebar } from './features/drops.js';
 import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
 import { checkSession, submitLogin, logout } from './features/auth.js';
-import { startPresenceHeartbeat } from './features/presence.js';
+import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
 import {
   createUser,
   addRankingItem,
@@ -151,6 +151,7 @@ Object.assign(window, {
   deleteUser,
   prefillEditLoginUsername,
   saveEditedLogin,
+  toggleOnlinePopover,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

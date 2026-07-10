@@ -79,9 +79,20 @@
           <div
             id="onlineCount"
             class="badge badge-ok"
-            style="display: none; margin-top: 8px; align-items: center; gap: 6px"
+            style="
+              display: none;
+              margin-top: 8px;
+              align-items: center;
+              gap: 6px;
+              cursor: pointer;
+            "
+            onclick="toggleOnlinePopover()"
           >
             <i class="ti ti-users"></i><span id="onlineCountVal">0</span> online
+          </div>
+          <div id="onlinePopover" class="online-popover" style="display: none">
+            <div class="online-popover-title">Jogadores online</div>
+            <div id="onlinePopoverList"></div>
           </div>
         </div>
         <div class="sb-sec">
