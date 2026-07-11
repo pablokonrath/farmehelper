@@ -100,6 +100,22 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   watchdog_enabled TINYINT(1) NOT NULL DEFAULT 0,
   tg_notifications_enabled TINYINT(1) NOT NULL DEFAULT 1,
   worldboss_notifications_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  -- push_enabled não guarda ID de dispositivo nenhum: o OneSignal associa o navegador ao
+  -- próprio user_id via "external ID" (OneSignal.login no cliente); o servidor manda push só
+  -- citando esse mesmo ID, sem precisar persistir player_id/subscription aqui.
+  push_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  telegram_chat_id VARCHAR(64) NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Código de uso único mostrado na tela pro jogador vincular a própria conta ao bot do
+-- Telegram (manda /start CODE, o webhook casa o código com o user_id e grava
+-- alert_settings.telegram_chat_id).
+CREATE TABLE IF NOT EXISTS telegram_link_codes (
+  code VARCHAR(12) NOT NULL PRIMARY KEY,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  used_at TIMESTAMP NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -220,6 +236,18 @@ CREATE TABLE IF NOT EXISTS event_schedule (
   id INT AUTO_INCREMENT PRIMARY KEY,
   event_type VARCHAR(20) NOT NULL,
   time_of_day TIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Dedup do cron-check-events.php (roda a cada 1 min via Cron Job da Hostinger, fora do ciclo
+-- normal de request HTTP) — chave única garante que o mesmo horário nunca é despachado duas
+-- vezes no mesmo dia, mesmo se o cron rodar mais de uma vez por engano.
+CREATE TABLE IF NOT EXISTS event_schedule_deliveries (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  event_schedule_id INT NOT NULL,
+  delivery_date DATE NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY event_date (event_schedule_id, delivery_date),
+  FOREIGN KEY (event_schedule_id) REFERENCES event_schedule(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Som customizado por tipo de alerta (upload do admin) — filename NULL usa o bipe padrão

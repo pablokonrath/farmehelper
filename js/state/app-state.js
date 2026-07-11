@@ -72,6 +72,10 @@ export const DEFAULT_ALERT_SETTINGS = {
   // Boss; o horário em si continua só do admin (ver event-schedule.js).
   tgNotificationsEnabled: true,
   worldbossNotificationsEnabled: true,
+  // Canais que entregam TG/World Boss com o navegador fechado (ver cron-check-events.php) —
+  // desligados por padrão, exigem ação explícita do usuário (ativar push / vincular Telegram).
+  pushEnabled: false,
+  telegramChatId: null,
 };
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
@@ -138,6 +142,7 @@ export const AppState = {
   isAdmin: false,
   isMasterAdmin: false,
   currentUsername: '',
+  currentUserId: null,
   currentGuild: '',
   guilds: [],
   adminUsers: [],
@@ -159,6 +164,8 @@ export const AppState = {
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
   knownItemNames: [],
+  telegramLinkCode: null,
+  telegramBotLink: null,
 };
 
 export function resetTrackedKeywordsToDefault() {

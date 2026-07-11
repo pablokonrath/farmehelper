@@ -11,3 +11,12 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'troque_pelo_nome_do_banco');
 define('DB_USER', 'troque_pelo_usuario');
 define('DB_PASS', 'troque_pela_senha');
+
+// Notificação de TG/World Boss fora do app (push + Telegram) — ver seção correspondente no
+// DEPLOY.md pra criar a conta OneSignal grátis e o bot no @BotFather. Deixe em branco se não
+// for usar esse recurso (o resto do app funciona normalmente sem essas constantes).
+define('ONESIGNAL_APP_ID', '');           // público, também usado no frontend
+define('ONESIGNAL_REST_API_KEY', '');     // secreto, só backend
+define('TELEGRAM_BOT_TOKEN', '');         // secreto
+define('TELEGRAM_BOT_USERNAME', '');      // público, pro link t.me/...
+define('TELEGRAM_WEBHOOK_SECRET', '');    // secreto, valida que a chamada veio do Telegram

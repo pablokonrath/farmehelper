@@ -350,6 +350,87 @@ Ligados por padrão (preserva o comportamento de quem já usava antes dessa opç
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Notificação de TG/World Boss fora do app (push + Telegram)
+
+Até aqui, o aviso de TG/World Boss só chega se o navegador estiver aberto (mesmo em segundo
+plano). Essa seção adiciona dois canais que chegam com o **navegador fechado**: notificação
+push do próprio navegador (via serviço gratuito OneSignal) e mensagem no Telegram — além de um
+comando `/preco <nome>` no bot pra consultar os próprios preços cadastrados.
+
+Se seu banco já rodou `sql/migrate_event_notification_toggle.sql`, rode agora
+`sql/migrate_push_telegram.sql` no phpMyAdmin (aba SQL) — adiciona `push_enabled` e
+`telegram_chat_id` em `alert_settings`, e cria as tabelas `telegram_link_codes` e
+`event_schedule_deliveries`. Instalação nova do zero não precisa desse script — já vem tudo no
+`sql/schema.sql`.
+
+**1. Criar a peça central: o Cron Job.** Sem isso, nada deste recurso funciona com o navegador
+fechado — é o servidor, sozinho, que verifica a cada minuto se algum horário de TG/World Boss
+bateu e dispara. No hPanel da Hostinger: **Avançado → Cron Jobs** → criar um novo, frequência
+**a cada 1 minuto**, comando (não URL):
+
+```
+php /home/SEU_USUARIO/public_html/api/cron-check-events.php
+```
+
+Ajuste o caminho pro caminho real da sua conta (aparece no próprio painel de Cron Jobs da
+Hostinger, ou no Gerenciador de Arquivos). Esse script só aceita execução via linha de comando
+— chamar a URL dele direto no navegador retorna erro 403 de propósito.
+
+**2. Criar conta grátis no OneSignal (push do navegador).**
+
+1. Crie uma conta em onesignal.com e um app novo, plataforma **Web Push**.
+2. Configure com a URL do seu site (`https://farmehelper.pablokonrath.com` ou o domínio que
+   você usa) e permita que o SDK sirva os arquivos `OneSignalSDKWorker.js` da raiz do site
+   (esse arquivo já vem no repositório, na raiz, do lado do `index.html`).
+3. No painel do app criado, pegue o **App ID** (Settings → Keys & IDs) e a **REST API Key**.
+
+**3. Criar o bot do Telegram.**
+
+1. No Telegram, converse com **@BotFather**, mande `/newbot` e siga o passo a passo (nome +
+   username do bot, que precisa terminar em `bot`).
+2. O BotFather devolve um **token** (formato `123456:ABC-DEF...`) — guarde, é secreto.
+3. Anote também o **username** do bot (sem o @), vai virar o link `t.me/SeuBotUsername`.
+
+**4. Preencher as constantes no `config.php` do servidor.** Pelo Gerenciador de Arquivos da
+Hostinger, abra o `api/config.php` real (o daqui do repositório é só um template — esse arquivo
+nunca é enviado pelo deploy automático, ver `.gitignore`) e preencha as 5 constantes que já
+existem lá como placeholder vazio:
+
+```php
+define('ONESIGNAL_APP_ID', 'seu-app-id-aqui');
+define('ONESIGNAL_REST_API_KEY', 'sua-rest-api-key-aqui');
+define('TELEGRAM_BOT_TOKEN', 'seu-token-aqui');
+define('TELEGRAM_BOT_USERNAME', 'SeuBotUsername');
+define('TELEGRAM_WEBHOOK_SECRET', 'invente-uma-senha-aleatoria-aqui');
+```
+
+`TELEGRAM_WEBHOOK_SECRET` não vem de lugar nenhum — é você quem inventa uma string aleatória
+longa (ex: gere em https://www.uuidgenerator.net/ ou similar); ela só precisa bater entre esse
+arquivo e o passo 5 abaixo.
+
+**5. Registrar o webhook do bot (uma vez só).** Depois de preencher o `config.php` no servidor,
+abra esta URL no navegador uma única vez (troque `SEU_TOKEN`, `SEU_DOMINIO` e `SEU_SECRET`
+pelos valores reais — `SEU_SECRET` é o mesmo `TELEGRAM_WEBHOOK_SECRET` do passo anterior):
+
+```
+https://api.telegram.org/botSEU_TOKEN/setWebhook?url=https://SEU_DOMINIO/api/telegram-webhook.php&secret_token=SEU_SECRET
+```
+
+Deve responder `{"ok":true,"result":true,...}`. Isso avisa o Telegram pra mandar toda mensagem
+recebida pelo bot direto pro `telegram-webhook.php` do site.
+
+**Como o jogador ativa, na página Alertas do DropList:**
+
+- **Push**: liga o interruptor "Notificação push do navegador" — o navegador vai pedir
+  permissão de notificação.
+- **Telegram**: clica em "Gerar código de vínculo", abre o link `t.me/...` que aparece (ou
+  manda `/start CODIGO` pro bot manualmente), o bot confirma o vínculo. De lá em diante também
+  responde `/preco <nome do item>` com os preços que esse jogador cadastrou.
+
+Se as 5 constantes ficarem em branco no `config.php`, o resto do site funciona normalmente —
+só esses dois canais ficam indisponíveis (o botão de gerar código do Telegram avisa que ainda
+não foi configurado).
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

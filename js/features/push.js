@@ -1,0 +1,68 @@
+import { AppState } from '../state/app-state.js';
+import { saveAlertSettings } from '../state/persistence.js';
+import { renderPage } from '../router.js';
+
+const API_BASE = 'api';
+const ONESIGNAL_SDK_URL = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+
+let oneSignalReady = null;
+
+// Carrega o SDK do OneSignal sob demanda (só quando o usuário tenta ativar o push, não em todo
+// boot do app) e inicializa com o App ID vindo do servidor — não dá pra embutir direto no
+// index.html porque é um arquivo estático, não passa por PHP (ver api/onesignal-config.php).
+function loadOneSignal() {
+  if (!oneSignalReady) {
+    oneSignalReady = (async () => {
+      const response = await fetch(`${API_BASE}/onesignal-config.php`, { credentials: 'same-origin' });
+      const { appId } = await response.json();
+      if (!appId) throw new Error('Notificação push ainda não foi configurada pelo admin do servidor.');
+
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = ONESIGNAL_SDK_URL;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Falha ao carregar o SDK do OneSignal.'));
+        document.head.appendChild(script);
+      });
+
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      return new Promise(resolve => {
+        window.OneSignalDeferred.push(async OneSignal => {
+          await OneSignal.init({ appId });
+          resolve(OneSignal);
+        });
+      });
+    })();
+  }
+  return oneSignalReady;
+}
+
+export async function enablePushNotifications() {
+  try {
+    const OneSignal = await loadOneSignal();
+    // Associa esse navegador ao próprio user_id do DropList — o servidor manda notificação
+    // citando esse mesmo ID (ver cron-check-events.php), sem precisar guardar nenhum
+    // player_id/subscription no nosso banco.
+    await OneSignal.login(String(AppState.currentUserId));
+    await OneSignal.Notifications.requestPermission();
+    AppState.alertSettings.pushEnabled = true;
+    await saveAlertSettings();
+    renderPage();
+  } catch (err) {
+    console.error('Falha ao ativar notificação push:', err);
+    alert('Não foi possível ativar a notificação push: ' + err.message);
+  }
+}
+
+export async function disablePushNotifications() {
+  try {
+    const OneSignal = await loadOneSignal();
+    await OneSignal.logout();
+  } catch (err) {
+    console.error('Falha ao desconectar do OneSignal (desativando mesmo assim):', err);
+  }
+  AppState.alertSettings.pushEnabled = false;
+  await saveAlertSettings();
+  renderPage();
+}

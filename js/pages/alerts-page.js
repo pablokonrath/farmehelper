@@ -68,6 +68,31 @@ ${permission === 'unsupported'
 </div>
 
 <div class="card">
+  <div class="ctitle"><i class="ti ti-device-mobile"></i>Notificações fora do app</div>
+  <div class="pg-sub" style="margin:-4px 0 12px">Receba TG e World Boss mesmo com o DropList fechado. Só vale pra esses dois alertas por enquanto — os demais continuam só dentro do app.</div>
+  <div class="sh" style="padding:10px 0;border-bottom:1px solid var(--border)">
+    <div><div style="font-weight:600;font-size:13px">Notificação push do navegador</div><div style="font-size:11px;color:var(--muted)">Chega mesmo com o navegador fechado, direto no seu dispositivo.</div></div>
+    <label class="tgl"><input type="checkbox" ${AppState.alertSettings.pushEnabled ? 'checked' : ''} onchange="this.checked ? enablePushNotifications() : disablePushNotifications()"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+  </div>
+  <div style="padding-top:12px">
+    <div style="font-weight:600;font-size:13px;margin-bottom:6px">Telegram</div>
+    ${AppState.alertSettings.telegramChatId
+      ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>
+          <button class="btn btn-d btn-xs" onclick="unlinkTelegram()"><i class="ti ti-unlink"></i>Desvincular</button>
+        </div>`
+      : `<div>
+          <button class="btn btn-d btn-xs" onclick="generateTelegramLinkCode()"><i class="ti ti-brand-telegram"></i>Gerar código de vínculo</button>
+          ${AppState.telegramLinkCode ? `
+          <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+            Abra o Telegram e clique no link abaixo (ou mande <strong>/start ${AppState.telegramLinkCode}</strong> pro bot):
+            <div style="margin-top:6px"><a href="${AppState.telegramBotLink}" target="_blank" rel="noopener" style="color:var(--acc)">${AppState.telegramBotLink}</a></div>
+          </div>` : ''}
+        </div>`}
+  </div>
+</div>
+
+<div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de alertas</div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <input class="inp" style="width:200px" placeholder="Filtrar por item ou palavra..." value="${AppState.alertHistoryFilter}" oninput="setAlertHistoryFilter(this.value)">

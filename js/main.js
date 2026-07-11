@@ -7,6 +7,8 @@ import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
+import { enablePushNotifications, disablePushNotifications } from './features/push.js';
+import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
 import {
   createUser,
   addRankingItem,
@@ -175,6 +177,10 @@ Object.assign(window, {
   prefillEditLoginUsername,
   saveEditedLogin,
   toggleOnlinePopover,
+  enablePushNotifications,
+  disablePushNotifications,
+  generateTelegramLinkCode,
+  unlinkTelegram,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
