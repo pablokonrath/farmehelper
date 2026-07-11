@@ -7,8 +7,8 @@ const FLAG_TYPE_BADGES = {
 };
 
 const EVENT_TYPE_INFO = {
-  tg: { title: 'TG (Grito de Guerra)', icon: 'ti-sword' },
-  worldboss: { title: 'World Boss (Trombeta)', icon: 'ti-skull' },
+  tg: { title: 'TG (Chifre Viking)', icon: 'ti-sword' },
+  worldboss: { title: 'World Boss (Tambor)', icon: 'ti-skull' },
 };
 
 function renderEventTypeCard(eventType) {
