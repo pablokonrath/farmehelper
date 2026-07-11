@@ -57,7 +57,10 @@ export async function enablePushNotifications() {
     renderPage();
   } catch (err) {
     console.error('Falha ao ativar notificação push:', err);
-    alert('Não foi possível ativar a notificação push: ' + err.message);
+    // O SDK do OneSignal às vezes rejeita a promise sem um Error de verdade (ex: undefined),
+    // quando a falha vem de uma operação interna dele mesmo ("Op failed, pausing" no console) —
+    // sem esse fallback, err.message quebrava com outro erro em cima do original.
+    alert('Não foi possível ativar a notificação push: ' + (err?.message || 'erro desconhecido do OneSignal — veja o Console (F12) pra mais detalhes.'));
     // Sem isso, o checkbox ficava marcado na tela (o clique já mexeu no DOM) mesmo o
     // AppState/servidor nunca tendo salvo pushEnabled — re-renderiza pra refletir o estado real.
     renderPage();
