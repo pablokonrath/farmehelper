@@ -482,6 +482,28 @@ negociar. **Diferente do envio de drops rastreados, este funciona até com o seu
 fechado** — porque quem detecta e reporta o drop é o navegador de quem dropou (via
 `wishlist-check.php`), não o seu.
 
+## Limites de escala (o que segura o banco com muita gente)
+
+Duas proteções pra hospedagem compartilhada não sofrer com muitos jogadores farmando ao mesmo
+tempo — nenhuma exige migração de banco, já vêm no código:
+
+1. **Envio de contagem no máximo 1x por minuto.** Farmando, o cliente recalcula as contagens a
+   cada poucos segundos; sem limite, muita gente junto viraria escrita constante demais. O
+   `syncTrackedDropCounts()` (js/features/leaderboard.js) agora junta essas chamadas num envio
+   por minuto (com um envio final garantido quando para de farmar). **Não afeta notificação
+   nenhuma** — alerta de drop e aviso de desejo no Telegram são caminhos separados que disparam
+   na hora; só o Ranking e o `/drop` podem ficar até 1 min atrasados.
+2. **Teto de 31 dias de histórico.** `drop-counts-daily.php` e `tracked-drop-counts.php` ignoram
+   datas com mais de 31 dias. O arquivo do jogo já só guarda ~30 dias, então no uso normal não
+   muda nada — é rede de segurança contra um cliente despejar data velha e inflar as tabelas.
+
+O gargalo real com muita gente é **volume de escrita simultânea** (não espaço em disco), e ele
+escala com quem está **farmando ao mesmo tempo**, não com o total cadastrado. Se um dia
+precisar de centenas farmando em paralelo de forma sustentada, o limite passa a ser a própria
+hospedagem compartilhada, e o caminho seria migrar pra um VPS — mas isso está bem longe pra uma
+guild. Um próximo passo barato, se aparecer abuso, é limitar o nº de palavras rastreadas por
+pessoa (mínimo de letras + máximo de palavras).
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

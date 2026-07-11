@@ -12,11 +12,17 @@ $uid = current_user_id();
 // Body: { "AAAA-MM-DD": { "Item": qtd, ... }, ... }.
 if ($method === 'PUT') {
   $body = read_json_body();
+  // Teto de histórico: ignora datas com mais de 31 dias. O arquivo do jogo já só guarda ~30
+  // dias, então normalmente não muda nada — é uma rede de segurança pra um cliente não despejar
+  // um monte de data velha e inflar a tabela sem limite (ver limites de escala no DEPLOY.md).
+  date_default_timezone_set('America/Sao_Paulo');
+  $cutoff = date('Y-m-d', strtotime('-31 days'));
   $db->beginTransaction();
   $db->prepare('DELETE FROM tracked_drop_counts_daily WHERE user_id = :uid')->execute(['uid' => $uid]);
   $stmt = $db->prepare('INSERT INTO tracked_drop_counts_daily (user_id, item_name, drop_date, quantity) VALUES (:uid, :name, :date, :qty)');
   foreach ($body as $date => $items) {
     if (!is_array($items)) continue;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || $date < $cutoff) continue;
     foreach ($items as $name => $qty) {
       $qty = (int) $qty;
       if ($qty > 0) $stmt->execute(['uid' => $uid, 'name' => $name, 'date' => $date, 'qty' => $qty]);

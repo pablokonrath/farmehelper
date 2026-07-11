@@ -79,13 +79,12 @@ async function putCounts(path, body, label) {
   }
 }
 
-// Sincroniza só as contagens agregadas (não os drops individuais) pro ranking entre contas —
-// best-effort, uma falha aqui não deve travar o resto do app (o log local continua sendo a
-// fonte de verdade pro próprio usuário). Loga no console em caso de erro (inclusive erro HTTP,
-// não só falha de rede) pra não esconder silenciosamente uma sincronização que não aconteceu.
-// Manda tanto o total geral (drop-counts.php) quanto a quebra por dia (drop-counts-daily.php,
-// usada pelas abas de período do Ranking).
-export async function syncTrackedDropCounts() {
+// Faz o envio de fato das contagens agregadas (não os drops individuais) pro ranking entre
+// contas — best-effort, uma falha aqui não deve travar o resto do app (o log local continua
+// sendo a fonte de verdade pro próprio usuário). Loga no console em caso de erro (inclusive erro
+// HTTP, não só falha de rede) pra não esconder silenciosamente uma sincronização que não aconteceu.
+async function doSyncTrackedDropCounts() {
+  lastSyncAt = Date.now();
   await Promise.all([
     putCounts('drop-counts.php', computeTrackedItemCounts(), 'ranking'),
     putCounts('drop-counts-daily.php', computeTrackedItemCountsByDate(), 'ranking por dia'),
@@ -93,6 +92,32 @@ export async function syncTrackedDropCounts() {
     // sobre "o que EU dropei", não sobre o ranking global.
     putCounts('tracked-drop-counts.php', computeTrackedKeywordCountsByDate(), 'meus drops rastreados'),
   ]);
+}
+
+// Throttle: no máximo 1 envio por minuto. Farmando, isso é chamado a cada poucos segundos (toda
+// vez que caem linhas novas) — sem throttle, com muita gente farmando junto, viraria escrita
+// constante demais pro banco compartilhado. NÃO afeta as notificações (alerta de drop e aviso de
+// desejo pro Telegram são chamadas separadas, disparam na hora); só o /drop/ranking pode ficar
+// até 1 min atrasado, o que é irrelevante. Sempre garante um envio final (trailing edge) pra a
+// última contagem não ficar de fora quando o jogador para de farmar.
+const SYNC_MIN_INTERVAL_MS = 60000;
+let lastSyncAt = 0;
+let trailingSyncTimer = null;
+
+export function syncTrackedDropCounts() {
+  const elapsed = Date.now() - lastSyncAt;
+  if (elapsed >= SYNC_MIN_INTERVAL_MS) {
+    if (trailingSyncTimer) { clearTimeout(trailingSyncTimer); trailingSyncTimer = null; }
+    doSyncTrackedDropCounts();
+    return;
+  }
+  // Ainda dentro da janela de 1 min — agenda um único envio pro fim dela, sem empilhar vários.
+  if (!trailingSyncTimer) {
+    trailingSyncTimer = setTimeout(() => {
+      trailingSyncTimer = null;
+      doSyncTrackedDropCounts();
+    }, SYNC_MIN_INTERVAL_MS - elapsed);
+  }
 }
 
 export function setRankingFilterItem(value) {
