@@ -10,6 +10,16 @@ if (php_sapi_name() !== 'cli') {
 
 require_once __DIR__ . '/db.php';
 
+// O "Ver resultado" da Hostinger não mostrou nenhum echo mesmo em execuções bem-sucedidas —
+// provavelmente só captura stderr/erro fatal, não stdout normal. Grava num arquivo próprio
+// (fora do git, ver .gitignore) que dá pra abrir direto pelo Gerenciador de Arquivos, e
+// mantém só o essencial (sem chat_id/token) já que tecnicamente é um arquivo estático servido
+// como texto puro se alguém adivinhar a URL — ver api/.htaccess bloqueando acesso a *.log.
+function cron_log(string $message): void {
+  echo $message . "\n";
+  file_put_contents(__DIR__ . '/cron-debug.log', '[' . date('Y-m-d H:i:s') . "] $message\n", FILE_APPEND);
+}
+
 date_default_timezone_set('America/Sao_Paulo'); // não a timezone do servidor
 $now = new DateTime('now');
 $currentTime = $now->format('H:i');
@@ -21,16 +31,10 @@ $stmt = $db->prepare('SELECT id, event_type FROM event_schedule WHERE TIME_FORMA
 $stmt->execute(['time' => $currentTime]);
 $matchingEvents = $stmt->fetchAll();
 
-// Sempre imprime, mesmo sem match — a Hostinger só guarda o resultado da execução mais recente
-// no "Ver resultado", então sem isso não dava pra saber se um horário específico realmente
-// rodou (só via erro, que não acontece quando simplesmente não bate horário nenhum).
-echo "cron-check-events: horário calculado (America/Sao_Paulo) = $currentTime, " . count($matchingEvents) . " evento(s) batendo.\n";
+cron_log("horário calculado (America/Sao_Paulo) = $currentTime, " . count($matchingEvents) . ' evento(s) batendo.');
 
 if (!$matchingEvents) exit(0);
 
-// error_log() manda pro log de erros do PHP (visível no "Ver resultado" do Cron Job na
-// Hostinger, ou no log de erros do hPanel) — sem isso, uma falha de credencial/permissão na
-// API do Telegram/OneSignal passava em silêncio total, sem deixar rastro nenhum pra debugar.
 function send_telegram_message(int|string $chatId, string $text): void {
   if (!TELEGRAM_BOT_TOKEN) return;
   $ch = curl_init('https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage');
@@ -46,7 +50,9 @@ function send_telegram_message(int|string $chatId, string $text): void {
   $curlError = curl_error($ch);
   curl_close($ch);
   if ($curlError || $status < 200 || $status >= 300) {
-    error_log("cron-check-events: falha ao mandar Telegram pro chat $chatId (HTTP $status): " . ($curlError ?: $response));
+    cron_log("FALHA Telegram pro chat $chatId (HTTP $status): " . ($curlError ?: $response));
+  } else {
+    cron_log("Telegram enviado pro chat $chatId.");
   }
 }
 
@@ -74,7 +80,9 @@ function send_onesignal_push(array $externalIds, string $title, string $body): v
   $curlError = curl_error($ch);
   curl_close($ch);
   if ($curlError || $status < 200 || $status >= 300) {
-    error_log('cron-check-events: falha ao mandar push OneSignal pra ' . implode(',', $externalIds) . " (HTTP $status): " . ($curlError ?: $response));
+    cron_log('FALHA push OneSignal pra ' . implode(',', $externalIds) . " (HTTP $status): " . ($curlError ?: $response));
+  } else {
+    cron_log('Push OneSignal enviado pra ' . implode(',', $externalIds) . '.');
   }
 }
 
@@ -95,7 +103,7 @@ foreach ($matchingEvents as $event) {
   $stmt = $db->prepare("SELECT user_id, push_enabled, telegram_chat_id FROM alert_settings WHERE $prefColumn = 1 AND (push_enabled = 1 OR telegram_chat_id IS NOT NULL)");
   $stmt->execute();
   $recipients = $stmt->fetchAll();
-  echo "cron-check-events: evento '$eventType' (id $eventId) -> " . count($recipients) . " destinatário(s) elegível(is).\n";
+  cron_log("evento '$eventType' (id $eventId) -> " . count($recipients) . ' destinatário(s) elegível(is).');
 
   $label = $eventType === 'tg' ? 'TG' : 'World Boss';
   $title = "$label às $currentTime!";

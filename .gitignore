@@ -14,6 +14,9 @@ import-data.html
 .DS_Store
 Thumbs.db
 
+# Log de diagnóstico gerado em runtime pelo cron-check-events.php (não é código, não versiona)
+api/cron-debug.log
+
 # Sons customizados enviados pelo admin (dado de usuário, não código) — a pasta em si fica
 # versionada (.gitkeep) pra existir num clone novo, só o conteúdo enviado é ignorado.
 uploads/sounds/*

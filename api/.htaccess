@@ -1,0 +1,6 @@
+# Bloqueia acesso direto a arquivos .log (ex: cron-debug.log, gerado por cron-check-events.php)
+# — não tem nada sensível ali, mas não tem motivo pra ficar acessível como texto puro pra
+# qualquer um que adivinhe a URL.
+<FilesMatch "\.log$">
+  Require all denied
+</FilesMatch>
