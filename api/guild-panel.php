@@ -47,6 +47,34 @@ foreach ($members as $m) {
   $totalDrops += $m['totalDrops'];
 }
 
+// Quebra por item: quais itens do ranking caíram na guild no período e QUEM dropou cada um.
+// (drop_counts_daily só contém itens do ranking, então tudo aqui já é item notável.)
+$itemStmt = $db->prepare('
+  SELECT dcd.item_name, u.username, SUM(dcd.quantity) AS qty
+  FROM drop_counts_daily dcd
+  JOIN users u ON u.id = dcd.user_id
+  WHERE u.guild = :guild AND dcd.drop_date >= DATE_SUB(CURDATE(), INTERVAL :back DAY)
+  GROUP BY dcd.item_name, dcd.user_id
+  HAVING qty > 0
+  ORDER BY dcd.item_name
+');
+$itemStmt->execute(['guild' => $guild, 'back' => $back]);
+
+$byItem = [];
+foreach ($itemStmt->fetchAll() as $row) {
+  $name = $row['item_name'];
+  if (!isset($byItem[$name])) $byItem[$name] = ['itemName' => $name, 'total' => 0, 'droppers' => []];
+  $byItem[$name]['total'] += (int) $row['qty'];
+  $byItem[$name]['droppers'][] = ['username' => $row['username'], 'qty' => (int) $row['qty']];
+}
+$itemBreakdown = array_values($byItem);
+foreach ($itemBreakdown as &$it) {
+  usort($it['droppers'], fn($a, $b) => $b['qty'] - $a['qty']);
+}
+unset($it);
+usort($itemBreakdown, fn($a, $b) => $b['total'] - $a['total']);
+$itemBreakdown = array_slice($itemBreakdown, 0, 15); // top 15 itens por volume
+
 json_response([
   'guild' => $guild,
   'period' => $_GET['period'] ?? 'today',
@@ -55,4 +83,5 @@ json_response([
   'memberCount' => count($members),
   'totalDrops' => $totalDrops,
   'members' => $members,
+  'itemBreakdown' => $itemBreakdown,
 ]);

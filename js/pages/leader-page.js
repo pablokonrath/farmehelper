@@ -72,5 +72,21 @@ export function renderLeaderPage() {
       </tbody></table>`}
 </div>`;
 
-  return header + kpis + table;
+  const breakdown = data.itemBreakdown || [];
+  const itemsCard = `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-diamond"></i>Itens do ranking — quem dropou</div></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Itens do ranking que caíram na guild no período, com quem tirou cada um. Ordenado pelos mais dropados.</div>
+  ${!breakdown.length
+    ? '<div class="empty">Nenhum item do ranking dropado no período.</div>'
+    : `<table><thead><tr><th>Item</th><th style="width:60px">Total</th><th>Quem dropou</th></tr></thead><tbody>
+      ${breakdown.map(it => `<tr>
+        <td style="font-weight:500">${it.itemName}</td>
+        <td style="font-weight:600;color:var(--gold)">${it.total}</td>
+        <td><div style="display:flex;flex-wrap:wrap;gap:5px">${it.droppers.map(d => `<span class="badge badge-muted">${d.username}${d.qty > 1 ? ' ×' + d.qty : ''}</span>`).join('')}</div></td>
+      </tr>`).join('')}
+      </tbody></table>`}
+</div>`;
+
+  return header + kpis + table + itemsCard;
 }
