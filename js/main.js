@@ -5,6 +5,7 @@ import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
 import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
+import { startDropCounterTicker } from './features/drop-counter.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
@@ -205,6 +206,7 @@ if (!authenticated) {
   resumeLiveFileConnection();
   startPresenceHeartbeat();
   startEventScheduleChecks();
+  startDropCounterTicker();
 
   // Navegadores só liberam áudio depois de um gesto do usuário na página — destrava o
   // AudioContext do alerta sonoro no primeiro clique, em vez de esperar o primeiro alerta.
