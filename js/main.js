@@ -7,7 +7,7 @@ import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, toggleSessionItems } from './features/dg-session.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
@@ -193,6 +193,9 @@ Object.assign(window, {
   setDailyGoal,
   startDgSession,
   endDgSession,
+  setActiveSessionRuns,
+  setSessionRuns,
+  toggleSessionItems,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

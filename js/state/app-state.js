@@ -189,6 +189,8 @@ export const AppState = {
   activeDgSession: null,
   // Histórico de sessões de DG já encerradas (também em app_settings, sem tabela nova).
   dgSessions: [],
+  // Quais sessões do histórico estão com a lista de itens expandida (só UI, não persiste).
+  expandedDgSessions: {},
 };
 
 export function resetTrackedKeywordsToDefault() {

@@ -27,8 +27,32 @@ export function startDgSession(dungeonId) {
   if (!dungeonId) return;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dg) return;
-  AppState.activeDgSession = { dungeonId: dg.id, dungeonName: dg.name, startAt: Date.now() };
+  AppState.activeDgSession = { dungeonId: dg.id, dungeonName: dg.name, startAt: Date.now(), runs: 0 };
   saveActiveDgSession();
+  renderPage();
+}
+
+// Nº de runs da sessão em andamento (informado pelo jogador — o log não conta runs sozinho).
+export function setActiveSessionRuns(value) {
+  if (!AppState.activeDgSession) return;
+  AppState.activeDgSession.runs = Math.max(0, parseInt(value, 10) || 0);
+  saveActiveDgSession();
+}
+
+// Edita as runs de uma sessão já encerrada (identificada pelo startAt, único por sessão).
+export function setSessionRuns(startAt, value) {
+  const s = AppState.dgSessions.find(x => x.startAt === startAt);
+  if (!s) return;
+  s.runs = Math.max(0, parseInt(value, 10) || 0);
+  saveDgSessions();
+  renderPage();
+}
+
+// Mostra/esconde a lista completa de itens de uma sessão no histórico (estado só de UI, não
+// persiste). Guardado por startAt.
+export function toggleSessionItems(startAt) {
+  if (AppState.expandedDgSessions[startAt]) delete AppState.expandedDgSessions[startAt];
+  else AppState.expandedDgSessions[startAt] = true;
   renderPage();
 }
 
@@ -66,6 +90,7 @@ export function endDgSession() {
     startAt: s.startAt,
     endAt,
     durationMs,
+    runs: s.runs || 0,
     dropCount: drops.length,
     uniqueItems: Object.keys(items).length,
     totalAlz,
@@ -88,15 +113,20 @@ export function computeDgComparison() {
   const byDg = {};
   AppState.dgSessions.forEach(s => {
     const agg = byDg[s.dungeonId] || (byDg[s.dungeonId] = {
-      dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, durationMs: 0, dropCount: 0, totalAlz: 0,
+      dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, durationMs: 0, runs: 0, dropCount: 0, totalAlz: 0,
     });
     agg.sessions++;
     agg.durationMs += s.durationMs;
+    agg.runs += s.runs || 0;
     agg.dropCount += s.dropCount;
     agg.totalAlz += s.totalAlz;
   });
   return Object.values(byDg)
-    .map(a => ({ ...a, alzPerHour: a.durationMs > 60000 ? a.totalAlz / (a.durationMs / 3600000) : null }))
+    .map(a => ({
+      ...a,
+      alzPerHour: a.durationMs > 60000 ? a.totalAlz / (a.durationMs / 3600000) : null,
+      alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
+    }))
     .sort((x, y) => (y.alzPerHour ?? -1) - (x.alzPerHour ?? -1));
 }
 
