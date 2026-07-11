@@ -53,13 +53,34 @@ export function summarizeDropsByItem(drops) {
   return Object.values(itemsByName).sort((a, b) => b.total - a.total);
 }
 
+// Valor total farmado HOJE (drops do log + manuais), a mesma base do "Total de farme" do
+// sidebar — usada também pela meta de farme (farm-goal.js) pra medir o progresso do dia.
+export function getTodayFarmedAlz() {
+  const today = todayISODate();
+  return getAllDrops()
+    .filter(drop => drop.date === today)
+    .reduce((sum, drop) => sum + getItemPrice(drop.name), 0);
+}
+
+// Rendimento (Alz/hora) da janela de farme de hoje, calculado a partir dos horários reais dos
+// drops do LOG (não os manuais, que entram todos como 00:00 e distorceriam a janela). Retorna
+// null quando não há base suficiente (menos de 2 drops ou janela menor que 1 min).
+export function getTodayFarmRate() {
+  const today = todayISODate();
+  const logDrops = AppState.drops.filter(d => d.date === today && d.timestamp);
+  if (logDrops.length < 2) return null;
+  const times = logDrops.map(d => d.timestamp.getTime());
+  const activeMs = Math.max(...times) - Math.min(...times);
+  if (activeMs < 60000) return null;
+  const totalAlz = logDrops.reduce((sum, d) => sum + getItemPrice(d.name), 0);
+  return { alzPerHour: totalAlz / (activeMs / 3600000), activeMs };
+}
+
 // O sidebar mostra só o balanço de hoje, não o histórico inteiro — reflete o que o jogador
 // farmou/gastou na sessão do dia, que é o número que importa pra decidir se compensa continuar.
 export function updateBalanceSidebar() {
   const today = todayISODate();
-  const totalFarmed = getAllDrops()
-    .filter(drop => drop.date === today)
-    .reduce((sum, drop) => sum + getItemPrice(drop.name), 0);
+  const totalFarmed = getTodayFarmedAlz();
   const totalRushSpent = AppState.rushHistory[today]?.total || 0;
   const net = totalFarmed - totalRushSpent;
 

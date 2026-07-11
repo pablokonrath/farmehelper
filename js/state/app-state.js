@@ -178,6 +178,11 @@ export const AppState = {
   knownItemNames: [],
   telegramLinkCode: null,
   telegramBotLink: null,
+  // Meta de farme do dia (Alz), guardada em app_settings. 0 = sem meta definida. Ver farm-goal.js.
+  dailyGoalAlz: 0,
+  // Data em que a meta de hoje já foi comemorada (in-memory) — evita repetir o parabéns a cada
+  // drop depois de bater, e evita comemorar de novo ao recarregar com a meta já batida.
+  goalCelebratedForDate: null,
 };
 
 export function resetTrackedKeywordsToDefault() {

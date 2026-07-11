@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { parseDropLogLine } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog } from './alerts.js';
+import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './leaderboard.js';
 import { checkWishlistMatches } from './wishlist.js';
 import { renderPage } from '../router.js';
@@ -108,6 +109,7 @@ function handleWorkerMessage(event) {
     recordDropActivity(parsedDrops);
     processNewDropsForAlerts(parsedDrops);
     checkWishlistMatches(parsedDrops);
+    checkFarmGoalReached();
     if (AppState.currentPage === 'overview') renderPage();
   }
 }

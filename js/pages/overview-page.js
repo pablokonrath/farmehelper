@@ -1,11 +1,66 @@
 import { AppState } from '../state/app-state.js';
-import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem } from '../features/drops.js';
+import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { buildDayComparison } from '../features/day-compare.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
+
+// "1h 20min" / "45min" / "+12h" — usado na projeção "nesse ritmo, meta em ~X".
+function formatHoursShort(hours) {
+  const totalMin = Math.round(hours * 60);
+  if (totalMin > 720) return '+12h';
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m}min`;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+// Card da meta de farme do dia: progresso, rendimento (Alz/h) e projeção de quando bate a meta
+// nesse ritmo. Sempre sobre HOJE (não respeita os filtros de data da página, de propósito).
+function buildMetaCard() {
+  const goal = AppState.dailyGoalAlz;
+  const todayFarmed = getTodayFarmedAlz();
+  const rate = getTodayFarmRate();
+  const met = goal > 0 && todayFarmed >= goal;
+  const pct = goal > 0 ? Math.min(100, Math.round((todayFarmed / goal) * 100)) : 0;
+  const remaining = Math.max(0, goal - todayFarmed);
+
+  let statusRight;
+  if (met) {
+    statusRight = '<span style="color:var(--ok);font-weight:600">🎉 Meta batida!</span>';
+  } else if (rate && rate.alzPerHour > 0 && remaining > 0) {
+    statusRight = `<span style="color:var(--muted)">faltam <strong style="color:var(--txt)">${formatAlzGamer(remaining)}</strong> · nesse ritmo, meta em <strong style="color:var(--acc)">~${formatHoursShort(remaining / rate.alzPerHour)}</strong></span>`;
+  } else {
+    statusRight = `<span style="color:var(--muted)">faltam <strong style="color:var(--txt)">${formatAlzGamer(remaining)}</strong></span>`;
+  }
+
+  return `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-target" style="color:var(--gold)"></i>Meta de farme — hoje</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="lbl" style="margin:0">Meta (Alz)</span>
+      <input class="inp" style="width:160px" type="text" inputmode="numeric" placeholder="ex: 500.000.000"
+        value="${goal > 0 ? formatNumber(goal) : ''}" oninput="maskAlzInputLive(this)" onblur="setDailyGoal(this.value)">
+    </div>
+  </div>
+  ${goal <= 0
+    ? '<div class="empty" style="padding:12px 0">Defina uma meta de Alz para o dia e acompanhe o progresso + o rendimento por hora aqui.</div>'
+    : `
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px">
+    <span style="font-weight:700;font-size:16px;color:${met ? 'var(--ok)' : getAlzTierColor(todayFarmed)}" title="${formatNumber(todayFarmed)} Alz">${formatAlzGamer(todayFarmed)}</span>
+    <span style="font-size:12px;color:var(--muted)">de ${formatAlzGamer(goal)} · <strong style="color:${met ? 'var(--ok)' : 'var(--txt)'}">${pct}%</strong></span>
+  </div>
+  <div style="height:10px;background:var(--surf2);border-radius:6px;overflow:hidden">
+    <div style="height:100%;width:${pct}%;background:${met ? 'var(--ok)' : 'var(--acc)'};box-shadow:0 0 10px ${met ? 'var(--ok)' : 'var(--acc)'};transition:width .3s"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;flex-wrap:wrap;gap:8px">
+    <span style="color:var(--muted)"><i class="ti ti-bolt" style="color:var(--gold)"></i> Rendimento: <strong style="color:var(--txt)">${rate ? formatAlzGamer(rate.alzPerHour) + '/h' : '—'}</strong></span>
+    ${statusRight}
+  </div>`}
+</div>`;
+}
 
 export function setSearchQuery(value) {
   AppState.searchQuery = value;
@@ -86,13 +141,16 @@ export function renderOverviewPage() {
   </div>` : ''}
 </div>`;
 
+  const metaCard = buildMetaCard();
+
   if (!getAllDrops().length) {
-    return manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo DropList, ou adicione itens manualmente acima</div></div>`;
+    return metaCard + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo DropList, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
 <div class="pg-title">Visão geral</div>
 <div class="pg-sub">Métricas consolidadas do seu farme com base nos filtros aplicados.</div>
+${metaCard}
 ${manualDropsCard}
 <div class="card">
   <div class="row">

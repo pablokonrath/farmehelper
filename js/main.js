@@ -6,6 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
+import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
@@ -188,6 +189,7 @@ Object.assign(window, {
   setTelegramDropRelayEnabled,
   setTelegramWishlistRelayEnabled,
   setTelegramWatchdogRelayEnabled,
+  setDailyGoal,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
@@ -201,6 +203,7 @@ if (!authenticated) {
   if (AppState.isAdmin) document.getElementById('nb-admin').style.removeProperty('display');
   await loadPersistedState();
   updateBalanceSidebar();
+  initFarmGoalBaseline();
   initFileInputListener();
   renderPage();
   resumeLiveFileConnection();

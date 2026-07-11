@@ -315,6 +315,34 @@ export function checkDropWatchdog() {
   });
 }
 
+// Toast comemorativo da meta de farme batida (ver farm-goal.js) — visual próprio (alvo dourado),
+// som padrão, e notificação do SO quando autorizada (o "push" do parabéns, com o app aberto).
+export function showGoalToast(title, body) {
+  const container = document.getElementById('alertToastContainer');
+  if (container) {
+    const toastEl = document.createElement('div');
+    toastEl.className = 'alert-toast';
+    toastEl.innerHTML = `
+      <i class="ti ti-target" style="color:var(--gold);flex-shrink:0;margin-top:1px"></i>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:13px">${title}</div>
+        <div style="font-size:11px;color:var(--muted)">${body}</div>
+      </div>
+      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+    container.appendChild(toastEl);
+    const settings = AppState.alertSettings;
+    if (settings.soundEnabled) playAlertBeep(settings.volume);
+    setTimeout(() => toastEl.remove(), Math.max(1, settings.popupDurationSeconds) * 1000);
+  }
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    try {
+      new Notification(title, { body, tag: 'farm-goal' });
+    } catch {
+      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
+    }
+  }
+}
+
 export function testNotification() {
   fireAlert({ id: 'test-' + Date.now(), timestamp: new Date().toISOString(), itemName: 'Item de teste', keyword: 'teste', quantity: 1, seen: false });
 }
