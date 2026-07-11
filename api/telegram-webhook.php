@@ -64,24 +64,26 @@ if (preg_match('/^\/drop(?:\s+(.+))?$/i', $text, $m)) {
   }
   $uid = (int) $row['user_id'];
 
+  // Lê da tabela dos itens RASTREADOS de cada jogador (tracked_drop_counts_daily), sincronizada
+  // pelo cliente a partir da lista pessoal de palavras rastreadas — não da lista de ranking do
+  // admin (que era o que o /drop mostrava antes, causando dados que não batiam com o esperado).
   if ($query === '') {
-    // /drop sem argumento nenhum: lista tudo que caiu HOJE, sem precisar digitar nome nenhum —
-    // mesma tabela por-dia (drop_counts_daily) que alimenta o Ranking Semanal/Quinzenal/Mensal.
+    // /drop sem argumento: lista tudo que caiu HOJE, sem precisar digitar nome nenhum.
     $today = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
-    $stmt = $db->prepare('SELECT item_name, quantity FROM drop_counts_daily WHERE user_id = :uid AND drop_date = :today ORDER BY quantity DESC');
+    $stmt = $db->prepare('SELECT item_name, quantity FROM tracked_drop_counts_daily WHERE user_id = :uid AND drop_date = :today ORDER BY quantity DESC');
     $stmt->execute(['uid' => $uid, 'today' => $today]);
     $items = $stmt->fetchAll();
     if (!$items) {
-      send_telegram_message($chatId, 'Nenhum drop registrado hoje ainda.');
+      send_telegram_message($chatId, 'Nenhum drop rastreado registrado hoje ainda. (Precisa estar com o DropList aberto pra registrar.)');
     } else {
       $lines = array_map(fn($i) => $i['item_name'] . ': ' . number_format((int) $i['quantity'], 0, ',', '.'), $items);
-      send_telegram_message($chatId, "Drops de hoje:\n" . implode("\n", $lines));
+      send_telegram_message($chatId, "Drops rastreados de hoje:\n" . implode("\n", $lines));
     }
     json_response(['ok' => true]);
   }
 
-  // /drop <nome>: busca pelo total acumulado (all-time), igual antes.
-  $stmt = $db->prepare('SELECT item_name, quantity FROM drop_counts WHERE user_id = :uid');
+  // /drop <nome>: total acumulado (soma de todos os dias) do item rastreado que casar com a busca.
+  $stmt = $db->prepare('SELECT item_name, SUM(quantity) AS quantity FROM tracked_drop_counts_daily WHERE user_id = :uid GROUP BY item_name');
   $stmt->execute(['uid' => $uid]);
   $normalizedQuery = normalize_for_search($query);
   $matches = [];
@@ -93,7 +95,7 @@ if (preg_match('/^\/drop(?:\s+(.+))?$/i', $text, $m)) {
   }
 
   if (!$matches) {
-    send_telegram_message($chatId, 'Nenhum item dropado encontrado com "' . $query . '".');
+    send_telegram_message($chatId, 'Nenhum item rastreado encontrado com "' . $query . '".');
   } else {
     $lines = array_map(fn($i) => $i['item_name'] . ': ' . number_format((int) $i['quantity'], 0, ',', '.') . ' dropado(s)', $matches);
     send_telegram_message($chatId, implode("\n", $lines));

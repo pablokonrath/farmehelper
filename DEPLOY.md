@@ -448,6 +448,26 @@ Se as 5 constantes ficarem em branco no `config.php`, o resto do site funciona n
 só esses dois canais ficam indisponíveis (o botão de gerar código do Telegram avisa que ainda
 não foi configurado).
 
+## Drops rastreados no Telegram (/drop + envio na hora)
+
+Se seu banco já rodou `sql/migrate_push_telegram.sql`, rode agora
+`sql/migrate_tracked_drop_telegram.sql` no phpMyAdmin (aba SQL) — adiciona
+`telegram_drop_relay_enabled` em `alert_settings` e cria a tabela `tracked_drop_counts_daily`.
+Instalação nova do zero não precisa — já vem no `sql/schema.sql`.
+
+Duas coisas:
+
+- **`/drop` agora mostra os itens RASTREADOS do próprio jogador** (a lista pessoal de palavras
+  rastreadas, tipo Fatal/Chocante/Dragona/joias), não mais a lista de ranking do admin — que era
+  o que causava dados que não batiam. `/drop` sozinho lista o que caiu hoje; `/drop <nome>` dá o
+  total acumulado do item.
+- **Envio na hora**: na página Alertas, com o Telegram vinculado, aparece o interruptor "Enviar
+  drops rastreados pro Telegram". Ligado, cada item rastreado que cair chega como mensagem no
+  Telegram na hora. **Importante:** isso só funciona com o **DropList aberto** (mesmo minimizado,
+  em segundo plano) — quem detecta o drop é a aba lendo o log do jogo, então com o navegador
+  totalmente fechado não há como saber que um item caiu. Diferente do TG/World Boss, que são
+  horários fixos e por isso o servidor consegue avisar sozinho.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

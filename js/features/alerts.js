@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveAlertSettings, saveAlertHistory } from '../state/persistence.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
+import { relayDropToTelegram } from './telegram.js';
 
 let audioCtx = null;
 function getAudioContext() {
@@ -219,6 +220,9 @@ function registerAlert(keyword, drop) {
   AppState.pendingAlertGroups[groupKey] = { entryId: entry.id, lastSeenAt: now };
   saveAlertHistory();
   fireAlert(entry);
+  // Repassa pro Telegram só neste ramo (alerta novo) — no ramo anti-spam acima o item repetido
+  // só incrementa a contagem, sem gerar novo aviso, aqui ou lá.
+  relayDropToTelegram(entry);
   if (AppState.currentPage === 'alertas') renderPage();
 }
 
@@ -374,6 +378,12 @@ export function setTgNotificationsEnabled(checked) {
 
 export function setWorldbossNotificationsEnabled(checked) {
   AppState.alertSettings.worldbossNotificationsEnabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
+export function setTelegramDropRelayEnabled(checked) {
+  AppState.alertSettings.telegramDropRelayEnabled = checked;
   saveAlertSettings();
   renderPage();
 }

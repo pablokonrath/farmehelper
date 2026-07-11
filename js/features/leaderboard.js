@@ -37,6 +37,27 @@ export function computeTrackedItemCountsByDate() {
   return result;
 }
 
+// Filtra pra lista PESSOAL de palavras rastreadas de cada um (AppState.trackedKeywords) — usada
+// pra alimentar tracked_drop_counts_daily, que o /drop do bot do Telegram lê. Distinta de
+// filterToRankingItems (lista global do admin): aqui é "os itens que EU rastreio".
+function filterToTrackedKeywords(drops) {
+  if (!AppState.trackedKeywords.length) return [];
+  const keywords = AppState.trackedKeywords.map(kw => normalizeForSearch(kw.word));
+  return drops.filter(d => keywords.some(k => normalizeForSearch(d.name).includes(k)));
+}
+
+export function computeTrackedKeywordCountsByDate() {
+  const trackedDrops = filterToTrackedKeywords(getAllDrops());
+  const dates = [...new Set(trackedDrops.map(d => d.date))];
+  const result = {};
+  dates.forEach(date => {
+    const counts = {};
+    summarizeDropsByItem(trackedDrops.filter(d => d.date === date)).forEach(item => (counts[item.name] = item.qty));
+    result[date] = counts;
+  });
+  return result;
+}
+
 // Um nome de item "conta" como destaque se bater (mesma lógica de substring) com alguma
 // palavra da lista global marcada featured=true.
 export function isItemFeatured(itemName) {
@@ -68,6 +89,9 @@ export async function syncTrackedDropCounts() {
   await Promise.all([
     putCounts('drop-counts.php', computeTrackedItemCounts(), 'ranking'),
     putCounts('drop-counts-daily.php', computeTrackedItemCountsByDate(), 'ranking por dia'),
+    // Contagem dos itens rastreados pessoais — alimenta o /drop do bot do Telegram, que é
+    // sobre "o que EU dropei", não sobre o ranking global.
+    putCounts('tracked-drop-counts.php', computeTrackedKeywordCountsByDate(), 'meus drops rastreados'),
   ]);
 }
 

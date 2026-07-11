@@ -105,6 +105,9 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   -- citando esse mesmo ID, sem precisar persistir player_id/subscription aqui.
   push_enabled TINYINT(1) NOT NULL DEFAULT 0,
   telegram_chat_id VARCHAR(64) NULL,
+  -- Envia o drop rastreado pro Telegram na hora que cai (com o DropList aberto) — ver
+  -- api/telegram-relay-drop.php. Desligado por padrão, é opt-in por jogador.
+  telegram_drop_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -145,6 +148,18 @@ CREATE TABLE IF NOT EXISTS drop_counts (
 -- Mensal do Ranking (soma os últimos N dias), sem afetar a aba Geral (que continua lendo
 -- só de drop_counts, inalterada).
 CREATE TABLE IF NOT EXISTS drop_counts_daily (
+  user_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  drop_date DATE NOT NULL,
+  quantity INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, item_name, drop_date),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Contagem por-dia dos itens que batem com a lista PESSOAL de palavras rastreadas de cada um
+-- (AppState.trackedKeywords) — separada de drop_counts_daily (que é filtrada pela lista global
+-- de ranking do admin). É daqui que o comando /drop do bot do Telegram lê.
+CREATE TABLE IF NOT EXISTS tracked_drop_counts_daily (
   user_id INT NOT NULL,
   item_name VARCHAR(255) NOT NULL,
   drop_date DATE NOT NULL,

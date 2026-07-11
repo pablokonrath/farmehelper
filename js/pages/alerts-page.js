@@ -80,7 +80,12 @@ ${permission === 'unsupported'
       ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>
           <button class="btn btn-d btn-xs" onclick="unlinkTelegram()"><i class="ti ti-unlink"></i>Desvincular</button>
-        </div>`
+        </div>
+        <div class="sh" style="padding:12px 0 0">
+          <div><div style="font-weight:600;font-size:13px">Enviar drops rastreados pro Telegram</div><div style="font-size:11px;color:var(--muted)">Quando um item rastreado cair, chega no seu Telegram. Só funciona com o DropList aberto (mesmo minimizado).</div></div>
+          <label class="tgl"><input type="checkbox" ${AppState.alertSettings.telegramDropRelayEnabled ? 'checked' : ''} onchange="setTelegramDropRelayEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">No Telegram, mande <strong>/drop</strong> pra ver os drops rastreados de hoje, ou <strong>/drop nome</strong> pra o total de um item.</div>`
       : `<div>
           <button class="btn btn-d btn-xs" onclick="generateTelegramLinkCode()"><i class="ti ti-brand-telegram"></i>Gerar código de vínculo</button>
           ${AppState.telegramLinkCode ? `

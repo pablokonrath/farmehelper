@@ -76,6 +76,9 @@ export const DEFAULT_ALERT_SETTINGS = {
   // desligados por padrão, exigem ação explícita do usuário (ativar push / vincular Telegram).
   pushEnabled: false,
   telegramChatId: null,
+  // Envia o drop rastreado pro Telegram na hora que cai (só com o DropList aberto — quem detecta
+  // o drop é a aba lendo o log, ver telegram-relay-drop.php). Opt-in, desligado por padrão.
+  telegramDropRelayEnabled: false,
 };
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de

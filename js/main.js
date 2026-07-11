@@ -62,6 +62,7 @@ import {
   setWatchdogEnabled,
   setTgNotificationsEnabled,
   setWorldbossNotificationsEnabled,
+  setTelegramDropRelayEnabled,
 } from './features/alerts.js';
 import {
   addDungeonToCart,
@@ -181,6 +182,7 @@ Object.assign(window, {
   disablePushNotifications,
   generateTelegramLinkCode,
   unlinkTelegram,
+  setTelegramDropRelayEnabled,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
