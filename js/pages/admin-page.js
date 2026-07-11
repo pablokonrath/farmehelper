@@ -6,6 +6,74 @@ const FLAG_TYPE_BADGES = {
   file_tamper: '<span class="badge" style="background:var(--err-bg);color:var(--err);border:1px solid var(--err-border)">Arquivo editado</span>',
 };
 
+const EVENT_TYPE_INFO = {
+  tg: { title: 'TG (Grito de Guerra)', icon: 'ti-sword' },
+  worldboss: { title: 'World Boss (Trombeta)', icon: 'ti-skull' },
+};
+
+function renderEventTypeCard(eventType) {
+  const { title, icon } = EVENT_TYPE_INFO[eventType];
+  const sound = AppState.alertSounds[eventType] || { filename: null, volume: 0.9 };
+  const times = AppState.eventSchedule[eventType] || [];
+  return `
+<div class="card" style="flex:1;min-width:280px">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ${icon}"></i>${title}</div>
+  <button class="btn btn-d btn-xs" onclick="testAlertSound('${eventType}')"><i class="ti ti-player-play"></i>Testar som</button></div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Som: ${sound.filename ? sound.filename : 'padrão (bipe) — envie um som no card "Sons dos alertas" abaixo'}</div>
+  <label class="lbl">Volume do alerta</label>
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+    <input type="range" min="0" max="1" step="0.05" value="${sound.volume}" oninput="setAlertSoundVolume('${eventType}', this.value)" style="flex:1;accent-color:var(--acc)">
+    <span id="soundVolumeLabel-${eventType}" style="font-size:12px;color:var(--muted);width:36px;text-align:right">${Math.round(sound.volume * 100)}%</span>
+  </div>
+  <label class="lbl">Adicionar horário</label>
+  <div class="row" style="margin-bottom:10px">
+    <input class="inp" id="newEventTime-${eventType}" type="text" inputmode="numeric" placeholder="HH:MM" onfocus="this.value = this.value.replace(/\\D/g,'')" oninput="this.value = maskTimeInputBR(this.value)">
+    <button class="btn btn-p" onclick="addEventTime('${eventType}')"><i class="ti ti-plus"></i>Adicionar</button>
+  </div>
+  ${!times.length ? '<div class="empty" style="padding:10px 0">Nenhum horário cadastrado.</div>' : `
+  <div style="display:flex;flex-wrap:wrap;gap:6px">
+  ${times.map(t => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${t.time}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeEventTime(${t.id})"><i class="ti ti-x"></i></button></span>`).join('')}
+  </div>`}
+</div>`;
+}
+
+function renderEventScheduleCard() {
+  return `
+<div class="ctitle" style="margin-bottom:4px"><i class="ti ti-calendar-event"></i>Horários de eventos</div>
+<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Cadastre os horários das TGs e do World Boss. Quando o horário chegar, um pop-up aparece com som temático (mesmo com o navegador em segundo plano).</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+  ${renderEventTypeCard('tg')}
+  ${renderEventTypeCard('worldboss')}
+</div>`;
+}
+
+const ALERT_SOUND_LABELS = {
+  tg: 'TG',
+  worldboss: 'World Boss',
+  watchdog: 'Inatividade (watchdog)',
+};
+
+function renderAlertSoundsCard() {
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-volume"></i>Sons dos alertas</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Envie um .mp3/.wav/.ogg (até 2MB) pra substituir o bipe padrão de cada alerta.</div>
+  ${Object.entries(ALERT_SOUND_LABELS).map(([type, label]) => {
+    const sound = AppState.alertSounds[type] || { filename: null };
+    return `
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+    <div style="min-width:150px;font-weight:600;font-size:13px">${label}</div>
+    <div style="font-size:11px;color:var(--muted);flex:1;min-width:100px">${sound.filename ? sound.filename : 'Padrão (bipe)'}</div>
+    <input type="file" id="soundFile-${type}" accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg" style="font-size:11px;max-width:180px">
+    <button class="btn btn-d btn-xs" onclick="uploadAlertSound('${type}')"><i class="ti ti-upload"></i>Enviar</button>
+    <button class="btn btn-d btn-xs" onclick="testAlertSound('${type}')"><i class="ti ti-player-play"></i>Testar</button>
+    ${sound.filename ? `<button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="removeAlertSound('${type}')"><i class="ti ti-trash"></i></button>` : ''}
+  </div>
+  <div id="soundError-${type}" style="display:none;color:var(--err);font-size:12px;margin:4px 0"></div>`;
+  }).join('')}
+</div>`;
+}
+
 function renderIntegrityFlagsCard() {
   return `
 <div class="card">
@@ -176,6 +244,10 @@ ${AppState.isMasterAdmin ? `
   </tr>`).join('')}
   </tbody></table>`}
 </div>
+
+${renderEventScheduleCard()}
+
+${renderAlertSoundsCard()}
 
 ${renderIntegrityFlagsCard()}
 

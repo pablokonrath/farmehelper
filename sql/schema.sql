@@ -203,3 +203,22 @@ CREATE TABLE IF NOT EXISTS wishlist_matches (
   delivered TINYINT(1) NOT NULL DEFAULT 0,
   FOREIGN KEY (wishlist_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Horários recorrentes (agenda compartilhada, admin cadastra) de TG/World Boss. Guardado sem
+-- timezone — o "está na hora?" é checado no navegador de cada jogador com a hora local dele.
+CREATE TABLE IF NOT EXISTS event_schedule (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  event_type VARCHAR(20) NOT NULL,
+  time_of_day TIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Som customizado por tipo de alerta (upload do admin) — filename NULL usa o bipe padrão
+-- sintetizado. Pré-semeada com as 3 linhas pra não precisar tratar "linha ainda não existe".
+CREATE TABLE IF NOT EXISTS alert_sounds (
+  alert_type VARCHAR(20) NOT NULL PRIMARY KEY,
+  filename VARCHAR(255) NULL,
+  volume DECIMAL(3,2) NOT NULL DEFAULT 0.90
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO alert_sounds (alert_type, filename, volume) VALUES
+  ('tg', NULL, 0.90), ('worldboss', NULL, 0.90), ('watchdog', NULL, 0.90);

@@ -152,6 +152,8 @@ export const AppState = {
   wishlistItems: [],
   wishlistMatches: [],
   isWishlistMatchesLoading: false,
+  eventSchedule: { tg: [], worldboss: [] },
+  alertSounds: {},
 };
 
 export function resetTrackedKeywordsToDefault() {

@@ -107,3 +107,21 @@ export function parseDateInputBR(value) {
   const year = digits.slice(4, 8);
   return `${year}-${month}-${day}`;
 }
+
+// Mesma lógica de maskDateInputBR/parseDateInputBR, só que pra horário (HH:MM) — usado nos
+// campos de "Adicionar horário" da agenda de eventos (TG/World Boss) em admin-page.js.
+export function maskTimeInputBR(value) {
+  const digits = String(value ?? '').replace(/\D/g, '').slice(0, 4);
+  let out = digits.slice(0, 2);
+  if (digits.length > 2) out += ':' + digits.slice(2, 4);
+  return out;
+}
+
+export function parseTimeInputBR(value) {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (digits.length < 4) return '';
+  const hours = digits.slice(0, 2);
+  const minutes = digits.slice(2, 4);
+  if (+hours > 23 || +minutes > 59) return '';
+  return `${hours}:${minutes}`;
+}

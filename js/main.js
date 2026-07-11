@@ -5,6 +5,8 @@ import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
 import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
+import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
+import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import {
   createUser,
   addRankingItem,
@@ -71,7 +73,7 @@ import {
   setRushCreditCraftCost,
 } from './features/rush-cart.js';
 import { exportDropsToCSV } from './features/export.js';
-import { maskDateInputBR, parseDateInputBR, maskAlzInputLive } from './utils/formatting.js';
+import { maskDateInputBR, parseDateInputBR, maskAlzInputLive, maskTimeInputBR } from './utils/formatting.js';
 
 // As páginas são geradas via template string com atributos onclick/onchange/oninput
 // (em vez de addEventListener), então cada função referenciada neles precisa existir
@@ -142,6 +144,13 @@ Object.assign(window, {
   maskDateInputBR,
   parseDateInputBR,
   maskAlzInputLive,
+  maskTimeInputBR,
+  addEventTime,
+  removeEventTime,
+  uploadAlertSound,
+  removeAlertSound,
+  setAlertSoundVolume,
+  testAlertSound,
   submitLogin,
   logout,
   createUser,
@@ -179,6 +188,7 @@ if (!authenticated) {
   renderPage();
   resumeLiveFileConnection();
   startPresenceHeartbeat();
+  startEventScheduleChecks();
 
   // Navegadores só liberam áudio depois de um gesto do usuário na página — destrava o
   // AudioContext do alerta sonoro no primeiro clique, em vez de esperar o primeiro alerta.

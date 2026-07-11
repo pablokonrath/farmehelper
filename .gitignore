@@ -14,5 +14,11 @@ import-data.html
 .DS_Store
 Thumbs.db
 
+# Sons customizados enviados pelo admin (dado de usuário, não código) — a pasta em si fica
+# versionada (.gitkeep) pra existir num clone novo, só o conteúdo enviado é ignorado.
+uploads/sounds/*
+!uploads/sounds/.gitkeep
+!uploads/sounds/.htaccess
+
 # Memória/plans locais do Claude Code (específico desta máquina, não faz sentido versionar)
 .claude/

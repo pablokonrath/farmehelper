@@ -13,10 +13,10 @@ function getAudioContext() {
   return audioCtx;
 }
 
-// Bipe curto sintetizado via Web Audio — evita depender de um arquivo de áudio externo,
-// já que o projeto não tem pipeline de assets. Precisa de um gesto do usuário na página
-// antes de tocar (política de autoplay do navegador); ver unlockAlertAudio() em main.js.
-function playAlertBeep(volume) {
+// Bipe curto sintetizado via Web Audio — som padrão de todo alerta enquanto não tiver som
+// customizado (upload do admin, ver playThemedSound abaixo). Precisa de um gesto do usuário
+// na página antes de tocar (política de autoplay do navegador); ver unlockAlertAudio() em main.js.
+export function playAlertBeep(volume) {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
@@ -36,11 +36,31 @@ function playAlertBeep(volume) {
   }
 }
 
+// Toca o som customizado enviado pelo admin (ver upload-alert-sound.php) pro tipo de alerta
+// (tg/worldboss/watchdog), ou o bipe padrão se ninguém subiu nada ainda (ou o arquivo sumiu
+// do servidor no meio do caminho).
+export function playThemedSound(alertType, volume) {
+  const sound = AppState.alertSounds?.[alertType];
+  if (sound?.filename) {
+    try {
+      const audio = new Audio('uploads/sounds/' + sound.filename);
+      audio.volume = Math.max(0, Math.min(1, volume));
+      audio.play().catch(() => {});
+      return;
+    } catch {
+      // arquivo inválido/removido — cai pro bipe padrão abaixo
+    }
+  }
+  playAlertBeep(volume);
+}
+
 export function unlockAlertAudio() {
   getAudioContext()?.resume();
 }
 
-function showAlertToast(entry) {
+// alertType (opcional) escolhe o som customizado do tipo em vez do bipe padrão — usado só
+// pelo watchdog hoje (ver fireWatchdogAlert), alertas de item rastreado continuam no bipe.
+function showAlertToast(entry, alertType = null) {
   const container = document.getElementById('alertToastContainer');
   if (!container) return;
 
@@ -57,9 +77,10 @@ function showAlertToast(entry) {
 
   const settings = AppState.alertSettings;
   let soundInterval = null;
+  const playSound = () => (alertType ? playThemedSound(alertType, settings.volume) : playAlertBeep(settings.volume));
   if (settings.soundEnabled) {
-    playAlertBeep(settings.volume);
-    if (settings.repeatSoundWhileOpen) soundInterval = setInterval(() => playAlertBeep(settings.volume), 1200);
+    playSound();
+    if (settings.repeatSoundWhileOpen) soundInterval = setInterval(playSound, 1200);
   }
 
   setTimeout(() => {
@@ -68,8 +89,8 @@ function showAlertToast(entry) {
   }, Math.max(1, settings.popupDurationSeconds) * 1000);
 }
 
-function fireAlert(entry) {
-  showAlertToast(entry);
+function fireAlert(entry, alertType = null) {
+  showAlertToast(entry, alertType);
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     try {
       new Notification('Drop rastreado: ' + entry.itemName, { body: 'Palavra: ' + entry.keyword, tag: entry.id });
@@ -115,6 +136,54 @@ export function fireWishlistMatchAlert(match) {
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     try {
       new Notification('Lista de desejos: ' + match.itemName, { body: `${match.dropperUsername} dropou!`, tag: 'wishlist-' + match.id });
+    } catch {
+      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
+    }
+  }
+}
+
+// O volume de TG/World Boss é global (o admin escolhe em AppState.alertSounds, mesmo card do
+// print) — diferente de popupDurationSeconds/soundEnabled, que continuam pessoais.
+function showEventToast(eventType, time) {
+  const container = document.getElementById('alertToastContainer');
+  if (!container) return;
+
+  const isTg = eventType === 'tg';
+  const label = isTg ? 'TG' : 'World Boss';
+  const icon = isTg ? 'ti-sword' : 'ti-skull';
+
+  const toastEl = document.createElement('div');
+  toastEl.className = 'alert-toast';
+  toastEl.innerHTML = `
+    <i class="ti ${icon}" style="color:var(--gold);flex-shrink:0;margin-top:1px"></i>
+    <div style="flex:1;min-width:0">
+      <div style="font-weight:600;font-size:13px">${label} às ${time}!</div>
+      <div style="font-size:11px;color:var(--muted)">Hora de entrar.</div>
+    </div>
+    <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+  container.appendChild(toastEl);
+
+  const settings = AppState.alertSettings;
+  const volume = AppState.alertSounds?.[eventType]?.volume ?? 0.9;
+  let soundInterval = null;
+  if (settings.soundEnabled) {
+    playThemedSound(eventType, volume);
+    if (settings.repeatSoundWhileOpen) soundInterval = setInterval(() => playThemedSound(eventType, volume), 1200);
+  }
+
+  setTimeout(() => {
+    if (soundInterval) clearInterval(soundInterval);
+    toastEl.remove();
+  }, Math.max(1, settings.popupDurationSeconds) * 1000);
+}
+
+// Chamada por event-schedule.js quando um horário cadastrado (TG/World Boss) chega.
+export function fireEventAlert(eventType, time) {
+  showEventToast(eventType, time);
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+    const label = eventType === 'tg' ? 'TG' : 'World Boss';
+    try {
+      new Notification(`${label} às ${time}!`, { body: 'Hora de entrar.', tag: 'event-' + eventType + '-' + time });
     } catch {
       // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
     }
@@ -178,7 +247,7 @@ function fireWatchdogAlert(itemName, keyword) {
   };
   AppState.alertHistory.push(entry);
   saveAlertHistory();
-  fireAlert(entry);
+  fireAlert(entry, 'watchdog');
   if (AppState.currentPage === 'alertas') renderPage();
 }
 

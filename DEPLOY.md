@@ -293,6 +293,30 @@ Se seu banco já rodou `sql/migrate_watchdog_toggle.sql`, rode agora
 
 Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
 
+## Horários de eventos (TG/World Boss) + sons customizados
+
+Se seu banco já rodou `sql/migrate_wishlist.sql`, rode agora `sql/migrate_event_alerts.sql`
+no phpMyAdmin (aba SQL) — cria as tabelas `event_schedule` e `alert_sounds`. Dois cards novos
+na página Admin:
+
+- **Horários de eventos**: o admin cadastra os horários fixos de TG e World Boss (agenda
+  compartilhada — cadastra 1x, todo mundo recebe). Quando o horário chega, todo jogador logado
+  recebe um pop-up + som (mesmo com o navegador em segundo plano) — o horário é comparado com
+  a hora local do navegador de cada um, então cadastre pensando no horário de Brasília, igual
+  todo mundo já vê no jogo.
+- **Sons dos alertas**: o admin pode enviar um arquivo .mp3/.wav/.ogg (até 2MB) pra TG, World
+  Boss e pro alerta de inatividade (watchdog), substituindo o bipe sintetizado padrão. Sem
+  upload nenhum, tudo continua funcionando com o bipe de sempre.
+
+**Passo manual extra (só na primeira vez)**: pelo Gerenciador de Arquivos da Hostinger, crie a
+pasta `uploads/sounds/` na raiz do site (irmã de `api/`/`js/`) com permissão de escrita — o
+deploy via git não cria pasta vazia sozinho. Se o upload de som falhar mesmo com arquivo
+pequeno, pode ser o `upload_max_filesize`/`post_max_size` do PHP do host — na maioria dos
+planos já vem alto o suficiente pra 2MB, mas vale checar no painel se der erro.
+
+Instalação nova do zero: banco já vem no `sql/schema.sql`, mas a pasta `uploads/sounds/`
+precisa ser criada manualmente do mesmo jeito.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

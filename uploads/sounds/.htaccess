@@ -1,0 +1,7 @@
+# Pasta só serve arquivo de áudio enviado pelo admin — bloqueia execução de PHP como defesa
+# extra, além da extensão do arquivo já ser determinada pelo servidor (nunca pelo nome
+# enviado no upload, ver api/upload-alert-sound.php).
+<FilesMatch "\.php$">
+  Require all denied
+</FilesMatch>
+Options -Indexes
