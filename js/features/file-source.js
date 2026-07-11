@@ -126,7 +126,7 @@ async function startLiveFilePolling(fileHandle) {
   // Zera os relógios do alerta de inatividade — sem isso, um estado travado de uma conexão
   // anterior (ex: já tinha passado do limite antes de reconectar) dispararia o alerta na hora.
   AppState.lastAnyDropAt = null;
-  AppState.noDropAlertFired = false;
+  AppState.lastNoDropAlertAt = null;
   AppState.lastSeenByKeyword = {};
   AppState.staleKeywordAlerted = {};
 

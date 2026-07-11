@@ -69,6 +69,19 @@ export function relayDropToTelegram(entry) {
   }).catch(err => console.error('Falha ao enviar drop pro Telegram:', err));
 }
 
+// Chamada pelo watchdog (fireWatchdogAlert em alerts.js) quando detecta helper travado / item
+// rastreado sumido — manda o aviso pro Telegram do jogador. Mesmo espírito do relayDropToTelegram:
+// fire-and-forget, só tenta se o relay do watchdog está ligado e há Telegram vinculado.
+export function relayWatchdogToTelegram(message) {
+  if (!AppState.alertSettings.telegramWatchdogRelayEnabled || !AppState.alertSettings.telegramChatId) return;
+  fetch(`${API_BASE}/telegram-relay-watchdog.php`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  }).catch(err => console.error('Falha ao enviar watchdog pro Telegram:', err));
+}
+
 export async function unlinkTelegram() {
   if (!confirm('Desvincular o Telegram? Você vai parar de receber avisos por lá.')) return;
   stopLinkPolling();

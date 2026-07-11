@@ -112,6 +112,9 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   -- até com o navegador dele fechado (quem reporta é o navegador de quem dropou, ver
   -- api/wishlist-check.php). Opt-in, desligado por padrão.
   telegram_wishlist_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  -- Manda o alerta do watchdog (helper travado / item sumido) pro Telegram — ver
+  -- api/telegram-relay-watchdog.php. Só com o DropList aberto. Opt-in, desligado por padrão.
+  telegram_watchdog_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

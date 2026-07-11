@@ -482,6 +482,23 @@ negociar. **Diferente do envio de drops rastreados, este funciona até com o seu
 fechado** — porque quem detecta e reporta o drop é o navegador de quem dropou (via
 `wishlist-check.php`), não o seu.
 
+## Aviso de travamento (watchdog) no Telegram
+
+Se seu banco já rodou `sql/migrate_wishlist_telegram.sql`, rode agora
+`sql/migrate_watchdog_telegram.sql` no phpMyAdmin (aba SQL) — adiciona
+`telegram_watchdog_relay_enabled` em `alert_settings`. Instalação nova do zero não precisa — já
+vem no `sql/schema.sql`.
+
+Duas melhorias no watchdog (a Vigilância de inatividade):
+
+- **Aviso no Telegram**: com o Telegram vinculado, aparece em Alertas o interruptor "Avisar
+  travamento (watchdog) no Telegram". Ligado, quando o helper trava (fica sem drop) o aviso
+  chega no seu Telegram, não só no PC — bom pra quem farma AFK longe do computador. Precisa do
+  watchdog ligado e do DropList aberto (é a aba que detecta o travamento).
+- **Repete até voltar a farmar**: o aviso de "sem nenhum drop" agora se repete a cada intervalo
+  do limite configurado enquanto continuar parado (antes avisava 1 vez só e parava), e para
+  sozinho assim que cai um drop de novo. Vale pro aviso na tela e pro Telegram.
+
 ## Limites de escala (o que segura o banco com muita gente)
 
 Duas proteções pra hospedagem compartilhada não sofrer com muitos jogadores farmando ao mesmo

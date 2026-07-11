@@ -2,7 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveAlertSettings, saveAlertHistory } from '../state/persistence.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
-import { relayDropToTelegram } from './telegram.js';
+import { relayDropToTelegram, relayWatchdogToTelegram } from './telegram.js';
 
 let audioCtx = null;
 function getAudioContext() {
@@ -252,6 +252,9 @@ function fireWatchdogAlert(itemName, keyword) {
   AppState.alertHistory.push(entry);
   saveAlertHistory();
   fireAlert(entry, 'watchdog');
+  // Manda o mesmo aviso pro Telegram (se ligado + vinculado) — pra saber que o helper travou
+  // mesmo longe do PC. itemName aqui já é a frase descritiva ("Sem nenhum drop há X min...").
+  relayWatchdogToTelegram(itemName);
   if (AppState.currentPage === 'alertas') renderPage();
 }
 
@@ -262,7 +265,7 @@ export function recordDropActivity(drops) {
   if (!drops.length) return;
   const now = Date.now();
   AppState.lastAnyDropAt = now;
-  AppState.noDropAlertFired = false;
+  AppState.lastNoDropAlertAt = null;
 
   const activeKeywords = AppState.trackedKeywords.filter(kw => kw.alertEnabled);
   drops.forEach(drop => {
@@ -287,9 +290,13 @@ export function checkDropWatchdog() {
     AppState.lastAnyDropAt = now;
   } else {
     const noDropMs = Math.max(1, AppState.alertSettings.noDropThresholdMinutes) * 60000;
-    if (!AppState.noDropAlertFired && now - AppState.lastAnyDropAt > noDropMs) {
-      AppState.noDropAlertFired = true;
-      fireWatchdogAlert(`Sem nenhum drop há ${AppState.alertSettings.noDropThresholdMinutes} min — confere se o helper travou`, 'watchdog');
+    const stalledMs = now - AppState.lastAnyDropAt;
+    // Repete o aviso a cada intervalo do limite enquanto continuar parado (em vez de avisar uma
+    // vez só) — assim não se perde o alerta se não viu na hora, e o Telegram segue chegando até
+    // voltar a dropar. lastNoDropAlertAt zera quando cai um drop (recordDropActivity).
+    if (stalledMs > noDropMs && (!AppState.lastNoDropAlertAt || now - AppState.lastNoDropAlertAt >= noDropMs)) {
+      AppState.lastNoDropAlertAt = now;
+      fireWatchdogAlert(`Sem nenhum drop há ${Math.round(stalledMs / 60000)} min — confere se o helper travou`, 'watchdog');
     }
   }
 
@@ -362,7 +369,7 @@ export function setWatchdogEnabled(checked) {
   // reseta o relógio pra agora, mesmo padrão de startLiveFilePolling() em file-source.js.
   if (checked) {
     AppState.lastAnyDropAt = null;
-    AppState.noDropAlertFired = false;
+    AppState.lastNoDropAlertAt = null;
     AppState.lastSeenByKeyword = {};
     AppState.staleKeywordAlerted = {};
   }
@@ -390,6 +397,12 @@ export function setTelegramDropRelayEnabled(checked) {
 
 export function setTelegramWishlistRelayEnabled(checked) {
   AppState.alertSettings.telegramWishlistRelayEnabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
+export function setTelegramWatchdogRelayEnabled(checked) {
+  AppState.alertSettings.telegramWatchdogRelayEnabled = checked;
   saveAlertSettings();
   renderPage();
 }

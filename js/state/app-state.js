@@ -82,6 +82,9 @@ export const DEFAULT_ALERT_SETTINGS = {
   // Avisa no Telegram quando alguém dropa um item da minha lista de desejos — funciona até com o
   // meu navegador fechado (quem dispara é o navegador de quem dropou). Opt-in, desligado.
   telegramWishlistRelayEnabled: false,
+  // Manda o alerta do watchdog (helper travado / item sumiu) pro Telegram — pra saber que travou
+  // mesmo longe do PC. Opt-in, desligado. Só com o DropList aberto (quem detecta é a aba).
+  telegramWatchdogRelayEnabled: false,
 };
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
@@ -142,7 +145,10 @@ export const AppState = {
   // Relógios do alerta de inatividade (watchdog) — resetados a cada (re)conexão do arquivo
   // ao vivo, ver startLiveFilePolling() em file-source.js.
   lastAnyDropAt: null,
-  noDropAlertFired: false,
+  // Quando o alerta de "sem nenhum drop" foi disparado pela última vez — null = não disparado
+  // nesse período de silêncio. Guarda o timestamp (não um booleano) pra dar pra repetir o aviso
+  // a cada X min enquanto o helper continuar travado, em vez de avisar uma vez só.
+  lastNoDropAlertAt: null,
   lastSeenByKeyword: {},
   staleKeywordAlerted: {},
   isAdmin: false,
