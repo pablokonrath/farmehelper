@@ -43,8 +43,11 @@ export async function enablePushNotifications() {
     const OneSignal = await loadOneSignal();
     // Associa esse navegador ao próprio user_id do DropList — o servidor manda notificação
     // citando esse mesmo ID (ver cron-check-events.php), sem precisar guardar nenhum
-    // player_id/subscription no nosso banco.
-    await OneSignal.login(String(AppState.currentUserId));
+    // player_id/subscription no nosso banco. Prefixo "droplist_" porque o OneSignal bloqueia
+    // external_id genérico demais (ex: "1", "0") pra evitar colisão acidental entre apps
+    // diferentes — sem o prefixo, usuários com ID baixo (tipo o primeiro cadastrado) tomavam
+    // "external_id is blocked, please use a different ID" e o push nunca ativava.
+    await OneSignal.login('droplist_' + AppState.currentUserId);
     await OneSignal.Notifications.requestPermission();
     // requestPermission() resolve mesmo quando o usuário nega — não lança erro nesse caso, então
     // sem checar o resultado real a gente marcava "ativado" mesmo sem permissão nenhuma concedida,

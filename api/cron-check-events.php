@@ -96,7 +96,9 @@ foreach ($matchingEvents as $event) {
 
   $pushExternalIds = [];
   foreach ($recipients as $r) {
-    if ($r['push_enabled']) $pushExternalIds[] = (string) $r['user_id'];
+    // Mesmo prefixo "droplist_" usado no login() do cliente (push.js) — o OneSignal bloqueia
+    // external_id genérico demais (ex: "1") pra evitar colisão entre apps diferentes.
+    if ($r['push_enabled']) $pushExternalIds[] = 'droplist_' . $r['user_id'];
     if ($r['telegram_chat_id']) send_telegram_message($r['telegram_chat_id'], "$title $body");
   }
   send_onesignal_push($pushExternalIds, $title, $body);
