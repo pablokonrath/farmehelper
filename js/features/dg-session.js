@@ -127,7 +127,9 @@ export function computeDgComparison() {
       alzPerHour: a.durationMs > 60000 ? a.totalAlz / (a.durationMs / 3600000) : null,
       alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
     }))
-    .sort((x, y) => (y.alzPerHour ?? -1) - (x.alzPerHour ?? -1));
+    // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide
+    // onde gastar as entradas é o rendimento por run (quem não tem runs informadas vai pro fim).
+    .sort((x, y) => (y.alzPerRun ?? -1) - (x.alzPerRun ?? -1));
 }
 
 // Contador vivo (1s) que reflete a sessão ativa no menu lateral e, se estiver na página Sessões,

@@ -27,6 +27,7 @@ function sessionItemsRow(s) {
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px">
       <span>Melhor drop: <strong style="color:var(--txt)">${s.bestItem ? `${s.bestItem.name} (${formatAlzGamer(s.bestItem.price)})` : '—'}</strong></span>
       <span>Alz por run: <strong style="color:var(--gold)">${alzPerRun != null ? formatAlzGamer(alzPerRun) : '—'}</strong></span>
+      <span>Alz por hora: <strong style="color:var(--txt)">${s.alzPerHour != null ? formatAlzGamer(s.alzPerHour) + '/h' : '—'}</strong></span>
     </div>
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
@@ -73,10 +74,10 @@ export function renderSessionsPage() {
   const comparisonCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Média de cada DG que você marcou, ordenado por Alz por hora — onde seu tempo de macro rende melhor.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer.</div>
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
-    : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo total</th><th>Alz total</th><th>Alz / hora</th><th>Alz / run</th></tr></thead><tbody>
+    : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo total</th><th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
       ${comparison.map((c, i) => `<tr>
         <td class="rank">${i + 1}</td>
         <td style="font-weight:500">${c.dungeonName}</td>
@@ -84,8 +85,8 @@ export function renderSessionsPage() {
         <td>${c.runs || '—'}</td>
         <td>${formatDuration(c.durationMs)}</td>
         <td style="color:${getAlzTierColor(c.totalAlz)}" title="${formatNumber(c.totalAlz)} Alz">${formatAlzGamer(c.totalAlz)}</td>
-        <td style="color:var(--gold);font-weight:700">${c.alzPerHour != null ? formatAlzGamer(c.alzPerHour) + '/h' : '—'}</td>
-        <td>${c.alzPerRun != null ? formatAlzGamer(c.alzPerRun) : '—'}</td>
+        <td style="color:var(--gold);font-weight:700">${c.alzPerRun != null ? formatAlzGamer(c.alzPerRun) : '<span style="color:var(--muted);font-weight:400">informe as runs</span>'}</td>
+        <td style="color:var(--muted)">${c.alzPerHour != null ? formatAlzGamer(c.alzPerHour) + '/h' : '—'}</td>
       </tr>`).join('')}
       </tbody></table>`}
 </div>`;
@@ -96,7 +97,7 @@ export function renderSessionsPage() {
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Informe as runs de cada sessão no campo, e clique na seta para ver todos os itens que caíram.</div>
   ${!history.length
     ? '<div class="empty">Nenhuma sessão de DG encerrada ainda.</div>'
-    : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / hora</th><th style="width:36px"></th></tr></thead><tbody>
+    : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th></tr></thead><tbody>
       ${history.map(s => {
         const expanded = !!AppState.expandedDgSessions[s.startAt];
         return `<tr>
@@ -107,7 +108,7 @@ export function renderSessionsPage() {
         <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
         <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
         <td style="color:${getAlzTierColor(s.totalAlz)};font-weight:600" title="${formatNumber(s.totalAlz)} Alz">${formatAlzGamer(s.totalAlz)}</td>
-        <td style="color:var(--gold)">${s.alzPerHour != null ? formatAlzGamer(s.alzPerHour) + '/h' : '—'}</td>
+        <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(s.totalAlz / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
         <td><button title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
       </tr>${expanded ? sessionItemsRow(s) : ''}`;
       }).join('')}
@@ -116,7 +117,7 @@ export function renderSessionsPage() {
 
   return `
 <div class="pg-title">Sessões de farme</div>
-<div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por hora e por run — pra decidir onde vale a pena gastar seu tempo de macro.</div>
+<div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
 ${comparisonCard}
 ${historyCard}`;
