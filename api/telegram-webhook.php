@@ -1,8 +1,8 @@
 <?php
 // Chamado PELO Telegram a cada mensagem enviada ao bot — sem sessão nenhuma (por isso não usa
 // auth.php), autenticado só pelo header secreto configurado no momento de registrar o webhook
-// (ver DEPLOY.md). Comandos: /start CODIGO (vincula a conta), /preco <busca> (consulta preço
-// pessoal), qualquer outra coisa cai na ajuda.
+// (ver DEPLOY.md). Comandos: /start CODIGO (vincula a conta), /drop <busca> (consulta
+// quantidade dropada), qualquer outra coisa cai na ajuda.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 
@@ -49,11 +49,11 @@ if (preg_match('/^\/start\s+(\S+)/i', $text, $m)) {
   $db->prepare('INSERT INTO alert_settings (user_id, telegram_chat_id) VALUES (:uid, :chatId)
     ON DUPLICATE KEY UPDATE telegram_chat_id = VALUES(telegram_chat_id)')
     ->execute(['uid' => $userId, 'chatId' => $chatId]);
-  send_telegram_message($chatId, '✅ Telegram vinculado! Você recebe avisos de TG/World Boss por aqui (se estiverem ativados em Alertas no DropList). Manda /preco <nome do item> pra consultar seus preços cadastrados.');
+  send_telegram_message($chatId, '✅ Telegram vinculado! Você recebe avisos de TG/World Boss por aqui (se estiverem ativados em Alertas no DropList). Manda /drop <nome do item> pra consultar quanto você já dropou.');
   json_response(['ok' => true]);
 }
 
-if (preg_match('/^\/preco\s+(.+)/i', $text, $m)) {
+if (preg_match('/^\/drop\s+(.+)/i', $text, $m)) {
   $query = trim($m[1]);
   $stmt = $db->prepare('SELECT user_id FROM alert_settings WHERE telegram_chat_id = :chatId');
   $stmt->execute(['chatId' => $chatId]);
@@ -63,8 +63,8 @@ if (preg_match('/^\/preco\s+(.+)/i', $text, $m)) {
     json_response(['ok' => true]);
   }
 
-  // Só o preço do PRÓPRIO usuário — preço é individual, nunca de outro jogador.
-  $stmt = $db->prepare('SELECT item_name, price FROM item_prices WHERE user_id = :uid');
+  // Só a contagem do PRÓPRIO usuário — cada jogador tem seu log de drops separado.
+  $stmt = $db->prepare('SELECT item_name, quantity FROM drop_counts WHERE user_id = :uid');
   $stmt->execute(['uid' => (int) $row['user_id']]);
   $normalizedQuery = normalize_for_search($query);
   $matches = [];
@@ -76,13 +76,13 @@ if (preg_match('/^\/preco\s+(.+)/i', $text, $m)) {
   }
 
   if (!$matches) {
-    send_telegram_message($chatId, 'Nenhum item encontrado com "' . $query . '" no seu cadastro.');
+    send_telegram_message($chatId, 'Nenhum item dropado encontrado com "' . $query . '".');
   } else {
-    $lines = array_map(fn($i) => $i['item_name'] . ': ' . number_format((float) $i['price'], 0, ',', '.') . ' Alz', $matches);
+    $lines = array_map(fn($i) => $i['item_name'] . ': ' . number_format((int) $i['quantity'], 0, ',', '.') . ' dropado(s)', $matches);
     send_telegram_message($chatId, implode("\n", $lines));
   }
   json_response(['ok' => true]);
 }
 
-send_telegram_message($chatId, "Comandos disponíveis:\n/preco <nome do item> — consulta o preço que você cadastrou\n/start <código> — vincula sua conta do DropList (gere o código em Alertas)");
+send_telegram_message($chatId, "Comandos disponíveis:\n/drop <nome do item> — consulta quanto você já dropou desse item\n/start <código> — vincula sua conta do DropList (gere o código em Alertas)");
 json_response(['ok' => true]);
