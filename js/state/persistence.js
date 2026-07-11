@@ -109,6 +109,8 @@ export async function loadPersistedState() {
   AppState.filterByTrackedKeywords = appSettings.filterByTrackedKeywords ?? false;
   AppState.rushCreditCraftCosts = { ...DEFAULT_CREDIT_CRAFT_COSTS, ...(appSettings.rushCreditCraftCosts || {}) };
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
+  AppState.dgSessions = appSettings.dgSessions ?? [];
+  AppState.activeDgSession = appSettings.activeDgSession ?? null;
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
@@ -143,6 +145,14 @@ export function saveRushCreditCraftCosts() {
 
 export function saveDailyGoal() {
   return put('app-settings.php', { dailyGoalAlz: AppState.dailyGoalAlz });
+}
+
+export function saveDgSessions() {
+  return put('app-settings.php', { dgSessions: AppState.dgSessions });
+}
+
+export function saveActiveDgSession() {
+  return put('app-settings.php', { activeDgSession: AppState.activeDgSession });
 }
 
 export function saveDungeonList() {

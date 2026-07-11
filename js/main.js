@@ -7,6 +7,7 @@ import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
+import { startDgSession, endDgSession, startDgSessionTicker } from './features/dg-session.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
@@ -190,6 +191,8 @@ Object.assign(window, {
   setTelegramWishlistRelayEnabled,
   setTelegramWatchdogRelayEnabled,
   setDailyGoal,
+  startDgSession,
+  endDgSession,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
@@ -210,6 +213,7 @@ if (!authenticated) {
   startPresenceHeartbeat();
   startEventScheduleChecks();
   startDropCounterTicker();
+  startDgSessionTicker();
 
   // Navegadores só liberam áudio depois de um gesto do usuário na página — destrava o
   // AudioContext do alerta sonoro no primeiro clique, em vez de esperar o primeiro alerta.

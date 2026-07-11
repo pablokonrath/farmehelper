@@ -110,7 +110,7 @@ function handleWorkerMessage(event) {
     processNewDropsForAlerts(parsedDrops);
     checkWishlistMatches(parsedDrops);
     checkFarmGoalReached();
-    if (AppState.currentPage === 'overview') renderPage();
+    if (AppState.currentPage === 'overview' || AppState.currentPage === 'sessoes') renderPage();
   }
 }
 

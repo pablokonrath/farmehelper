@@ -13,6 +13,7 @@ import { loadUsers } from './features/admin.js';
 import { loadAdminActionLog, loadIntegrityFlags } from './features/admin-log.js';
 import { loadWishlistMatches } from './features/wishlist.js';
 import { renderWishlistPage } from './pages/wishlist-page.js';
+import { renderSessionsPage } from './pages/sessions-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -44,6 +45,7 @@ export function renderPage() {
   else if (AppState.currentPage === 'admin') main.innerHTML = renderAdminPage();
   else if (AppState.currentPage === 'ranking') main.innerHTML = renderLeaderboardPage();
   else if (AppState.currentPage === 'wishlist') main.innerHTML = renderWishlistPage();
+  else if (AppState.currentPage === 'sessoes') main.innerHTML = renderSessionsPage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();
