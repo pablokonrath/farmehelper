@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { formatDateTimeBR, renderAlzValue } from '../utils/formatting.js';
+import { formatDateTimeBR } from '../utils/formatting.js';
 
 const FLAG_TYPE_BADGES = {
   drop_spike: '<span class="badge badge-warn">Pico de drops</span>',
@@ -231,12 +231,11 @@ ${AppState.isMasterAdmin ? `
 
 <div class="card">
   <div class="ctitle"><i class="ti ti-tags"></i>Atribuir categorias aos itens</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Escolhe a categoria de cada item com preço cadastrado (Cálculo de farme). Item sem categoria aparece como "Sem categoria" no Relatório.</div>
-  ${!Object.keys(AppState.itemPrices).length ? '<div class="empty" style="padding:14px 0">Nenhum item com preço cadastrado ainda.</div>' : `
-  <table><thead><tr><th>Item</th><th>Valor</th><th style="width:180px">Categoria</th></tr></thead><tbody>
-  ${Object.entries(AppState.itemPrices).sort(([a], [b]) => a.localeCompare(b)).map(([name, price]) => `<tr>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Escolhe a categoria de cada item já cadastrado por alguém da guild (nome é compartilhado, preço é individual de cada um — por isso não aparece valor aqui). Item sem categoria aparece como "Sem categoria" no Relatório.</div>
+  ${!AppState.knownItemNames.length ? '<div class="empty" style="padding:14px 0">Nenhum item cadastrado ainda.</div>' : `
+  <table><thead><tr><th>Item</th><th style="width:180px">Categoria</th></tr></thead><tbody>
+  ${[...AppState.knownItemNames].sort((a, b) => a.localeCompare(b)).map(name => `<tr>
     <td>${name}</td>
-    <td>${renderAlzValue(price)}</td>
     <td><select class="inp inp-sm" onchange="setItemCategoryAssignment('${name}', this.value)">
       <option value="">Sem categoria</option>
       ${AppState.itemCategories.map(cat => `<option value="${cat}"${AppState.itemCategoryAssignments[name] === cat ? ' selected' : ''}>${cat}</option>`).join('')}

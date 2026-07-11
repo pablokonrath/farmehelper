@@ -154,6 +154,7 @@ export const AppState = {
   isWishlistMatchesLoading: false,
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
+  knownItemNames: [],
 };
 
 export function resetTrackedKeywordsToDefault() {

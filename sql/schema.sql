@@ -2,9 +2,10 @@
 -- Se você já tem um banco em produção com dados (schema antigo, de usuário único), NÃO rode
 -- este arquivo nele — use sql/migrate_to_multiuser.sql, que preserva os dados existentes.
 --
--- item_prices e dungeons são compartilhados entre todo mundo (catálogo comum). As demais
--- tabelas são privadas por usuário (user_id), então cada conta só vê os próprios dados de
--- farme/rush/alertas.
+-- dungeons é compartilhado entre todo mundo (catálogo comum). As demais tabelas são privadas
+-- por usuário (user_id), então cada conta só vê os próprios dados de farme/rush/alertas —
+-- inclusive item_prices, onde só o NOME do item é conhecido entre todos (ver known_item_names
+-- em api/known-item-names.php), o preço em si é individual de cada um.
 
 -- is_master_admin nunca é setável pela API (só via SQL direto) — é quem pode excluir contas
 -- e editar login (usuário/senha) de qualquer conta, inclusive de outros admins.
@@ -26,9 +27,16 @@ CREATE TABLE IF NOT EXISTS guilds (
   name VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Preço é individual — cada jogador vende pelo valor que quiser, então mudar o preço de um
+-- não pode afetar o "Total de farme" de outra conta. O nome do item, esse sim, é visível pra
+-- todo mundo via known-item-names.php (SELECT DISTINCT cruzando todos os usuários), só pra
+-- facilitar autocompletar o nome certo sem reescrever do zero.
 CREATE TABLE IF NOT EXISTS item_prices (
-  item_name VARCHAR(255) NOT NULL PRIMARY KEY,
-  price BIGINT NOT NULL DEFAULT 0
+  user_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  price BIGINT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, item_name),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS dungeons (

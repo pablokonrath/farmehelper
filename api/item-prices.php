@@ -5,11 +5,13 @@ require_login();
 
 $db = get_db();
 $method = $_SERVER['REQUEST_METHOD'];
+$uid = current_user_id();
 
 if ($method === 'GET') {
-  $rows = $db->query('SELECT item_name, price FROM item_prices')->fetchAll();
+  $stmt = $db->prepare('SELECT item_name, price FROM item_prices WHERE user_id = :uid');
+  $stmt->execute(['uid' => $uid]);
   $result = [];
-  foreach ($rows as $row) $result[$row['item_name']] = (int) $row['price'];
+  foreach ($stmt->fetchAll() as $row) $result[$row['item_name']] = (int) $row['price'];
   // (object) garante {} no JSON quando vazio — ver comentário em item-category-assignments.php.
   json_response((object) $result);
 }
@@ -17,10 +19,10 @@ if ($method === 'GET') {
 if ($method === 'PUT') {
   $body = read_json_body();
   $db->beginTransaction();
-  $db->exec('DELETE FROM item_prices');
-  $stmt = $db->prepare('INSERT INTO item_prices (item_name, price) VALUES (:name, :price)');
+  $db->prepare('DELETE FROM item_prices WHERE user_id = :uid')->execute(['uid' => $uid]);
+  $stmt = $db->prepare('INSERT INTO item_prices (user_id, item_name, price) VALUES (:uid, :name, :price)');
   foreach ($body as $name => $price) {
-    $stmt->execute(['name' => $name, 'price' => (int) $price]);
+    $stmt->execute(['uid' => $uid, 'name' => $name, 'price' => (int) $price]);
   }
   $db->commit();
   json_response(['ok' => true]);

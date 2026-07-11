@@ -15,15 +15,19 @@ export function toggleFilterByKeywords(checked) {
 export function renderPricingPage() {
   const allItems = summarizeDropsByItem(getAllDrops());
   const itemsWithoutPrice = allItems.filter(i => !i.price);
+  // Sugestão combina os itens que o próprio usuário já dropou com o catálogo de nomes
+  // conhecidos da guild inteira (known-item-names.php) — dá pra autocompletar o nome certo de
+  // um item que outro jogador já cadastrou, mesmo sem nunca ter dropado ele ainda.
+  const suggestionNames = [...new Set([...allItems.map(i => i.name), ...AppState.knownItemNames])].slice(0, 60);
 
   return `
 <div class="pg-title">Cálculo de farme</div>
-<div class="pg-sub">Cadastre o valor unitário dos itens em Alz. Os preços ficam salvos no navegador e são usados para calcular o valor total do seu farme.</div>
+<div class="pg-sub">Cadastre o valor unitário dos itens em Alz — usado pra calcular o valor total do seu farme. O nome do item é compartilhado com a guild (facilita achar o nome certo), mas o preço é só seu: cada um vende pelo valor que quiser.</div>
 <div class="card"><div class="ctitle"><i class="ti ti-plus"></i>Adicionar / atualizar item</div>
 <div class="row" style="margin-bottom:10px">
   <div style="flex:1"><label class="lbl">Nome do item</label>
     <input class="inp" id="cN" placeholder="ex: Nucleo de Aprimoramento" list="sugg">
-    <datalist id="sugg">${allItems.slice(0, 40).map(i => `<option value="${i.name}">`).join('')}</datalist></div>
+    <datalist id="sugg">${suggestionNames.map(name => `<option value="${name}">`).join('')}</datalist></div>
   <div style="width:165px"><label class="lbl">Valor (Alz)</label><input class="inp" id="cP" type="text" inputmode="numeric" placeholder="0" oninput="maskAlzInputLive(this)"></div>
   <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addItemPrice()"><i class="ti ti-plus"></i>Salvar</button></div>
 </div>

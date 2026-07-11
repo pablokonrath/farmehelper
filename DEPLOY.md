@@ -317,6 +317,28 @@ planos já vem alto o suficiente pra 2MB, mas vale checar no painel se der erro.
 Instalação nova do zero: banco já vem no `sql/schema.sql`, mas a pasta `uploads/sounds/`
 precisa ser criada manualmente do mesmo jeito.
 
+## Preço de item vira individual por jogador
+
+Se seu banco já rodou `sql/migrate_event_alerts.sql`, rode agora
+`sql/migrate_personal_item_prices.sql` no phpMyAdmin (aba SQL). Antes, um item tinha **um só
+preço compartilhado** — se qualquer jogador mudasse o preço de "Joia Rara", o "Total de farme"
+de todo mundo que tinha esse item mudava junto, o que não fazia sentido (cada um vende pelo
+valor que quiser). Agora:
+
+- **Preço é individual** — cada conta tem o próprio valor por item.
+- **Nome do item continua compartilhado** — o autocompletar em Cálculo de farme sugere nomes
+  que qualquer jogador da guild já cadastrou (só o nome, nunca o preço de ninguém), e o card
+  "Atribuir categorias" em Admin também enxerga o catálogo completo, não só os itens do admin
+  logado.
+- **Migração**: cada conta que já existia herda uma **cópia** do preço que já estava
+  cadastrado pra cada item — ninguém perde o que já tava calculado, e cada um pode editar pro
+  próprio valor depois. A tabela antiga fica guardada como `item_prices_shared_backup`; depois
+  de conferir que os valores migraram certo, dá pra rodar `DROP TABLE
+  item_prices_shared_backup;` pra limpar.
+
+Instalação nova do zero já vem com a estrutura final no `sql/schema.sql` — sem preço legado
+pra herdar, ninguém precisa fazer nada extra.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

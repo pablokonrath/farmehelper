@@ -62,13 +62,14 @@ function applyStateFromPayload(payload) {
 }
 
 async function loadGlobalOnlyState() {
-  const [rankingItems, itemCategories, itemCategoryAssignments, guilds, eventSchedule, alertSounds] = await Promise.all([
+  const [rankingItems, itemCategories, itemCategoryAssignments, guilds, eventSchedule, alertSounds, knownItemNames] = await Promise.all([
     get('ranking-items.php'),
     get('item-categories.php'),
     get('item-category-assignments.php'),
     get('guilds.php'),
     get('event-schedule.php'),
     get('alert-sounds.php'),
+    get('known-item-names.php'),
   ]);
   AppState.rankingItems = rankingItems;
   AppState.itemCategories = itemCategories;
@@ -76,6 +77,7 @@ async function loadGlobalOnlyState() {
   AppState.guilds = guilds;
   AppState.eventSchedule = eventSchedule;
   AppState.alertSounds = alertSounds;
+  AppState.knownItemNames = knownItemNames;
 }
 
 export async function loadPersistedState() {
