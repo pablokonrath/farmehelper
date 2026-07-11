@@ -1,8 +1,8 @@
 <?php
 // Chamado PELO Telegram a cada mensagem enviada ao bot — sem sessão nenhuma (por isso não usa
 // auth.php), autenticado só pelo header secreto configurado no momento de registrar o webhook
-// (ver DEPLOY.md). Comandos: /start CODIGO (vincula a conta), /drop <busca> (consulta
-// quantidade dropada), qualquer outra coisa cai na ajuda.
+// (ver DEPLOY.md). Comandos: /start CODIGO (vincula a conta), /drop (lista o que caiu hoje),
+// /drop <busca> (consulta total acumulado de um item), qualquer outra coisa cai na ajuda.
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/helpers.php';
 
@@ -53,8 +53,8 @@ if (preg_match('/^\/start\s+(\S+)/i', $text, $m)) {
   json_response(['ok' => true]);
 }
 
-if (preg_match('/^\/drop\s+(.+)/i', $text, $m)) {
-  $query = trim($m[1]);
+if (preg_match('/^\/drop(?:\s+(.+))?$/i', $text, $m)) {
+  $query = trim($m[1] ?? '');
   $stmt = $db->prepare('SELECT user_id FROM alert_settings WHERE telegram_chat_id = :chatId');
   $stmt->execute(['chatId' => $chatId]);
   $row = $stmt->fetch();
@@ -62,10 +62,27 @@ if (preg_match('/^\/drop\s+(.+)/i', $text, $m)) {
     send_telegram_message($chatId, 'Sua conta do DropList ainda não está vinculada. Gere um código em Alertas e manda /start CODIGO.');
     json_response(['ok' => true]);
   }
+  $uid = (int) $row['user_id'];
 
-  // Só a contagem do PRÓPRIO usuário — cada jogador tem seu log de drops separado.
+  if ($query === '') {
+    // /drop sem argumento nenhum: lista tudo que caiu HOJE, sem precisar digitar nome nenhum —
+    // mesma tabela por-dia (drop_counts_daily) que alimenta o Ranking Semanal/Quinzenal/Mensal.
+    $today = (new DateTime('now', new DateTimeZone('America/Sao_Paulo')))->format('Y-m-d');
+    $stmt = $db->prepare('SELECT item_name, quantity FROM drop_counts_daily WHERE user_id = :uid AND drop_date = :today ORDER BY quantity DESC');
+    $stmt->execute(['uid' => $uid, 'today' => $today]);
+    $items = $stmt->fetchAll();
+    if (!$items) {
+      send_telegram_message($chatId, 'Nenhum drop registrado hoje ainda.');
+    } else {
+      $lines = array_map(fn($i) => $i['item_name'] . ': ' . number_format((int) $i['quantity'], 0, ',', '.'), $items);
+      send_telegram_message($chatId, "Drops de hoje:\n" . implode("\n", $lines));
+    }
+    json_response(['ok' => true]);
+  }
+
+  // /drop <nome>: busca pelo total acumulado (all-time), igual antes.
   $stmt = $db->prepare('SELECT item_name, quantity FROM drop_counts WHERE user_id = :uid');
-  $stmt->execute(['uid' => (int) $row['user_id']]);
+  $stmt->execute(['uid' => $uid]);
   $normalizedQuery = normalize_for_search($query);
   $matches = [];
   foreach ($stmt->fetchAll() as $item) {
@@ -84,5 +101,5 @@ if (preg_match('/^\/drop\s+(.+)/i', $text, $m)) {
   json_response(['ok' => true]);
 }
 
-send_telegram_message($chatId, "Comandos disponíveis:\n/drop <nome do item> — consulta quanto você já dropou desse item\n/start <código> — vincula sua conta do DropList (gere o código em Alertas)");
+send_telegram_message($chatId, "Comandos disponíveis:\n/drop — lista tudo que você dropou hoje\n/drop <nome do item> — consulta o total já dropado desse item\n/start <código> — vincula sua conta do DropList (gere o código em Alertas)");
 json_response(['ok' => true]);

@@ -22,6 +22,9 @@ $stmt->execute(['time' => $currentTime]);
 $matchingEvents = $stmt->fetchAll();
 if (!$matchingEvents) exit(0);
 
+// error_log() manda pro log de erros do PHP (visível no "Ver resultado" do Cron Job na
+// Hostinger, ou no log de erros do hPanel) — sem isso, uma falha de credencial/permissão na
+// API do Telegram/OneSignal passava em silêncio total, sem deixar rastro nenhum pra debugar.
 function send_telegram_message(int|string $chatId, string $text): void {
   if (!TELEGRAM_BOT_TOKEN) return;
   $ch = curl_init('https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage');
@@ -32,8 +35,13 @@ function send_telegram_message(int|string $chatId, string $text): void {
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 10,
   ]);
-  curl_exec($ch);
+  $response = curl_exec($ch);
+  $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($ch);
   curl_close($ch);
+  if ($curlError || $status < 200 || $status >= 300) {
+    error_log("cron-check-events: falha ao mandar Telegram pro chat $chatId (HTTP $status): " . ($curlError ?: $response));
+  }
 }
 
 function send_onesignal_push(array $externalIds, string $title, string $body): void {
@@ -55,8 +63,13 @@ function send_onesignal_push(array $externalIds, string $title, string $body): v
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_TIMEOUT => 10,
   ]);
-  curl_exec($ch);
+  $response = curl_exec($ch);
+  $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+  $curlError = curl_error($ch);
   curl_close($ch);
+  if ($curlError || $status < 200 || $status >= 300) {
+    error_log('cron-check-events: falha ao mandar push OneSignal pra ' . implode(',', $externalIds) . " (HTTP $status): " . ($curlError ?: $response));
+  }
 }
 
 foreach ($matchingEvents as $event) {

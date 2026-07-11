@@ -46,12 +46,21 @@ export async function enablePushNotifications() {
     // player_id/subscription no nosso banco.
     await OneSignal.login(String(AppState.currentUserId));
     await OneSignal.Notifications.requestPermission();
+    // requestPermission() resolve mesmo quando o usuário nega — não lança erro nesse caso, então
+    // sem checar o resultado real a gente marcava "ativado" mesmo sem permissão nenhuma concedida,
+    // e a notificação nunca chegava (o toggle parecia ligado mas nunca funcionava de verdade).
+    if (Notification.permission !== 'granted') {
+      throw new Error('Permissão de notificação não foi concedida pelo navegador. Verifique nas configurações do site se notificações estão permitidas.');
+    }
     AppState.alertSettings.pushEnabled = true;
     await saveAlertSettings();
     renderPage();
   } catch (err) {
     console.error('Falha ao ativar notificação push:', err);
     alert('Não foi possível ativar a notificação push: ' + err.message);
+    // Sem isso, o checkbox ficava marcado na tela (o clique já mexeu no DOM) mesmo o
+    // AppState/servidor nunca tendo salvo pushEnabled — re-renderiza pra refletir o estado real.
+    renderPage();
   }
 }
 

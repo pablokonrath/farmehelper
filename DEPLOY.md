@@ -355,7 +355,7 @@ Instalação nova do zero não precisa desse script — já vem tudo no `sql/sch
 Até aqui, o aviso de TG/World Boss só chega se o navegador estiver aberto (mesmo em segundo
 plano). Essa seção adiciona dois canais que chegam com o **navegador fechado**: notificação
 push do próprio navegador (via serviço gratuito OneSignal) e mensagem no Telegram — além de um
-comando `/drop <nome>` no bot pra consultar quanto já dropou de um item.
+comando `/drop` no bot pra consultar quanto já dropou hoje (ou `/drop <nome>` pra ver o total acumulado de um item específico).
 
 Se seu banco já rodou `sql/migrate_event_notification_toggle.sql`, rode agora
 `sql/migrate_push_telegram.sql` no phpMyAdmin (aba SQL) — adiciona `push_enabled` e
@@ -425,7 +425,8 @@ recebida pelo bot direto pro `telegram-webhook.php` do site.
   permissão de notificação.
 - **Telegram**: clica em "Gerar código de vínculo", abre o link `t.me/...` que aparece (ou
   manda `/start CODIGO` pro bot manualmente), o bot confirma o vínculo. De lá em diante também
-  responde `/drop <nome do item>` com a quantidade que esse jogador já dropou.
+  responde `/drop` (sem nada depois) com a lista de tudo que esse jogador dropou hoje, ou
+  `/drop <nome do item>` com o total acumulado de um item específico.
 
 Se as 5 constantes ficarem em branco no `config.php`, o resto do site funciona normalmente —
 só esses dois canais ficam indisponíveis (o botão de gerar código do Telegram avisa que ainda
