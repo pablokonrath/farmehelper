@@ -1,14 +1,25 @@
 <?php
-// Rodado via Cron Job da Hostinger a cada 1 minuto, como comando CLI (não é uma URL pública —
-// ver DEPLOY.md). É a única peça que faz TG/World Boss chegar com o navegador do jogador
-// fechado: o resto do app (checkEventSchedule em event-schedule.js) só roda dentro de uma aba
-// aberta, então sozinho não dá conta disso.
-if (php_sapi_name() !== 'cli') {
-  http_response_code(403);
-  exit;
-}
+// Dispara os avisos de TG/World Boss (push + Telegram) pra quem está com o navegador fechado —
+// é a única peça que faz isso, já que o checkEventSchedule (event-schedule.js) só roda com uma
+// aba aberta. Pode ser acionado de dois jeitos (ver DEPLOY.md):
+//   1. via CLI — Cron Job da Hostinger (`php .../cron-check-events.php`);
+//   2. via HTTP com ?token=SEGREDO — pra usar um cron externo (ex: cron-job.org) quando o cron
+//      da Hostinger não funciona, ou só pra testar abrindo a URL no navegador.
+require_once __DIR__ . '/db.php'; // carrega config.php junto (as constantes)
 
-require_once __DIR__ . '/db.php';
+if (php_sapi_name() !== 'cli') {
+  // Não tem sessão de login aqui (quem chama é um cron, não um usuário) — a autorização é o
+  // token secreto na URL. Reaproveita o TELEGRAM_WEBHOOK_SECRET se não houver um dedicado, pra
+  // não exigir mais uma constante nova no config.php do servidor.
+  $expectedToken = (defined('CRON_HTTP_SECRET') && CRON_HTTP_SECRET)
+    ? CRON_HTTP_SECRET
+    : (defined('TELEGRAM_WEBHOOK_SECRET') ? TELEGRAM_WEBHOOK_SECRET : '');
+  if (!$expectedToken || !hash_equals($expectedToken, $_GET['token'] ?? '')) {
+    http_response_code(403);
+    exit;
+  }
+  header('Content-Type: text/plain; charset=utf-8');
+}
 
 // O "Ver resultado" da Hostinger não mostrou nenhum echo mesmo em execuções bem-sucedidas —
 // provavelmente só captura stderr/erro fatal, não stdout normal. Grava num arquivo próprio

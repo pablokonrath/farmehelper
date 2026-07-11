@@ -20,3 +20,8 @@ define('ONESIGNAL_REST_API_KEY', '');     // secreto, só backend
 define('TELEGRAM_BOT_TOKEN', '');         // secreto
 define('TELEGRAM_BOT_USERNAME', '');      // público, pro link t.me/...
 define('TELEGRAM_WEBHOOK_SECRET', '');    // secreto, valida que a chamada veio do Telegram
+
+// Token pra acionar o cron-check-events.php via HTTP (cron externo tipo cron-job.org, quando o
+// Cron Job da Hostinger não funciona — ver DEPLOY.md). Se deixar em branco, ele reaproveita o
+// TELEGRAM_WEBHOOK_SECRET automaticamente, então normalmente não precisa preencher.
+define('CRON_HTTP_SECRET', '');           // secreto

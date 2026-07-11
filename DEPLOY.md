@@ -363,18 +363,34 @@ Se seu banco já rodou `sql/migrate_event_notification_toggle.sql`, rode agora
 `event_schedule_deliveries`. Instalação nova do zero não precisa desse script — já vem tudo no
 `sql/schema.sql`.
 
-**1. Criar a peça central: o Cron Job.** Sem isso, nada deste recurso funciona com o navegador
-fechado — é o servidor, sozinho, que verifica a cada minuto se algum horário de TG/World Boss
-bateu e dispara. No hPanel da Hostinger: **Avançado → Cron Jobs** → criar um novo, frequência
-**a cada 1 minuto**, comando (não URL):
+**1. Criar a peça central: algo que rode o `cron-check-events.php` a cada minuto.** Sem isso,
+nada deste recurso funciona com o navegador fechado — é o servidor, sozinho, que verifica a
+cada minuto se algum horário de TG/World Boss bateu e dispara. O script aceita ser acionado de
+dois jeitos, use o que funcionar na sua hospedagem:
+
+**Opção A — Cron Job da Hostinger (CLI).** No hPanel: **Avançado → Cron Jobs** → criar um novo,
+frequência **a cada 1 minuto**. Selecione o modo **"Personalizado"** (o modo "PHP" da Hostinger
+em algumas contas não prefixa o interpretador direito e dá `Permission denied`) e cole o
+comando completo, ajustando o caminho pro real da sua conta (aparece no próprio painel ou no
+Gerenciador de Arquivos):
 
 ```
-php /home/SEU_USUARIO/public_html/api/cron-check-events.php
+/usr/bin/php /home/SEU_USUARIO/public_html/SUA_PASTA/api/cron-check-events.php
 ```
 
-Ajuste o caminho pro caminho real da sua conta (aparece no próprio painel de Cron Jobs da
-Hostinger, ou no Gerenciador de Arquivos). Esse script só aceita execução via linha de comando
-— chamar a URL dele direto no navegador retorna erro 403 de propósito.
+**Opção B — Cron externo por HTTP (se o Cron Job da Hostinger não executar).** Em alguns planos
+o cron da Hostinger simplesmente não roda (nem um script de teste mínimo). Nesse caso, use um
+serviço gratuito de cron externo (ex: **cron-job.org**) apontando pra esta URL, a cada 1
+minuto:
+
+```
+https://SEU_DOMINIO/api/cron-check-events.php?token=SEU_TELEGRAM_WEBHOOK_SECRET
+```
+
+O `token` é o mesmo valor do `TELEGRAM_WEBHOOK_SECRET` do `config.php` (ou o `CRON_HTTP_SECRET`,
+se você preencheu um dedicado). Sem token válido a URL retorna 403 — não é acionável por
+qualquer um. **Bônus:** abrir essa mesma URL no navegador roda o script na hora e mostra o
+diagnóstico (horário calculado, destinatários, envios) — ótimo pra testar sem esperar o cron.
 
 **2. Criar conta grátis no OneSignal (push do navegador).**
 
