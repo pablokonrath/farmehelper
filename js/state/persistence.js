@@ -111,6 +111,7 @@ export async function loadPersistedState() {
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
   AppState.dgSessions = appSettings.dgSessions ?? [];
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
+  AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
@@ -153,6 +154,10 @@ export function saveDgSessions() {
 
 export function saveActiveDgSession() {
   return put('app-settings.php', { activeDgSession: AppState.activeDgSession });
+}
+
+export function saveResetConfig() {
+  return put('app-settings.php', { resetConfig: AppState.resetConfig });
 }
 
 export function saveDungeonList() {

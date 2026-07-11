@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth } from '../features/dg-session.js';
 import { getItemPrice } from '../features/drops.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 
@@ -115,10 +115,40 @@ export function renderSessionsPage() {
       </tbody></table>`}
 </div>`;
 
+  const rc = AppState.resetConfig;
+  const reset = computeResetWorth();
+  const resetCard = `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-refresh"></i>Vale a pena resetar?</div></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Resetar o limite do DG custa gemas. Só compensa se o líquido por run (Alz do drop menos o custo de entrada) superar o custo do reset rateado por run.</div>
+  <div class="g4" style="margin-bottom:14px">
+    <div><label class="lbl">Valor da gema (Alz)</label><input class="inp" type="text" inputmode="numeric" placeholder="ex: 60.000" value="${rc.gemValueAlz ? formatNumber(rc.gemValueAlz) : ''}" oninput="maskAlzInputLive(this)" onchange="setResetConfig('gemValueAlz', this.value)"></div>
+    <div><label class="lbl">Valor do ticket (Alz)</label><input class="inp" type="text" inputmode="numeric" placeholder="opcional" value="${rc.ticketValueAlz ? formatNumber(rc.ticketValueAlz) : ''}" oninput="maskAlzInputLive(this)" onchange="setResetConfig('ticketValueAlz', this.value)"></div>
+    <div><label class="lbl">Custo do reset (gemas)</label><input class="inp" type="number" min="0" value="${rc.resetCostGems}" onchange="setResetConfig('resetCostGems', this.value)"></div>
+    <div><label class="lbl">Runs por reset</label><input class="inp" type="number" min="1" value="${rc.runsPerReset}" onchange="setResetConfig('runsPerReset', this.value)"></div>
+  </div>
+  ${!reset.gemValueSet
+    ? '<div class="empty">Informe o valor da gema (em Alz) para calcular — o reset é pago em gemas.</div>'
+    : `<div style="font-size:13px;margin-bottom:12px">Cada run extra via reset custa <strong style="color:var(--err)">${formatAlzGamer(reset.resetCostPerRun)}</strong>. Um DG só vale resetar se o líquido por run passar disso.</div>
+    ${!reset.rows.length
+      ? '<div class="empty">Nenhum DG com runs informadas ainda — preencha as runs no histórico acima.</div>'
+      : `<table><thead><tr><th>DG</th><th>Alz / run</th><th>Custo de entrada / run</th><th>Líquido / run</th><th>Após reset</th><th>Veredito</th></tr></thead><tbody>
+        ${reset.rows.map(r => `<tr>
+          <td style="font-weight:500">${r.dungeonName}</td>
+          <td>${formatAlzGamer(r.alzPerRun)}</td>
+          <td style="color:var(--muted)">${formatAlzGamer(r.entryCostPerRun)}</td>
+          <td style="color:${r.netAlzPerRun >= 0 ? 'var(--txt)' : 'var(--err)'}">${formatAlzGamer(r.netAlzPerRun)}</td>
+          <td style="color:${r.profitAfterReset >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600">${r.profitAfterReset >= 0 ? '+' : ''}${formatAlzGamer(r.profitAfterReset)}</td>
+          <td>${r.worth ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Vale resetar</span>' : '<span class="badge" style="background:var(--err-bg);color:var(--err)"><i class="ti ti-x"></i> Não compensa</span>'}</td>
+        </tr>`).join('')}
+        </tbody></table>`}`}
+</div>`;
+
   return `
 <div class="pg-title">Sessões de farme</div>
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
 ${comparisonCard}
+${resetCard}
 ${historyCard}`;
 }

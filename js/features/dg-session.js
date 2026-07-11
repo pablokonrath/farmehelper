@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem } from './drops.js';
-import { saveDgSessions, saveActiveDgSession } from '../state/persistence.js';
+import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
@@ -130,6 +130,47 @@ export function computeDgComparison() {
     // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide
     // onde gastar as entradas é o rendimento por run (quem não tem runs informadas vai pro fim).
     .sort((x, y) => (y.alzPerRun ?? -1) - (x.alzPerRun ?? -1));
+}
+
+// Parâmetros do "vale a pena resetar?" — todos inteiros não-negativos (valores em Alz ou gemas
+// vêm de inputs mascarados; runs por reset no mínimo 1).
+export function setResetConfig(field, value) {
+  const n = Math.max(0, parseInt(String(value).replace(/\D/g, ''), 10) || 0);
+  AppState.resetConfig[field] = field === 'runsPerReset' ? Math.max(1, n) : n;
+  saveResetConfig();
+  renderPage();
+}
+
+// Pra cada DG com Alz/run medido: desconta o custo de entrada da run (Alz + tickets + gemas, pelos
+// valores informados) e o custo do reset rateado por run. Se sobrar lucro, vale resetar.
+export function computeResetWorth() {
+  const cfg = AppState.resetConfig;
+  const gemValue = cfg.gemValueAlz || 0;
+  const ticketValue = cfg.ticketValueAlz || 0;
+  const runsPerReset = Math.max(1, cfg.runsPerReset || 1);
+  const resetCostPerRun = ((cfg.resetCostGems || 0) * gemValue) / runsPerReset;
+
+  const rows = computeDgComparison()
+    .filter(c => c.alzPerRun != null)
+    .map(c => {
+      const dg = AppState.dungeonList.find(d => d.id === c.dungeonId);
+      const entryCostPerRun = dg
+        ? (dg.alzCost || 0) + (dg.ticketsPerRun || 0) * ticketValue + (dg.gemsPerRun || 0) * gemValue
+        : 0;
+      const netAlzPerRun = c.alzPerRun - entryCostPerRun;
+      const profitAfterReset = netAlzPerRun - resetCostPerRun;
+      return {
+        dungeonName: c.dungeonName,
+        alzPerRun: c.alzPerRun,
+        entryCostPerRun,
+        netAlzPerRun,
+        profitAfterReset,
+        worth: profitAfterReset > 0,
+      };
+    })
+    .sort((a, b) => b.profitAfterReset - a.profitAfterReset);
+
+  return { resetCostPerRun, rows, gemValueSet: gemValue > 0 };
 }
 
 // Contador vivo (1s) que reflete a sessão ativa no menu lateral e, se estiver na página Sessões,
