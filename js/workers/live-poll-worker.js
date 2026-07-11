@@ -53,8 +53,15 @@ async function pollOnce() {
     if (latestFile.size === lastReadFileSize) return;
 
     const chunkText = pendingLineBuffer + LOG_FILE_DECODER.decode(await latestFile.slice(lastReadFileSize).arrayBuffer());
+    // split('\n') sempre deixa a última linha "pendurada" se o pedaço lido termina exatamente
+    // numa quebra de linha (ex: "a\nb\n".split('\n') = ["a","b",""], o "" no fim não é uma
+    // linha incompleta de verdade). Sem essa checagem, o ÚLTIMO drop escrito no arquivo antes
+    // do jogador parar de farmar (sem nenhuma linha depois pra "empurrá-lo" pra fora do
+    // buffer) nunca era processado — ficava preso aqui pro resto da sessão, sem alerta nenhum.
+    const chunkEndsWithNewline = chunkText.endsWith('\n');
     const lines = chunkText.split('\n');
-    pendingLineBuffer = lines.pop();
+    pendingLineBuffer = chunkEndsWithNewline ? '' : lines.pop();
+    if (chunkEndsWithNewline) lines.pop(); // remove a "" vazia depois do último \n
     lastReadFileSize = latestFile.size;
     lastPrefixHash = await sha256Hex(await latestFile.slice(0, lastReadFileSize).arrayBuffer());
 
