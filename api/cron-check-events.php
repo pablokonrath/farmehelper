@@ -19,6 +19,10 @@ if (php_sapi_name() !== 'cli') {
     exit;
   }
   header('Content-Type: text/plain; charset=utf-8');
+  // Só depois de validar o token (nunca pra anônimo): mostra erro de runtime direto na tela em
+  // vez de um 500 genérico, pra facilitar o diagnóstico via navegador. Pode remover depois.
+  ini_set('display_errors', '1');
+  error_reporting(E_ALL);
 }
 
 // O "Ver resultado" da Hostinger não mostrou nenhum echo mesmo em execuções bem-sucedidas —
@@ -46,7 +50,9 @@ cron_log("horário calculado (America/Sao_Paulo) = $currentTime, " . count($matc
 
 if (!$matchingEvents) exit(0);
 
-function send_telegram_message(int|string $chatId, string $text): void {
+// $chatId sem type hint de propósito: um "int|string" (union type) exige PHP 8.0+ e derrubava
+// o script inteiro com parse error em servidor PHP 7.x — o resto do código roda em 7.4.
+function send_telegram_message($chatId, string $text): void {
   if (!TELEGRAM_BOT_TOKEN) return;
   $ch = curl_init('https://api.telegram.org/bot' . TELEGRAM_BOT_TOKEN . '/sendMessage');
   curl_setopt_array($ch, [
