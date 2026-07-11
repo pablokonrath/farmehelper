@@ -20,6 +20,12 @@ $db = get_db();
 $stmt = $db->prepare('SELECT id, event_type FROM event_schedule WHERE TIME_FORMAT(time_of_day, "%H:%i") = :time');
 $stmt->execute(['time' => $currentTime]);
 $matchingEvents = $stmt->fetchAll();
+
+// Sempre imprime, mesmo sem match — a Hostinger só guarda o resultado da execução mais recente
+// no "Ver resultado", então sem isso não dava pra saber se um horário específico realmente
+// rodou (só via erro, que não acontece quando simplesmente não bate horário nenhum).
+echo "cron-check-events: horário calculado (America/Sao_Paulo) = $currentTime, " . count($matchingEvents) . " evento(s) batendo.\n";
+
 if (!$matchingEvents) exit(0);
 
 // error_log() manda pro log de erros do PHP (visível no "Ver resultado" do Cron Job na
@@ -89,6 +95,7 @@ foreach ($matchingEvents as $event) {
   $stmt = $db->prepare("SELECT user_id, push_enabled, telegram_chat_id FROM alert_settings WHERE $prefColumn = 1 AND (push_enabled = 1 OR telegram_chat_id IS NOT NULL)");
   $stmt->execute();
   $recipients = $stmt->fetchAll();
+  echo "cron-check-events: evento '$eventType' (id $eventId) -> " . count($recipients) . " destinatário(s) elegível(is).\n";
 
   $label = $eventType === 'tg' ? 'TG' : 'World Boss';
   $title = "$label às $currentTime!";
