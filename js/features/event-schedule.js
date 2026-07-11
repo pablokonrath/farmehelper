@@ -61,12 +61,17 @@ export async function removeEventTime(id) {
   }
 }
 
+// Preferência pessoal (ver alerts-page.js) — o horário em si é global/admin, mas cada
+// jogador decide se quer ou não receber o pop-up/som de cada tipo.
+const NOTIFICATION_PREF_KEY = { tg: 'tgNotificationsEnabled', worldboss: 'worldbossNotificationsEnabled' };
+
 export function checkEventSchedule() {
   const now = new Date();
   const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   const today = now.toISOString().slice(0, 10);
 
   ['tg', 'worldboss'].forEach(eventType => {
+    if (!AppState.alertSettings[NOTIFICATION_PREF_KEY[eventType]]) return;
     (AppState.eventSchedule[eventType] || []).forEach(entry => {
       if (entry.time !== currentTime) return;
       const key = `${today}|${eventType}|${entry.time}`;

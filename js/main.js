@@ -58,6 +58,8 @@ import {
   setNoDropThresholdMinutes,
   setItemSilenceThresholdMinutes,
   setWatchdogEnabled,
+  setTgNotificationsEnabled,
+  setWorldbossNotificationsEnabled,
 } from './features/alerts.js';
 import {
   addDungeonToCart,
@@ -119,6 +121,8 @@ Object.assign(window, {
   setNoDropThresholdMinutes,
   setItemSilenceThresholdMinutes,
   setWatchdogEnabled,
+  setTgNotificationsEnabled,
+  setWorldbossNotificationsEnabled,
   setRushCartDate,
   setRushTicketPrice,
   setRushCardCashPrice,

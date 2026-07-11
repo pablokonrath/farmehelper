@@ -366,6 +366,18 @@ export function setWatchdogEnabled(checked) {
   renderPage();
 }
 
+export function setTgNotificationsEnabled(checked) {
+  AppState.alertSettings.tgNotificationsEnabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
+export function setWorldbossNotificationsEnabled(checked) {
+  AppState.alertSettings.worldbossNotificationsEnabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
 export function setAlertSoundEnabled(checked) {
   AppState.alertSettings.soundEnabled = checked;
   saveAlertSettings();

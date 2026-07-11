@@ -53,6 +53,14 @@ ${permission === 'unsupported'
     <div style="grid-column:span 2"><label class="lbl">Alertar sem dropar um item rastreado por (minutos)</label><input class="inp" type="number" min="1" value="${settings.itemSilenceThresholdMinutes}" onchange="setItemSilenceThresholdMinutes(this.value)">
     <div class="hint">Item específico (ex: joia) pode legitimamente demorar mais — use um limite mais alto que o de cima.</div></div>
   </div>
+  <div class="sh" style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;padding-bottom:10px">
+    <div><div style="font-weight:600;font-size:13px">Notificação de TG</div><div style="font-size:11px;color:var(--muted)">Horário é cadastrado pelo admin — aqui você só liga/desliga se quer receber.</div></div>
+    <label class="tgl"><input type="checkbox" ${settings.tgNotificationsEnabled ? 'checked' : ''} onchange="setTgNotificationsEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+  </div>
+  <div class="sh" style="padding:10px 0">
+    <div><div style="font-weight:600;font-size:13px">Notificação de World Boss</div><div style="font-size:11px;color:var(--muted)">Mesma coisa, só pro World Boss.</div></div>
+    <label class="tgl"><input type="checkbox" ${settings.worldbossNotificationsEnabled ? 'checked' : ''} onchange="setWorldbossNotificationsEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+  </div>
   <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <button class="btn btn-d" onclick="testNotification()"><i class="ti ti-player-play"></i>Testar notificação</button>
     <span style="font-size:12px;color:var(--muted)">Palavras com alerta ativo: <strong>${activeAlertCount}</strong> — <a href="#" onclick="navigateTo('calculo');return false" style="color:var(--acc)">gerenciar em Cálculo de farme</a></span>

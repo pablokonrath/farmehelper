@@ -98,6 +98,8 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   no_drop_threshold_minutes INT NOT NULL DEFAULT 1,
   item_silence_threshold_minutes INT NOT NULL DEFAULT 60,
   watchdog_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  tg_notifications_enabled TINYINT(1) NOT NULL DEFAULT 1,
+  worldboss_notifications_enabled TINYINT(1) NOT NULL DEFAULT 1,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

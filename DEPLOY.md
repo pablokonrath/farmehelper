@@ -339,6 +339,17 @@ valor que quiser). Agora:
 Instalação nova do zero já vem com a estrutura final no `sql/schema.sql` — sem preço legado
 pra herdar, ninguém precisa fazer nada extra.
 
+## Interruptor pessoal de notificação de TG/World Boss
+
+Se seu banco já rodou `sql/migrate_personal_item_prices.sql`, rode agora
+`sql/migrate_event_notification_toggle.sql` no phpMyAdmin (aba SQL) — adiciona 2 colunas em
+`alert_settings`. Cada jogador ganha, na página Alertas, dois interruptores próprios
+("Notificação de TG" / "Notificação de World Boss") pra ligar/desligar se quer receber o
+pop-up/som desses eventos — sem poder editar horário nem nada, isso continua só do admin.
+Ligados por padrão (preserva o comportamento de quem já usava antes dessa opção existir).
+
+Instalação nova do zero não precisa desse script — já vem tudo no `sql/schema.sql`.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),
