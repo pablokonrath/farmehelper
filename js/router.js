@@ -14,6 +14,8 @@ import { loadAdminActionLog, loadIntegrityFlags } from './features/admin-log.js'
 import { loadWishlistMatches } from './features/wishlist.js';
 import { renderWishlistPage } from './pages/wishlist-page.js';
 import { renderSessionsPage } from './pages/sessions-page.js';
+import { loadGuildPanelData } from './features/guild-panel.js';
+import { renderLeaderPage } from './pages/leader-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -30,6 +32,7 @@ export function navigateTo(page) {
     loadAdminActionLog();
     loadIntegrityFlags();
   } else if (page === 'wishlist') loadWishlistMatches();
+  else if (page === 'lider') loadGuildPanelData();
   else renderPage();
 }
 
@@ -46,6 +49,7 @@ export function renderPage() {
   else if (AppState.currentPage === 'ranking') main.innerHTML = renderLeaderboardPage();
   else if (AppState.currentPage === 'wishlist') main.innerHTML = renderWishlistPage();
   else if (AppState.currentPage === 'sessoes') main.innerHTML = renderSessionsPage();
+  else if (AppState.currentPage === 'lider') main.innerHTML = renderLeaderPage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();

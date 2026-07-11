@@ -29,6 +29,7 @@ import {
   saveEditedLogin,
 } from './features/admin.js';
 import { setRankingFilterItem, setRankingCompareUsername, setRankingPeriod } from './features/leaderboard.js';
+import { setGuildPanelPeriod, setGuildPanelGuild } from './features/guild-panel.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
@@ -197,6 +198,8 @@ Object.assign(window, {
   setSessionRuns,
   toggleSessionItems,
   setResetConfig,
+  setGuildPanelPeriod,
+  setGuildPanelGuild,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
@@ -207,7 +210,10 @@ if (!authenticated) {
   document.getElementById('loginUsername')?.focus();
 } else {
   document.getElementById('appWrap').style.removeProperty('display');
-  if (AppState.isAdmin) document.getElementById('nb-admin').style.removeProperty('display');
+  if (AppState.isAdmin) {
+    document.getElementById('nb-admin').style.removeProperty('display');
+    document.getElementById('nb-lider').style.removeProperty('display');
+  }
   await loadPersistedState();
   updateBalanceSidebar();
   initFarmGoalBaseline();
