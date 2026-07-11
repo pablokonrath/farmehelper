@@ -388,6 +388,12 @@ export function setTelegramDropRelayEnabled(checked) {
   renderPage();
 }
 
+export function setTelegramWishlistRelayEnabled(checked) {
+  AppState.alertSettings.telegramWishlistRelayEnabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
 export function setAlertSoundEnabled(checked) {
   AppState.alertSettings.soundEnabled = checked;
   saveAlertSettings();

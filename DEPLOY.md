@@ -468,6 +468,20 @@ Duas coisas:
   totalmente fechado não há como saber que um item caiu. Diferente do TG/World Boss, que são
   horários fixos e por isso o servidor consegue avisar sozinho.
 
+## Aviso de lista de desejos no Telegram
+
+Se seu banco já rodou `sql/migrate_tracked_drop_telegram.sql`, rode agora
+`sql/migrate_wishlist_telegram.sql` no phpMyAdmin (aba SQL) — adiciona
+`telegram_wishlist_relay_enabled` em `alert_settings`. Instalação nova do zero não precisa — já
+vem no `sql/schema.sql`.
+
+Na página Alertas, com o Telegram vinculado, aparece o interruptor "Avisar quando dropar meu
+desejo". Ligado, quando **outra pessoa** dropa um item da sua lista de desejos, chega uma
+mensagem no seu Telegram com o item e **quem dropou** (nick + guild), pra você chamar a pessoa e
+negociar. **Diferente do envio de drops rastreados, este funciona até com o seu navegador
+fechado** — porque quem detecta e reporta o drop é o navegador de quem dropou (via
+`wishlist-check.php`), não o seu.
+
 ## Migrando de usuário único pra multiusuário
 
 Se seu banco já está em produção com dados de uma versão anterior (sem a tabela `users`),

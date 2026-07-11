@@ -108,6 +108,10 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   -- Envia o drop rastreado pro Telegram na hora que cai (com o DropList aberto) — ver
   -- api/telegram-relay-drop.php. Desligado por padrão, é opt-in por jogador.
   telegram_drop_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  -- Avisa no Telegram quando alguém dropa um item da lista de desejos deste usuário — funciona
+  -- até com o navegador dele fechado (quem reporta é o navegador de quem dropou, ver
+  -- api/wishlist-check.php). Opt-in, desligado por padrão.
+  telegram_wishlist_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

@@ -79,6 +79,9 @@ export const DEFAULT_ALERT_SETTINGS = {
   // Envia o drop rastreado pro Telegram na hora que cai (só com o DropList aberto — quem detecta
   // o drop é a aba lendo o log, ver telegram-relay-drop.php). Opt-in, desligado por padrão.
   telegramDropRelayEnabled: false,
+  // Avisa no Telegram quando alguém dropa um item da minha lista de desejos — funciona até com o
+  // meu navegador fechado (quem dispara é o navegador de quem dropou). Opt-in, desligado.
+  telegramWishlistRelayEnabled: false,
 };
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
