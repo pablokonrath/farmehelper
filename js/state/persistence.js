@@ -109,6 +109,8 @@ export async function loadPersistedState() {
   AppState.filterByTrackedKeywords = appSettings.filterByTrackedKeywords ?? false;
   AppState.rushCreditCraftCosts = { ...DEFAULT_CREDIT_CRAFT_COSTS, ...(appSettings.rushCreditCraftCosts || {}) };
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
+  AppState.salesLog = appSettings.salesLog ?? [];
+  AppState.priceHistory = appSettings.priceHistory ?? {};
   AppState.dgSessions = appSettings.dgSessions ?? [];
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
@@ -146,6 +148,14 @@ export function saveRushCreditCraftCosts() {
 
 export function saveDailyGoal() {
   return put('app-settings.php', { dailyGoalAlz: AppState.dailyGoalAlz });
+}
+
+export function saveSalesLog() {
+  return put('app-settings.php', { salesLog: AppState.salesLog });
+}
+
+export function savePriceHistory() {
+  return put('app-settings.php', { priceHistory: AppState.priceHistory });
 }
 
 export function saveDgSessions() {

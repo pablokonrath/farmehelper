@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveItemPrices } from '../state/persistence.js';
 import { updateBalanceSidebar } from './drops.js';
+import { recordPriceChange } from './sales.js';
 import { parseAlzInput } from '../utils/formatting.js';
 import { renderPage } from '../router.js';
 
@@ -9,6 +10,7 @@ export function addItemPrice() {
   const rawPrice = document.getElementById('cP')?.value.trim();
   if (!name || !rawPrice) return;
   AppState.itemPrices[name] = parseAlzInput(rawPrice);
+  recordPriceChange(name, AppState.itemPrices[name]);
   saveItemPrices();
   updateBalanceSidebar();
   renderPage();
@@ -30,6 +32,7 @@ export function cancelEditingItemPrice() {
 export function saveItemPriceEdit(name) {
   const rawPrice = document.getElementById('editItemPriceInput')?.value;
   AppState.itemPrices[name] = parseAlzInput(rawPrice);
+  recordPriceChange(name, AppState.itemPrices[name]);
   AppState.editingItemPriceName = null;
   saveItemPrices();
   updateBalanceSidebar();

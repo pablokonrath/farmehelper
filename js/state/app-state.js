@@ -111,6 +111,12 @@ export const AppState = {
   isManualDropsOpen: false,
   itemPrices: {},
   editingItemPriceName: null,
+  // Registro de vendas reais: [{ id, itemName, qty, unitPrice, date }] — guardado em app_settings.
+  salesLog: [],
+  // Histórico de preço por item: { item: [{ date, price }] } — 1 ponto por dia, atualizado quando
+  // o preço muda (ver recordPriceChange em sales.js). Também em app_settings, sem migração.
+  priceHistory: {},
+  priceHistoryItem: '',
   rushHistory: {},
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,

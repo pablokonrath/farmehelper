@@ -12,6 +12,7 @@ import { addEventTime, removeEventTime, startEventScheduleChecks } from './featu
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
+import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
 import {
   createUser,
   addRankingItem,
@@ -206,6 +207,9 @@ Object.assign(window, {
   setResetConfig,
   setGuildPanelPeriod,
   setGuildPanelGuild,
+  addSale,
+  deleteSale,
+  setPriceHistoryItem,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de

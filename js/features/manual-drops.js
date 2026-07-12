@@ -4,6 +4,7 @@ import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts } from './alerts.js';
 import { checkWishlistMatches } from './wishlist.js';
 import { checkFarmGoalReached } from './farm-goal.js';
+import { recordPriceChange } from './sales.js';
 import { parseDateInputBR, parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
@@ -27,6 +28,7 @@ export function addManualDrop() {
   const rawPrice = priceInput?.value.trim();
   if (rawPrice) {
     AppState.itemPrices[name] = parseAlzInput(rawPrice);
+    recordPriceChange(name, AppState.itemPrices[name]);
     saveItemPrices();
   }
 

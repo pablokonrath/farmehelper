@@ -6,7 +6,8 @@ import { renderAlertsPage } from './pages/alerts-page.js';
 import { renderReportPage } from './pages/report-page.js';
 import { renderAdminPage } from './pages/admin-page.js';
 import { renderLeaderboardPage } from './pages/leaderboard-page.js';
-import { renderDropChart, destroyDropChart, renderCompareChart, destroyCompareChart } from './features/drop-chart.js';
+import { renderDropChart, destroyDropChart, renderCompareChart, destroyCompareChart, renderPriceChart, destroyPriceChart } from './features/drop-chart.js';
+import { renderSalesPage } from './pages/sales-page.js';
 import { updateCartPreview } from './features/rush-cart.js';
 import { loadLeaderboardData } from './features/leaderboard.js';
 import { loadUsers } from './features/admin.js';
@@ -42,6 +43,7 @@ export function renderPage() {
   const main = document.getElementById('main');
   destroyDropChart();
   destroyCompareChart();
+  destroyPriceChart();
 
   if (AppState.currentPage === 'overview') main.innerHTML = renderOverviewPage();
   else if (AppState.currentPage === 'calculo') main.innerHTML = renderPricingPage();
@@ -52,6 +54,7 @@ export function renderPage() {
   else if (AppState.currentPage === 'wishlist') main.innerHTML = renderWishlistPage();
   else if (AppState.currentPage === 'sessoes') main.innerHTML = renderSessionsPage();
   else if (AppState.currentPage === 'lider') main.innerHTML = renderLeaderPage();
+  else if (AppState.currentPage === 'vendas') main.innerHTML = renderSalesPage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();
@@ -63,4 +66,5 @@ function afterPageRender() {
     renderCompareChart();
   }
   if (AppState.currentPage === 'rush') updateCartPreview();
+  if (AppState.currentPage === 'vendas') renderPriceChart();
 }
