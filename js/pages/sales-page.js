@@ -17,7 +17,7 @@ export function renderSalesPage() {
 <div class="g3" style="margin-bottom:12px">
   <div class="kpi"><div class="kpi-lbl">Total vendido (real)</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(summary.realTotal)}" title="${formatNumber(summary.realTotal)} Alz">${formatAlzGamer(summary.realTotal)}</div><div class="kpi-sub">${summary.count} venda(s)</div></div>
   <div class="kpi"><div class="kpi-lbl">Real vs. estimado</div><div class="kpi-val" style="font-size:22px;color:${summary.diff >= 0 ? 'var(--ok)' : 'var(--err)'}" title="${formatNumber(summary.diff)} Alz">${summary.diff >= 0 ? '+' : ''}${formatAlzGamer(summary.diff)}</div><div class="kpi-sub">vs. ${formatAlzGamer(summary.estimatedTotal)} cadastrado</div></div>
-  <div class="kpi"><div class="kpi-lbl">Valor em estoque</div><div class="kpi-val" style="color:${getAlzTierColor(summary.stockValue)}" title="${formatNumber(summary.stockValue)} Alz">${formatAlzGamer(summary.stockValue)}</div><div class="kpi-sub">dropado − vendido, ainda parado</div></div>
+  <div class="kpi"><div class="kpi-lbl">Valor em estoque <span title="Estimativa teórica: parte dos itens vai pra coleção ou vira insumo (ex: set de aprimoramento p/ fazer +7 e virar ticket especial), então nem sempre vira Alz de verdade." style="color:var(--muted);cursor:help">ⓘ</span></div><div class="kpi-val" style="color:${getAlzTierColor(summary.stockValue)}" title="${formatNumber(summary.stockValue)} Alz">${formatAlzGamer(summary.stockValue)}</div><div class="kpi-sub">teórico — dropado − vendido</div></div>
 </div>`;
 
   const form = `
