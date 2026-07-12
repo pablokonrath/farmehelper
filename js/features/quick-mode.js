@@ -1,10 +1,11 @@
-import { AppState } from '../state/app-state.js';
+import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { recordSale } from './sales.js';
 import { setDailyGoal } from './farm-goal.js';
 import { startDgSession, endDgSession, getActiveSessionSummary } from './dg-session.js';
 import { addWishlistItemByName } from './wishlist.js';
 import { addTrackedKeywordByName } from './keywords.js';
 import { buildCartItem, saveRushForDay, calculateRushCartCost } from './rush-cart.js';
+import { saveRushParams } from '../state/persistence.js';
 import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { navigateTo, renderPage } from '../router.js';
@@ -89,8 +90,21 @@ export function quickNext() {
       qm.data.itemName = item; qm.step = 'done';
     }
   } else if (qm.action === 'rush') {
-    if (qm.step === 1) {
+    if (qm.step === 1) { // valores base (ticket/cash) — ficam salvos
+      AppState.rushTicketPrice = parseAlzInput(val('qm-rush-ticket'));
+      AppState.rushCardCashPrice = parseAlzInput(val('qm-rush-cash'));
+      saveRushParams();
+      qm.step = 2;
+    } else if (qm.step === 2) { // DGs adicionadas
       if (!qm.data.cart || !qm.data.cart.length) return fail('Adicione ao menos uma DG.');
+      qm.step = 3;
+    } else if (qm.step === 3) { // créditos de macro (opcional)
+      CREDIT_CATEGORIES.forEach(cat => {
+        AppState.rushCredits[cat.id].quantity = Math.max(0, parseInt(val('qm-cred-qty-' + cat.id), 10) || 0);
+        AppState.rushCredits[cat.id].marketPrice = parseAlzInput(val('qm-cred-price-' + cat.id));
+      });
+      qm.step = 4;
+    } else if (qm.step === 4) { // panorama -> salvar
       AppState.rushCart = qm.data.cart;
       AppState.rushCartDate = todayISODate();
       saveRushForDay();
@@ -101,13 +115,18 @@ export function quickNext() {
   renderPage();
 }
 
-// Adiciona a DG escolhida (com repetições) ao carrinho temporário do Modo rápido — sem finalizar.
+// Adiciona a DG escolhida (repetições + gemas de reset opcionais) ao carrinho temporário do Modo
+// rápido — sem finalizar. Se "gemas de reset" > 0, marca a DG como resetada com aquele preço.
 export function quickRushAdd() {
   const qm = AppState.quickMode;
   qm.error = '';
   const id = (document.getElementById('qm-rush-dg')?.value || '').trim();
   if (!id) { qm.error = 'Escolha a DG.'; renderPage(); return; }
-  const item = buildCartItem(id, document.getElementById('qm-rush-reps')?.value);
+  const gemQty = parseInt(document.getElementById('qm-rush-gemqty')?.value, 10) || 0;
+  const reset = gemQty > 0
+    ? { used: true, qty: gemQty, price: parseAlzInput(document.getElementById('qm-rush-gemprice')?.value) }
+    : null;
+  const item = buildCartItem(id, document.getElementById('qm-rush-reps')?.value, reset);
   if (!item) { qm.error = 'DG inválida.'; renderPage(); return; }
   (qm.data.cart || (qm.data.cart = [])).push(item);
   renderPage();

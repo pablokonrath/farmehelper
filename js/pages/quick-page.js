@@ -1,6 +1,7 @@
-import { AppState } from '../state/app-state.js';
+import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { formatAlzGamer, formatNumber } from '../utils/formatting.js';
 import { getActiveSessionSummary } from '../features/dg-session.js';
+import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
 
 const HEADER = `<div class="pg-title"><i class="ti ti-bolt" style="color:var(--gold)"></i>Modo rápido</div>
 <div class="pg-sub">Escolha o que quer fazer — eu te guio passo a passo, bem rapidinho.</div>`;
@@ -83,23 +84,76 @@ function renderRastrear(qm) {
 
 function renderRush(qm) {
   if (qm.step === 'done') {
-    return doneCard('⚔️', 'Rush de hoje salvo!', `Custo total estimado: ${formatAlzGamer(qm.data.savedTotal || 0)}. Dá pra ver e ajustar em "DGs de rush diário".`, 'rush');
+    return doneCard('⚔️', 'Rush de hoje salvo!', `Custo total estimado: ${formatAlzGamer(qm.data.savedTotal || 0)}. Ajuste em "DGs de rush diário" e acompanhe o progresso em "Sessões de farme".`, 'rush');
   }
+  if (qm.step === 1) return renderRushValores(qm);
+  if (qm.step === 3) return renderRushCreditos(qm);
+  if (qm.step === 4) return renderRushPanorama(qm);
+  return renderRushDGs(qm);
+}
+
+function renderRushValores(qm) {
+  const t = AppState.rushTicketPrice, c = AppState.rushCardCashPrice;
+  const inner = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Confirme os valores base (ficam salvos pra próxima vez).</div>
+    <label class="lbl">Valor de 1 ticket (Alz)</label>
+    <input class="inp" id="qm-rush-ticket" type="text" inputmode="numeric" placeholder="ex: 1.000.000" value="${t ? formatNumber(t) : ''}" oninput="maskAlzInputLive(this)">
+    <label class="lbl" style="margin-top:12px">Card Cash — 1.000 Cash em Alz</label>
+    <input class="inp" id="qm-rush-cash" type="text" inputmode="numeric" placeholder="ex: 550.000.000" value="${c ? formatNumber(c) : ''}" oninput="maskAlzInputLive(this)">
+    <div class="hint">Serve pra calcular o custo dos tickets e das gemas de reset.</div>
+    <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
+  return stepShell('Passo 1 de 4 · valores', inner);
+}
+
+function renderRushDGs(qm) {
   const cart = qm.data.cart || [];
   const opts = AppState.dungeonList.map(dg => `<option value="${dg.id}">${dg.name}</option>`).join('');
-  const cartList = cart.length ? `<div style="margin-bottom:12px">${cart.map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
-      <span><strong>${it.repetitions}×</strong> ${it.name}</span>
-      <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="quickRushRemove(${i})" title="Remover"><i class="ti ti-x"></i></button>
-    </div>`).join('')}</div>` : '<div class="empty" style="padding:10px 0">Nenhuma DG ainda. Adicione abaixo.</div>';
+  const gemHint = formatNumber(getCostPerGem());
+  const cartList = cart.length
+    ? `<div style="margin-bottom:12px">${cart.map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+        <span><strong>${it.repetitions}×</strong> ${it.name}${it.usedReset ? ` <span style="color:var(--gold);font-size:12px">· reset ${it.resetGemQuantity} gema(s)</span>` : ''}</span>
+        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="quickRushRemove(${i})" title="Remover"><i class="ti ti-x"></i></button>
+      </div>`).join('')}</div>`
+    : '<div class="empty" style="padding:10px 0">Nenhuma DG ainda. Adicione abaixo.</div>';
   const inner = `${cartList}
-    <label class="lbl">Adicionar DG ao rush de hoje</label>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-      <select class="inp" id="qm-rush-dg" style="flex:1;min-width:160px"><option value="">Selecione a DG...</option>${opts}</select>
-      <input class="inp" id="qm-rush-reps" type="number" min="1" value="1" style="width:90px" title="Quantas vezes">
-      <button class="btn btn-d" onclick="quickRushAdd()"><i class="ti ti-plus"></i>Adicionar</button>
+    <label class="lbl">Adicionar DG</label>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <select class="inp" id="qm-rush-dg"><option value="">Selecione a DG...</option>${opts}</select>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:10px">Repetições</label><input class="inp" id="qm-rush-reps" type="number" min="1" value="1"></div>
+        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:10px">Gemas de reset (0 = não)</label><input class="inp" id="qm-rush-gemqty" type="number" min="0" value="0"></div>
+        <div style="flex:1;min-width:110px"><label class="lbl" style="font-size:10px">Preço da gema (Alz)</label><input class="inp" id="qm-rush-gemprice" type="text" inputmode="numeric" value="${gemHint}" oninput="maskAlzInputLive(this)"></div>
+      </div>
+      <button class="btn btn-d" onclick="quickRushAdd()"><i class="ti ti-plus"></i>Adicionar DG</button>
     </div>${errLine(qm)}
-    <button class="btn btn-s" style="margin-top:16px;width:100%" onclick="quickNext()"><i class="ti ti-device-floppy"></i>Finalizar e salvar rush de hoje</button>`;
-  return stepShell('Montar rush de hoje', inner);
+    <button class="btn btn-p" style="margin-top:16px;width:100%" onclick="quickNext()">Próximo · créditos <i class="ti ti-arrow-right"></i></button>`;
+  return stepShell('Passo 2 de 4 · DGs', inner);
+}
+
+function renderRushCreditos(qm) {
+  const inner = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Comprou créditos de macro pra usar o helper hoje? (opcional — deixe 0 se não usou)</div>
+    ${CREDIT_CATEGORIES.map(cat => {
+      const c = AppState.rushCredits[cat.id];
+      return `<div style="margin-bottom:10px"><label class="lbl">${cat.name}</label>
+        <div style="display:flex;gap:8px">
+          <input class="inp" id="qm-cred-qty-${cat.id}" type="number" min="0" value="${c.quantity || 0}" style="width:90px" title="Quantos">
+          <input class="inp" id="qm-cred-price-${cat.id}" type="text" inputmode="numeric" placeholder="preço de mercado (Alz)" value="${c.marketPrice ? formatNumber(c.marketPrice) : ''}" oninput="maskAlzInputLive(this)" style="flex:1">
+        </div></div>`;
+    }).join('')}
+    <button class="btn btn-p" style="margin-top:6px;width:100%" onclick="quickNext()">Próximo · panorama <i class="ti ti-arrow-right"></i></button>`;
+  return stepShell('Passo 3 de 4 · créditos', inner);
+}
+
+function renderRushPanorama(qm) {
+  const cost = calculateRushCartCost(qm.data.cart || []);
+  const row = (label, value) => `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--muted)">${label}</span><strong>${formatAlzGamer(value)}</strong></div>`;
+  const inner = `<div style="font-weight:700;margin-bottom:8px">Panorama do rush de hoje</div>
+    ${row('Alz das DGs', cost.alzFromDungeons)}
+    ${row(`Tickets (${cost.ticketCount})`, cost.ticketCost)}
+    ${row(`Gemas (${cost.gemCount})`, cost.gemCost)}
+    ${row('Créditos de macro', cost.creditsCost)}
+    <div style="display:flex;justify-content:space-between;padding:10px 0 2px"><span style="font-weight:700">Custo total do dia</span><strong style="color:var(--gold);font-size:16px">${formatAlzGamer(cost.total)}</strong></div>
+    <button class="btn btn-s" style="margin-top:14px;width:100%" onclick="quickNext()"><i class="ti ti-device-floppy"></i>Salvar rush de hoje</button>`;
+  return stepShell('Passo 4 de 4 · panorama', inner);
 }
 
 function renderVenda(qm) {

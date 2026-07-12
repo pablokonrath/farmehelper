@@ -29,7 +29,7 @@ export function calculateCreditsCost() {
 // As gemas de entrada e as de reset são somadas no mesmo total de gemas/custo de gemas.
 // Itens salvos antes desse valor por-item existir (usedReset sem resetGemQuantity/resetGemUnitPrice)
 // caem de volta em 1 gema por repetição ao preço atual, para não quebrar rushes já salvos.
-export function calculateRushCartCost() {
+export function calculateRushCartCost(cart = AppState.rushCart) {
   const ticketPrice = +AppState.rushTicketPrice || 0;
   const costPerGem = getCostPerGem();
   let alzFromDungeons = 0;
@@ -37,7 +37,7 @@ export function calculateRushCartCost() {
   let gemCount = 0;
   let gemCost = 0;
 
-  AppState.rushCart.forEach(item => {
+  cart.forEach(item => {
     alzFromDungeons += item.alzCost * item.repetitions;
     const ticketsPerRun = item.ticketsPerRun ?? (item.requiresTicket ? 1 : 0);
     ticketCount += item.repetitions * ticketsPerRun;
@@ -68,20 +68,21 @@ export function calculateRushCartCost() {
   };
 }
 
-// Monta um item de carrinho simples (DG × repetições, sem reset) a partir do id da DG — usado
-// pelo Modo rápido, que não pede as opções avançadas (gemas de reset etc.).
-export function buildCartItem(dungeonId, repetitions) {
+// Monta um item de carrinho a partir do id da DG — usado pelo Modo rápido. reset (opcional):
+// { used, qty, price } marca que a DG foi resetada com N gemas ao preço informado.
+export function buildCartItem(dungeonId, repetitions, reset = null) {
   const dungeon = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dungeon) return null;
+  const usedReset = !!(reset && reset.used);
   return {
     name: dungeon.name,
     alzCost: dungeon.alzCost,
     ticketsPerRun: dungeon.ticketsPerRun || 0,
     gemsPerRun: dungeon.gemsPerRun || 0,
     repetitions: Math.max(1, parseInt(repetitions, 10) || 1),
-    usedReset: false,
-    resetGemQuantity: 0,
-    resetGemUnitPrice: 0,
+    usedReset,
+    resetGemQuantity: usedReset ? Math.max(0, parseInt(reset.qty, 10) || 0) : 0,
+    resetGemUnitPrice: usedReset ? (reset.price || 0) : 0,
   };
 }
 

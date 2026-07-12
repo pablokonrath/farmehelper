@@ -2,6 +2,37 @@ import { AppState } from '../state/app-state.js';
 import { getActiveSessionSummary, computeDgComparison, computeResetWorth } from '../features/dg-session.js';
 import { getItemPrice } from '../features/drops.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
+import { todayISODate } from '../utils/parsing.js';
+
+// Progresso do rush de hoje: cruza o rush salvo do dia com as sessões de DG já feitas hoje. Uma
+// DG do rush é marcada "feita" quando existe uma sessão dela hoje (ou é a sessão ativa agora) —
+// automático, derivado dos dados que já existem, sem estado novo.
+function renderRushProgressCard() {
+  const today = todayISODate();
+  const rush = AppState.rushHistory[today];
+  if (!rush || !rush.items || !rush.items.length) return '';
+  const doneNames = new Set();
+  if (AppState.activeDgSession) doneNames.add(AppState.activeDgSession.dungeonName);
+  AppState.dgSessions.forEach(s => { if (s.date === today) doneNames.add(s.dungeonName); });
+  const items = rush.items;
+  const doneCount = items.filter(it => doneNames.has(it.name)).length;
+  return `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-checklist"></i>Progresso do rush de hoje</div>
+  <span class="badge ${doneCount >= items.length ? 'badge-ok' : 'badge-acc'}">${doneCount}/${items.length} feitas</span></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Marca sozinho quando você faz uma sessão de DG que está no rush de hoje — assim você vê o que ainda falta.</div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    ${items.map(it => {
+      const done = doneNames.has(it.name);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px${done ? ';opacity:.65' : ''}">
+        <i class="ti ti-${done ? 'circle-check' : 'circle'}" style="font-size:18px;color:${done ? 'var(--ok)' : 'var(--muted)'}"></i>
+        <span style="flex:1${done ? ';text-decoration:line-through;color:var(--muted)' : ';font-weight:600'}">${it.repetitions}× ${it.name}</span>
+        <span class="badge ${done ? 'badge-ok' : 'badge-warn'}">${done ? 'Feita' : 'Falta'}</span>
+      </div>`;
+    }).join('')}
+  </div>
+</div>`;
+}
 
 function formatDuration(ms) {
   const totalMin = Math.round(ms / 60000);
@@ -150,6 +181,7 @@ export function renderSessionsPage() {
 <div class="pg-title">Sessões de farme</div>
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
+${renderRushProgressCard()}
 ${comparisonCard}
 ${resetCard}
 ${historyCard}`;
