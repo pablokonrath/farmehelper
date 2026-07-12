@@ -7,21 +7,16 @@ $db = get_db();
 $method = $_SERVER['REQUEST_METHOD'];
 $uid = current_user_id();
 
-// Sincronização acima desse número de unidades num único PUT vira flag pra revisão do admin
-// (ver integrity_flags) — não bloqueia nada, é só heurística: um poll normal de 5s só deveria
-// somar poucas unidades por vez. Falso positivo esperado pra quem ficou dias sem sincronizar
-// e volta com um acúmulo grande legítimo — por isso é revisão manual, não bloqueio automático.
-const SPIKE_THRESHOLD = 30;
-
 // Só existe PUT — ninguém precisa ler de volta as próprias contagens (o client já tem a
 // fonte de verdade, o log local); o consumo cross-usuário acontece via leaderboard.php.
+//
+// NÃO detectamos "pico de drops" aqui: comparar o delta da contagem entre dois syncs media o
+// intervalo do sync, não o log de verdade — dava falso positivo em rush ou depois de um tempo
+// sem sincronizar. A detecção de integridade fiel fica no lado do cliente, que lê o log e olha
+// os HORÁRIOS reais dos drops (ver file-source.js); edição do trecho já lido continua pega pelo
+// worker (file_tamper).
 if ($method === 'PUT') {
   $body = read_json_body();
-
-  $existingStmt = $db->prepare('SELECT item_name, quantity FROM drop_counts WHERE user_id = :uid');
-  $existingStmt->execute(['uid' => $uid]);
-  $oldCounts = [];
-  foreach ($existingStmt->fetchAll() as $row) $oldCounts[$row['item_name']] = (int) $row['quantity'];
 
   $db->beginTransaction();
   $db->prepare('DELETE FROM drop_counts WHERE user_id = :uid')->execute(['uid' => $uid]);
@@ -31,15 +26,6 @@ if ($method === 'PUT') {
     if ($qty > 0) $stmt->execute(['uid' => $uid, 'name' => $name, 'qty' => $qty]);
   }
   $db->commit();
-
-  foreach ($body as $name => $qty) {
-    $qty = (int) $qty;
-    if (!isset($oldCounts[$name])) continue; // primeira sincronização desse item — carga inicial legítima
-    $delta = $qty - $oldCounts[$name];
-    if ($delta > SPIKE_THRESHOLD) {
-      insert_integrity_flag($db, $uid, current_username(), 'drop_spike', "Item \"$name\" subiu de {$oldCounts[$name]} pra $qty numa sincronização (+$delta).");
-    }
-  }
 
   json_response(['ok' => true]);
 }
