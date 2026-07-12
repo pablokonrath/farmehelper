@@ -106,6 +106,25 @@ ${permission === 'unsupported'
 </div>
 
 <div class="card">
+  <div class="ctitle"><i class="ti ti-device-desktop"></i>Monitorar com o navegador fechado (agente no PC)</div>
+  <div class="pg-sub" style="margin:-4px 0 12px">Um programinha que roda no seu PC vigia o log do jogo e manda os drops rastreados pro DropList — aí os avisos (Telegram/push) chegam mesmo sem o navegador aberto.</div>
+  <ol style="font-size:13px;color:var(--muted);line-height:1.9;margin:0 0 12px;padding-left:18px">
+    <li><a href="agent/droplist-agent.ps1" download style="color:var(--acc)">Baixe o agente (droplist-agent.ps1)</a></li>
+    <li>Abra o arquivo no Bloco de Notas e preencha o caminho do log e o seu token (abaixo).</li>
+    <li>Botão direito no arquivo → "Executar com o PowerShell". Pode minimizar; deixe rodando enquanto farma.</li>
+  </ol>
+  ${AppState.agentToken
+    ? `<div><label class="lbl">Seu token</label>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input class="inp" style="flex:1;min-width:220px;font-family:monospace" readonly value="${AppState.agentToken}" onclick="this.select()">
+          <button class="btn btn-d btn-xs" onclick="regenerateAgentToken()"><i class="ti ti-refresh"></i>Gerar novo</button>
+        </div>
+        <div class="hint">Não compartilhe esse token — é como uma senha do seu monitoramento.</div></div>`
+    : `<button class="btn btn-d btn-xs" onclick="loadAgentToken()"><i class="ti ti-key"></i>Mostrar meu token</button>`}
+  <div style="font-size:11px;color:var(--muted);margin-top:10px"><i class="ti ti-info-circle"></i> Para os avisos chegarem, é preciso ter o Telegram vinculado + "Enviar drops rastreados pro Telegram" ligado (ou o push ligado). Rodar o agente e o DropList aberto ao mesmo tempo pode duplicar os avisos — use o agente pra quando o navegador estiver fechado.</div>
+</div>
+
+<div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de alertas</div>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <input class="inp" style="width:200px" placeholder="Filtrar por item ou palavra..." value="${AppState.alertHistoryFilter}" oninput="setAlertHistoryFilter(this.value)">
