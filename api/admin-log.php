@@ -1,6 +1,6 @@
 <?php
-// Registro do que cada admin criou/alterou — admin-only tanto pra escrever quanto pra ler,
-// já que dá rastreabilidade entre múltiplos admins/líderes com acesso compartilhado.
+// Registro do que cada admin criou/alterou. Qualquer admin (inclusive líder de guild) ESCREVE
+// — pra registrar a criação de conta que ele faz. Só o admin mestre LÊ o log (oversight).
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_admin();
@@ -20,6 +20,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
+  require_master_admin();
   $rows = $db->query('SELECT id, admin_username, action, details, created_at FROM admin_action_log ORDER BY created_at DESC LIMIT 100')->fetchAll();
   json_response(array_map(fn($r) => [
     'id' => (int) $r['id'],

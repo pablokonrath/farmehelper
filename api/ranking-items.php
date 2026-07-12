@@ -1,6 +1,6 @@
 <?php
 // Lista global de itens do ranking — qualquer usuário logado pode LER (precisa saber o que
-// sincronizar), mas só admin pode ESCREVER (decide o que entra no ranking da guild).
+// sincronizar), mas só o admin mestre pode ESCREVER (decide o que entra no ranking da guild).
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_login();
@@ -14,7 +14,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'PUT') {
-  require_admin();
+  require_master_admin();
   $body = read_json_body();
   $db->beginTransaction();
   $db->exec('DELETE FROM ranking_items');

@@ -127,16 +127,16 @@ export function renderAdminPage() {
     </div>
   </div>
   <div style="display:flex;align-items:center;gap:16px">
-    <div style="display:flex;align-items:center;gap:6px">
+    ${AppState.isMasterAdmin ? `<div style="display:flex;align-items:center;gap:6px">
       <input type="checkbox" id="newUserIsAdmin" style="width:16px;height:16px;accent-color:var(--acc)">
       <label for="newUserIsAdmin" style="font-size:12px;cursor:pointer">Admin/Líder</label>
-    </div>
+    </div>` : ''}
     <button class="btn btn-p" onclick="createUser()"><i class="ti ti-plus"></i>Criar</button>
   </div>
   <div id="createUserError" style="display:none;color:var(--err);font-size:12px;margin-top:8px"></div>
 </div>
 
-<div class="card">
+${AppState.isMasterAdmin ? `<div class="card">
   <div class="ctitle"><i class="ti ti-shield"></i>Guilds</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lista global de guilds (texto controlado, evita nomes duplicados escritos diferente).</div>
   ${!AppState.guilds.length ? '<div class="empty" style="padding:14px 0">Nenhuma guild cadastrada ainda.</div>' : `
@@ -147,7 +147,7 @@ export function renderAdminPage() {
     <div style="flex:1"><label class="lbl">Nova guild</label><input class="inp" id="newGuild" placeholder="ex: Elysium"></div>
     <button class="btn btn-p" onclick="addGuild()"><i class="ti ti-plus"></i>Adicionar</button>
   </div>
-</div>
+</div>` : ''}
 
 <div class="card">
   <div class="ctitle"><i class="ti ti-users"></i>Contas existentes</div>
@@ -155,9 +155,9 @@ export function renderAdminPage() {
     !AppState.adminUsers.length ? '<div class="empty">Nenhuma conta encontrada.</div>' : `
   <table><thead><tr><th>Usuário</th><th>Tipo</th><th style="width:160px">Guild</th><th>Criada em</th>${AppState.isMasterAdmin ? '<th style="width:40px">Ações</th>' : ''}</tr></thead><tbody>
   ${AppState.adminUsers.map(u => {
-    // Ninguém além do próprio admin mestre mexe na conta dele — mostra como texto simples
-    // pra quem não é mestre, em vez de um controle que o servidor vai rejeitar com 403.
-    const lockedForViewer = u.isMasterAdmin && !AppState.isMasterAdmin;
+    // Só o admin mestre edita contas (promover/rebaixar, trocar guild, excluir). Líder de guild
+    // vê a lista só pra leitura — sem controles que o servidor rejeitaria com 403.
+    const lockedForViewer = !AppState.isMasterAdmin;
     const typeCell = u.isMasterAdmin
       ? '<span class="badge badge-warn">Admin mestre</span>'
       : lockedForViewer
@@ -198,7 +198,7 @@ ${AppState.isMasterAdmin ? `
   <div id="editLoginError" style="display:none;color:var(--err);font-size:12px;margin-top:8px"></div>
 </div>` : ''}
 
-<div class="card">
+${AppState.isMasterAdmin ? `<div class="card">
   <div class="ctitle"><i class="ti ti-trophy"></i>Itens do ranking</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lista global — decide quais itens aparecem no Ranking pra todas as contas. Diferente da lista pessoal de "palavras rastreadas" (Cálculo de farme), que cada um configura pros próprios alertas. Itens em destaque ficam fixados no topo do Ranking, com visual diferenciado.</div>
   ${!AppState.rankingItems.length ? '<div class="empty" style="padding:14px 0">Nenhum item no ranking ainda.</div>' : `
@@ -250,5 +250,5 @@ ${renderAlertSoundsCard()}
 
 ${renderIntegrityFlagsCard()}
 
-${renderAdminActionLogCard()}`;
+${renderAdminActionLogCard()}` : ''}`;
 }

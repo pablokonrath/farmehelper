@@ -1,7 +1,7 @@
 <?php
 // Sinalizações heurísticas de possível dado forjado — qualquer usuário logado pode reportar
-// uma sobre si mesmo (o worker de polling detectando edição do próprio arquivo), mas só admin
-// pode listar (é informação de moderação, não é pra aparecer pro usuário comum).
+// uma sobre si mesmo (o worker de polling detectando edição do próprio arquivo), mas só o admin
+// mestre pode listar (é informação de moderação, não é pra aparecer pro usuário comum).
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_login();
@@ -20,7 +20,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-  require_admin();
+  require_master_admin();
   $rows = $db->query('SELECT id, username, flag_type, details, created_at FROM integrity_flags ORDER BY created_at DESC LIMIT 100')->fetchAll();
   json_response(array_map(fn($r) => [
     'id' => (int) $r['id'],

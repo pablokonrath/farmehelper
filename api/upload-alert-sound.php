@@ -5,7 +5,7 @@
 // extensão/MIME que o navegador manda — evita upload de shell disfarçado de áudio.
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
-require_admin();
+require_master_admin();
 
 $db = get_db();
 $method = $_SERVER['REQUEST_METHOD'];

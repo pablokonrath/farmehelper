@@ -14,7 +14,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'PUT') {
-  require_admin();
+  require_master_admin();
   $body = read_json_body();
   $db->beginTransaction();
   $db->exec('DELETE FROM guilds');

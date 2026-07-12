@@ -32,8 +32,11 @@ export function navigateTo(page) {
   if (page === 'ranking') loadLeaderboardData();
   else if (page === 'admin') {
     loadUsers();
-    loadAdminActionLog();
-    loadIntegrityFlags();
+    // Log de atividade e flags de integridade são só do admin mestre (endpoints master-only).
+    if (AppState.isMasterAdmin) {
+      loadAdminActionLog();
+      loadIntegrityFlags();
+    }
   } else if (page === 'wishlist') { loadWishlistMatches(); loadWishlistOffers(); loadWishlistSentOffers(); }
   else if (page === 'lider') loadGuildPanelData();
   else renderPage();

@@ -1,6 +1,6 @@
 <?php
 // Agenda compartilhada de TG/World Boss — qualquer usuário logado pode LER (o "está na
-// hora?" roda no navegador de cada um, todo mundo precisa da lista), só admin ESCREVE.
+// hora?" roda no navegador de cada um, todo mundo precisa da lista), só o admin mestre ESCREVE.
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_login();
@@ -21,7 +21,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-  require_admin();
+  require_master_admin();
   $body = read_json_body();
   $eventType = $body['eventType'] ?? '';
   $time = $body['time'] ?? '';
@@ -34,7 +34,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'DELETE') {
-  require_admin();
+  require_master_admin();
   $body = read_json_body();
   $id = (int) ($body['id'] ?? 0);
   if (!$id) json_response(['error' => 'invalid_input', 'message' => 'ID inválido.'], 400);

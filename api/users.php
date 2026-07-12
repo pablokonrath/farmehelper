@@ -24,7 +24,9 @@ if ($method === 'POST') {
   $username = trim($body['username'] ?? '');
   $password = $body['password'] ?? '';
   $guild = trim($body['guild'] ?? '');
-  $isAdmin = !empty($body['isAdmin']);
+  // Só o admin mestre cria outros admins/líderes. Um líder de guild cria apenas jogador comum
+  // (a UI esconde o checkbox pra ele; aqui é a trava de verdade, caso mande isAdmin na marra).
+  $isAdmin = !empty($body['isAdmin']) && current_user_is_master_admin();
 
   if ($username === '' || !is_string($password) || strlen($password) < 4) {
     json_response(['error' => 'invalid_input', 'message' => 'Usuário obrigatório e senha com pelo menos 4 caracteres.'], 400);
@@ -47,8 +49,10 @@ if ($method === 'POST') {
 }
 
 // Promove/edita uma conta já existente — usado tanto pra alternar admin quanto pra corrigir
-// a guild de alguém depois de criada.
+// a guild de alguém depois de criada. Editar conta é exclusivo do admin mestre: líderes de guild
+// só criam jogadores, não mexem em contas existentes (evita várias mãos editando ao mesmo tempo).
 if ($method === 'PUT') {
+  require_master_admin();
   $body = read_json_body();
   $id = (int) ($body['id'] ?? 0);
   if (!$id) json_response(['error' => 'invalid_input', 'message' => 'ID inválido.'], 400);

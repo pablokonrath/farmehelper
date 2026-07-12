@@ -20,7 +20,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'PUT') {
-  require_admin();
+  require_master_admin();
   $body = read_json_body();
   $alertType = $body['alertType'] ?? '';
   if (!in_array($alertType, $ALERT_TYPES, true)) json_response(['error' => 'invalid_input', 'message' => 'Tipo de alerta inválido.'], 400);
