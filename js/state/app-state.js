@@ -191,6 +191,9 @@ export const AppState = {
   // Propostas que EU enviei (sou o comprador), com o status da resposta do vendedor.
   wishlistSentOffers: [],
   isWishlistSentOffersLoading: false,
+  // Modo rápido (assistente passo a passo). action: null|'venda'|'meta'|'sessao'; step: número do
+  // passo ou 'done'/'done-start'/'done-end'; data: campos coletados no caminho; error: aviso inline.
+  quickMode: { action: null, step: 0, data: {}, error: '' },
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
   knownItemNames: [],

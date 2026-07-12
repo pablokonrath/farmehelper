@@ -13,6 +13,7 @@ import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
 import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
+import { openQuickMode, quickPick, quickBackToMenu, quickNext } from './features/quick-mode.js';
 import {
   createUser,
   addRankingItem,
@@ -227,6 +228,10 @@ Object.assign(window, {
   addSale,
   deleteSale,
   setPriceHistoryItem,
+  openQuickMode,
+  quickPick,
+  quickBackToMenu,
+  quickNext,
 });
 
 // Registra o service worker (o MESMO arquivo/escopo que o OneSignal usa) já no carregamento, pra o

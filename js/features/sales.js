@@ -20,20 +20,26 @@ export function recordPriceChange(name, price) {
   savePriceHistory();
 }
 
+// Insere uma venda no log (sem re-renderizar) — usado tanto pela página de Vendas quanto pelo
+// Modo rápido, pra não duplicar o formato do registro.
+export function recordSale({ itemName, qty, unitPrice, date }) {
+  AppState.salesLog.push({
+    id: 's' + Date.now() + Math.random().toString(36).slice(2, 6),
+    itemName,
+    qty: Math.max(1, parseInt(qty, 10) || 1),
+    unitPrice: unitPrice || 0,
+    date: date || todayISODate(),
+  });
+  saveSalesLog();
+}
+
 export function addSale() {
   const name = document.getElementById('saleItem')?.value.trim();
   const rawPrice = document.getElementById('salePrice')?.value.trim();
   if (!name || !rawPrice) return;
   const qty = Math.max(1, parseInt(document.getElementById('saleQty')?.value) || 1);
   const date = parseDateInputBR(document.getElementById('saleDate')?.value) || todayISODate();
-  AppState.salesLog.push({
-    id: 's' + Date.now() + Math.random().toString(36).slice(2, 6),
-    itemName: name,
-    qty,
-    unitPrice: parseAlzInput(rawPrice),
-    date,
-  });
-  saveSalesLog();
+  recordSale({ itemName: name, qty, unitPrice: parseAlzInput(rawPrice), date });
   renderPage();
 }
 
