@@ -55,6 +55,7 @@ export function renderRushPage() {
   return `
 <div class="pg-title"><i class="ti ti-swords" style="color:var(--acc)"></i>DGs de rush diário</div>
 <div class="pg-sub">Monte um carrinho de DGs, salve por data e o custo será deduzido do farme daquele dia.</div>
+<button class="btn btn-d btn-xs" style="margin-bottom:14px" onclick="openGuidedRush()"><i class="ti ti-bolt" style="color:var(--gold)"></i>Prefere passo a passo? Montar no modo guiado</button>
 
 <!-- PARÂMETROS -->
 <div class="card">

@@ -23,6 +23,12 @@ export function quickPick(action) {
   renderPage();
 }
 
+// Abre o Modo guiado já direto no montar rush — atalho vindo da aba "DGs de rush diário".
+export function openGuidedRush() {
+  AppState.quickMode = { action: 'rush', step: 1, data: {}, error: '' };
+  navigateTo('rapido');
+}
+
 export function quickBackToMenu() {
   AppState.quickMode = { action: null, step: 0, data: {}, error: '' };
   renderPage();

@@ -84,7 +84,16 @@ function renderRastrear(qm) {
 
 function renderRush(qm) {
   if (qm.step === 'done') {
-    return doneCard('⚔️', 'Rush de hoje salvo!', `Custo total estimado: ${formatAlzGamer(qm.data.savedTotal || 0)}. Ajuste em "DGs de rush diário" e acompanhe o progresso em "Sessões de farme".`, 'rush');
+    return `<div class="card" style="text-align:center;padding:32px 20px">
+    <div style="font-size:52px;line-height:1;margin-bottom:10px">⚔️</div>
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">Rush de hoje salvo!</div>
+    <div style="font-size:13px;color:var(--muted);max-width:360px;margin:0 auto 18px">Custo total estimado: <strong style="color:var(--gold)">${formatAlzGamer(qm.data.savedTotal || 0)}</strong>. Quer conferir os detalhes ou acompanhar o progresso pelas sessões?</div>
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-p" onclick="navigateTo('rush')"><i class="ti ti-adjustments"></i>Ajustar na aba completa</button>
+      <button class="btn btn-d" onclick="quickPick('rush')"><i class="ti ti-repeat"></i>Montar outro</button>
+      <button class="btn btn-d" onclick="quickBackToMenu()"><i class="ti ti-list"></i>Outra ação</button>
+    </div>
+  </div>`;
   }
   if (qm.step === 1) return renderRushValores(qm);
   if (qm.step === 3) return renderRushCreditos(qm);
