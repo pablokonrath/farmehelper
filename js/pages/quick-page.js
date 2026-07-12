@@ -3,8 +3,8 @@ import { formatAlzGamer, formatNumber } from '../utils/formatting.js';
 import { getActiveSessionSummary } from '../features/dg-session.js';
 import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
 
-const HEADER = `<div class="pg-title"><i class="ti ti-bolt" style="color:var(--gold)"></i>Modo rápido</div>
-<div class="pg-sub">Escolha o que quer fazer — eu te guio passo a passo, bem rapidinho.</div>`;
+const HEADER = `<div class="pg-title"><i class="ti ti-bolt" style="color:var(--gold)"></i>Modo guiado</div>
+<div class="pg-sub">Escolha o que quer fazer — eu te guio passo a passo.</div>`;
 
 // Botão grande da tela inicial ("O que você quer fazer?").
 function bigChoice(onclick, icon, title, desc) {

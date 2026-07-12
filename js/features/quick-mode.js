@@ -10,7 +10,7 @@ import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { navigateTo, renderPage } from '../router.js';
 
-// Modo rápido: um assistente passo a passo pra fazer as coisas mais comuns sem caçar nas páginas.
+// Modo guiado: um assistente passo a passo pra fazer as coisas mais comuns sem caçar nas páginas.
 // A ideia é uma pergunta por tela, com botão grande — pensado pra quem é leigo ou tem pressa.
 
 export function openQuickMode() {

@@ -21,7 +21,7 @@ export function recordPriceChange(name, price) {
 }
 
 // Insere uma venda no log (sem re-renderizar) — usado tanto pela página de Vendas quanto pelo
-// Modo rápido, pra não duplicar o formato do registro.
+// Modo guiado, pra não duplicar o formato do registro.
 export function recordSale({ itemName, qty, unitPrice, date }) {
   AppState.salesLog.push({
     id: 's' + Date.now() + Math.random().toString(36).slice(2, 6),

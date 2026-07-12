@@ -6,7 +6,7 @@ import { renderPage } from '../router.js';
 const API_BASE = 'api';
 
 // Adiciona um item à lista de desejos por nome (sem tocar no DOM nem re-renderizar). Devolve
-// false se vazio ou duplicado. Usado pela página e pelo Modo rápido.
+// false se vazio ou duplicado. Usado pela página e pelo Modo guiado.
 export function addWishlistItemByName(name) {
   name = (name || '').trim();
   if (!name || AppState.wishlistItems.includes(name)) return false;

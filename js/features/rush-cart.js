@@ -68,7 +68,7 @@ export function calculateRushCartCost(cart = AppState.rushCart) {
   };
 }
 
-// Monta um item de carrinho a partir do id da DG — usado pelo Modo rápido. reset (opcional):
+// Monta um item de carrinho a partir do id da DG — usado pelo Modo guiado. reset (opcional):
 // { used, qty, price } marca que a DG foi resetada com N gemas ao preço informado.
 export function buildCartItem(dungeonId, repetitions, reset = null) {
   const dungeon = AppState.dungeonList.find(d => d.id === dungeonId);
