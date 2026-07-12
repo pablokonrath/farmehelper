@@ -23,11 +23,13 @@ function sessionItemsRow(s) {
     .map(([name, qty]) => ({ name, qty, value: getItemPrice(name) * qty }))
     .sort((a, b) => b.value - a.value);
   const alzPerRun = s.runs > 0 ? s.totalAlz / s.runs : null;
+  const activeMs = s.activeDurationMs ?? s.durationMs;
   return `<tr><td colspan="9" style="background:var(--surf2);padding:14px 16px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px">
       <span>Melhor drop: <strong style="color:var(--txt)">${s.bestItem ? `${s.bestItem.name} (${formatAlzGamer(s.bestItem.price)})` : '—'}</strong></span>
       <span>Alz por run: <strong style="color:var(--gold)">${alzPerRun != null ? formatAlzGamer(alzPerRun) : '—'}</strong></span>
       <span>Alz por hora: <strong style="color:var(--txt)">${s.alzPerHour != null ? formatAlzGamer(s.alzPerHour) + '/h' : '—'}</strong></span>
+      <span>Tempo ativo: <strong style="color:var(--txt)">${formatDuration(activeMs)}</strong> · relógio total: ${formatDuration(s.durationMs)}</span>
     </div>
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
@@ -94,7 +96,7 @@ export function renderSessionsPage() {
   const historyCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de sessões</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Informe as runs de cada sessão no campo, e clique na seta para ver todos os itens que caíram.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Informe as runs e clique na seta pra ver os itens.</div>
   ${!history.length
     ? '<div class="empty">Nenhuma sessão de DG encerrada ainda.</div>'
     : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th></tr></thead><tbody>
@@ -104,7 +106,7 @@ export function renderSessionsPage() {
         <td>${formatDateBR(s.date)}</td>
         <td style="font-weight:500">${s.dungeonName}</td>
         <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
-        <td>${formatDuration(s.durationMs)}</td>
+        <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
         <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
         <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
         <td style="color:${getAlzTierColor(s.totalAlz)};font-weight:600" title="${formatNumber(s.totalAlz)} Alz">${formatAlzGamer(s.totalAlz)}</td>

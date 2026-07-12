@@ -56,20 +56,35 @@ export function toggleSessionItems(startAt) {
   renderPage();
 }
 
+// Um intervalo sem nenhum drop maior que isso conta como INATIVIDADE (ex: o rush parou e você foi
+// dormir) e não entra no tempo de farme — assim a duração fica fiel ao tempo realmente farmando,
+// e o Alz/hora não fica achatado por horas paradas.
+const ACTIVE_IDLE_CAP_MS = 5 * 60 * 1000;
+
+// Tempo "ativo" da sessão: soma os intervalos entre drops consecutivos, cortando cada gap no teto
+// de inatividade. Continuar farmando (drops seguidos) conta tudo; parar por horas conta só o teto.
+function activeDurationMs(drops) {
+  const times = drops.filter(d => d.timestamp).map(d => d.timestamp.getTime()).sort((a, b) => a - b);
+  let active = 0;
+  for (let i = 1; i < times.length; i++) active += Math.min(times[i] - times[i - 1], ACTIVE_IDLE_CAP_MS);
+  return active;
+}
+
 // Resumo ao vivo da sessão em andamento (ou null). Recalculado sob demanda a partir da janela.
 export function getActiveSessionSummary() {
   const s = AppState.activeDgSession;
   if (!s) return null;
   const now = Date.now();
   const drops = sessionDrops(s.startAt, now);
-  const durationMs = now - s.startAt;
+  const activeMs = activeDurationMs(drops);
   const { totalAlz } = summarizeDrops(drops);
   return {
     dungeonName: s.dungeonName,
-    durationMs,
+    durationMs: now - s.startAt, // relógio desde o início (mostrado no contador ao vivo)
+    activeMs,                    // tempo farmando, sem inatividade
     dropCount: drops.length,
     totalAlz,
-    alzPerHour: durationMs > 60000 ? totalAlz / (durationMs / 3600000) : null,
+    alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
   };
 }
 
@@ -79,6 +94,7 @@ export function endDgSession() {
   const endAt = Date.now();
   const drops = sessionDrops(s.startAt, endAt);
   const durationMs = endAt - s.startAt;
+  const activeMs = activeDurationMs(drops); // tempo farmando, sem contar inatividade
   const { totalAlz, bestItem } = summarizeDrops(drops);
   const items = {};
   summarizeDropsByItem(drops).forEach(it => (items[it.name] = it.qty));
@@ -89,12 +105,13 @@ export function endDgSession() {
     date: drops[0]?.date || todayISODate(),
     startAt: s.startAt,
     endAt,
-    durationMs,
+    durationMs,               // relógio total (início → encerrar)
+    activeDurationMs: activeMs, // tempo fiel de farme (desconta inatividade)
     runs: s.runs || 0,
     dropCount: drops.length,
     uniqueItems: Object.keys(items).length,
     totalAlz,
-    alzPerHour: durationMs > 60000 ? totalAlz / (durationMs / 3600000) : null,
+    alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
     bestItem,
     items,
   });
@@ -113,10 +130,11 @@ export function computeDgComparison() {
   const byDg = {};
   AppState.dgSessions.forEach(s => {
     const agg = byDg[s.dungeonId] || (byDg[s.dungeonId] = {
-      dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, durationMs: 0, runs: 0, dropCount: 0, totalAlz: 0,
+      dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, activeMs: 0, runs: 0, dropCount: 0, totalAlz: 0,
     });
     agg.sessions++;
-    agg.durationMs += s.durationMs;
+    // Tempo ativo (fiel), com fallback pra duração total em sessões antigas sem o campo.
+    agg.activeMs += s.activeDurationMs ?? s.durationMs;
     agg.runs += s.runs || 0;
     agg.dropCount += s.dropCount;
     agg.totalAlz += s.totalAlz;
@@ -124,7 +142,8 @@ export function computeDgComparison() {
   return Object.values(byDg)
     .map(a => ({
       ...a,
-      alzPerHour: a.durationMs > 60000 ? a.totalAlz / (a.durationMs / 3600000) : null,
+      durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
+      alzPerHour: a.activeMs > 60000 ? a.totalAlz / (a.activeMs / 3600000) : null,
       alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
     }))
     // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide
