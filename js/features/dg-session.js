@@ -3,6 +3,7 @@ import { getItemPrice, summarizeDropsByItem } from './drops.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
+import { setWatchdogEnabled } from './alerts.js';
 import { renderPage } from '../router.js';
 
 const MAX_DG_SESSIONS = 300;
@@ -27,8 +28,14 @@ export function startDgSession(dungeonId) {
   if (!dungeonId) return;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dg) return;
-  AppState.activeDgSession = { dungeonId: dg.id, dungeonName: dg.name, startAt: Date.now(), runs: 0 };
+  // O watchdog liga junto com a sessão (resolve o "esqueci de ativar/desativar"). Se ele já estava
+  // ligado (o jogador ligou na mão), NÃO reivindicamos — guardamos autoWatchdog só quando fomos nós
+  // que ligamos, pra desligar apenas o que ligamos ao encerrar. Fica no registro da sessão ativa
+  // (persistido no app_settings), então sobrevive a um reload no meio da sessão.
+  const autoWatchdog = !AppState.alertSettings.watchdogEnabled;
+  AppState.activeDgSession = { dungeonId: dg.id, dungeonName: dg.name, startAt: Date.now(), runs: 0, autoWatchdog };
   saveActiveDgSession();
+  if (autoWatchdog) setWatchdogEnabled(true); // já reseta os relógios do watchdog e persiste
   renderPage();
 }
 
@@ -118,9 +125,13 @@ export function endDgSession() {
   if (AppState.dgSessions.length > MAX_DG_SESSIONS) {
     AppState.dgSessions = AppState.dgSessions.slice(-MAX_DG_SESSIONS);
   }
+  const wasAutoWatchdog = s.autoWatchdog;
   AppState.activeDgSession = null;
   saveDgSessions();
   saveActiveDgSession();
+  // Se fomos nós que ligamos o watchdog ao iniciar, desliga junto ao encerrar. Se o jogador já o
+  // desligou na mão no meio da sessão, o guard abaixo evita mexer (fica no-op).
+  if (wasAutoWatchdog && AppState.alertSettings.watchdogEnabled) setWatchdogEnabled(false);
   renderPage();
 }
 

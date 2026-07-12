@@ -60,8 +60,8 @@ export function renderAlertsPage() {
   const watchdogCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-shield-bolt"></i>Vigilância de inatividade (watchdog)</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Avisa quando o helper trava (sem nenhum drop) ou um item rastreado some. Ative só quando estiver de fato rodando o helper/macro — farme manual tem pausas normais.</div>
-  ${toggleRow('Ativar vigilância', 'Monitora a inatividade enquanto o arquivo ao vivo está conectado.', s.watchdogEnabled, 'setWatchdogEnabled(this.checked)', { extra: ';' + div })}
+  <div class="pg-sub" style="margin:-4px 0 10px">Avisa quando o helper trava (sem nenhum drop) ou um item rastreado some. <strong>Liga e desliga sozinho</strong> quando você inicia/encerra uma sessão de DG — então nem precisa lembrar. Dá pra ligar na mão também, pra farme sem sessão.</div>
+  ${toggleRow('Ativar vigilância', 'Liga/desliga sozinho com a sessão de DG. Monitora a inatividade enquanto o arquivo ao vivo está conectado.', s.watchdogEnabled, 'setWatchdogEnabled(this.checked)', { extra: ';' + div })}
   <div class="g3" style="padding-top:12px">
     <div><label class="lbl">Alertar sem nenhum drop por (minutos)</label><input class="inp" type="number" min="1" value="${s.noDropThresholdMinutes}" onchange="setNoDropThresholdMinutes(this.value)">
     <div class="hint">Silêncio total é forte indício de que o helper travou.</div></div>
