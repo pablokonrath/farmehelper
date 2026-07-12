@@ -23,7 +23,8 @@ if ($method === 'GET') {
   json_response((object) $result);
 }
 
-if ($method === 'PUT') {
+// PUT vem do navegador (put() serializado); POST vem do agente do PC — os dois gravam o snapshot.
+if ($method === 'PUT' || $method === 'POST') {
   $body = read_json_body();
 
   // Autenticação: token do agente (PC, sem sessão) ou sessão do navegador.
