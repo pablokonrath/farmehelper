@@ -89,8 +89,8 @@ export const DEFAULT_ALERT_SETTINGS = {
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
 // fabricação por cima, dá 1h de uso de macro cada, usável em qualquer DG (não é por-DG como
-// tickets/gemas). Preço de mercado e quantidade comprada são inputs do dia (não persistem,
-// igual rushTicketPrice/rushCardCashPrice); só o custo de fabricar por categoria é salvo.
+// tickets/gemas). Preço de mercado e quantidade comprada são inputs do dia (não persistem); já o
+// custo de fabricar por categoria, o preço do ticket e o Card Cash são salvos no app_settings.
 export const CREDIT_CATEGORIES = [
   { id: 'iniciante', name: 'Iniciante' },
   { id: 'intermediario', name: 'Intermediário' },

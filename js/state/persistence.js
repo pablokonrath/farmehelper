@@ -108,6 +108,8 @@ export async function loadPersistedState() {
   AppState.trackedKeywords = trackedKeywords.length ? trackedKeywords : AppState.trackedKeywords;
   AppState.filterByTrackedKeywords = appSettings.filterByTrackedKeywords ?? false;
   AppState.rushCreditCraftCosts = { ...DEFAULT_CREDIT_CRAFT_COSTS, ...(appSettings.rushCreditCraftCosts || {}) };
+  AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
+  AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
   AppState.salesLog = appSettings.salesLog ?? [];
   AppState.priceHistory = appSettings.priceHistory ?? {};
@@ -144,6 +146,15 @@ export function saveFilterKeywordsFlag() {
 
 export function saveRushCreditCraftCosts() {
   return put('app-settings.php', { rushCreditCraftCosts: AppState.rushCreditCraftCosts });
+}
+
+// Preço do ticket e do Card Cash — parâmetros do rush que o jogador digita uma vez e valem pra
+// sempre (antes ficavam só na sessão e sumiam ao recarregar).
+export function saveRushParams() {
+  return put('app-settings.php', {
+    rushTicketPrice: AppState.rushTicketPrice,
+    rushCardCashPrice: AppState.rushCardCashPrice,
+  });
 }
 
 export function saveDailyGoal() {

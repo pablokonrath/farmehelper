@@ -2,6 +2,7 @@ import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
+import { saveRushParams } from '../state/persistence.js';
 import { renderPage } from '../router.js';
 
 export function setRushCartDate(value) {
@@ -13,6 +14,7 @@ export function setRushTicketPrice(value) {
   const input = document.getElementById('tkp');
   if (input) input.value = AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : '';
   updateRushMetricsDisplay();
+  saveRushParams().catch(err => console.error('Falha ao salvar preço do ticket:', err));
 }
 
 export function setRushCardCashPrice(value) {
@@ -25,6 +27,7 @@ export function setRushCardCashPrice(value) {
   if (gemaHint) gemaHint.textContent = costPerGem;
   const gemaSuggestion = document.getElementById('gemaSuggestion');
   if (gemaSuggestion) gemaSuggestion.textContent = costPerGem;
+  saveRushParams().catch(err => console.error('Falha ao salvar Card Cash:', err));
 }
 
 export function toggleDungeonManager() {
@@ -182,8 +185,8 @@ export function renderRushPage() {
 <!-- CARRINHO -->
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}</div>
-  <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>Salvar rush do dia</button></div>
-  ${AppState.rushHistory[AppState.rushCartDate] ? `<div style="font-size:12px;color:var(--warn);background:var(--warn-bg,rgba(234,88,12,.1));border:1px solid var(--warn);border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Já existe um rush salvo para ${formatDateBR(AppState.rushCartDate)}. Salvar agora vai substituí-lo pelo carrinho atual.</div>` : ''}
+  <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>${AppState.rushHistory[AppState.rushCartDate] ? 'Atualizar rush do dia' : 'Salvar rush do dia'}</button></div>
+  ${AppState.rushHistory[AppState.rushCartDate] ? `<div style="font-size:12px;color:var(--acc);background:var(--acc-bg,rgba(34,211,238,.08));border:1px solid var(--acc-border,rgba(34,211,238,.3));border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-info-circle"></i> Este dia (${formatDateBR(AppState.rushCartDate)}) já tem um rush salvo. Ao salvar, ele é <strong>atualizado</strong> com o carrinho atual — não cria outro nem duplica.</div>` : ''}
   ${!AppState.rushCart.length ? '<div class="empty">Nenhuma DG adicionada. Escolha uma DG acima e clique em Adicionar.</div>' : `
   <table><thead><tr><th>DG</th><th>Tipo</th><th>Reps</th><th>Reset</th><th>Custo (breakdown)</th><th style="width:40px"></th></tr></thead><tbody>
   ${AppState.rushCart.map((item, i) => {
