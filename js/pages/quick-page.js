@@ -19,7 +19,7 @@ function bigChoice(onclick, icon, title, desc) {
 function stepShell(stepText, inner) {
   return `<div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <button class="btn btn-d btn-xs" onclick="quickBackToMenu()"><i class="ti ti-arrow-left"></i>Voltar</button>
+      <button class="btn btn-d btn-xs" onclick="quickBack()"><i class="ti ti-arrow-left"></i>Voltar</button>
       <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${stepText}</span>
     </div>
     ${inner}

@@ -34,6 +34,20 @@ export function quickBackToMenu() {
   renderPage();
 }
 
+// Volta UMA etapa. Se já está no passo 1, aí sim volta pra lista de ações (não perde o caminho
+// no meio de um fluxo de vários passos, como venda ou montar rush).
+export function quickBack() {
+  const qm = AppState.quickMode;
+  qm.error = '';
+  if (typeof qm.step === 'number' && qm.step > 1) {
+    qm.step -= 1;
+  } else {
+    qm.action = null;
+    qm.step = 0;
+  }
+  renderPage();
+}
+
 // Botão "Próximo/Confirmar" de qualquer passo — decide o que fazer pela ação + passo atuais.
 export function quickNext() {
   const qm = AppState.quickMode;

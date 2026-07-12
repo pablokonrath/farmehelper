@@ -13,7 +13,7 @@ import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
 import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
-import { openQuickMode, quickPick, quickBackToMenu, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
+import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import {
   createUser,
   addRankingItem,
@@ -231,6 +231,7 @@ Object.assign(window, {
   openQuickMode,
   quickPick,
   quickBackToMenu,
+  quickBack,
   quickNext,
   quickRushAdd,
   quickRushRemove,
