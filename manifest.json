@@ -1,7 +1,7 @@
 {
   "name": "DropList — Central de Farme",
   "short_name": "DropList",
-  "description": "Central de farme e monitoramento para Cabal Online BR.",
+  "description": "Central de farme e monitoramento para Cabal Neo.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

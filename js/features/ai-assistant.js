@@ -77,7 +77,7 @@ export async function submitAIMessage(message) {
       body: JSON.stringify({
         model: AI_MODEL,
         max_tokens: 1024,
-        system: `Você é um expert em farming do Cabal Online BR. Analise dados e responda de forma prática e direta, em português. Dados: ${JSON.stringify(context)}`,
+        system: `Você é um expert em farming do Cabal Neo. Analise dados e responda de forma prática e direta, em português. Dados: ${JSON.stringify(context)}`,
         messages: AppState.aiMessages.map(m => ({ role: m.role, content: m.content })),
       }),
     });

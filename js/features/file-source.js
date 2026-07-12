@@ -7,7 +7,7 @@ import { syncTrackedDropCounts } from './leaderboard.js';
 import { checkWishlistMatches } from './wishlist.js';
 import { renderPage } from '../router.js';
 
-// Os arquivos de drop do Cabal Online são gerados em windows-1252, não UTF-8.
+// Os arquivos de drop do Cabal Neo são gerados em windows-1252, não UTF-8.
 const LOG_FILE_DECODER = new TextDecoder('windows-1252');
 const API_BASE = 'api';
 
