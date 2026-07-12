@@ -123,6 +123,9 @@ export const AppState = {
   compareDayB: '',
   compareItemFilter: '',
   liveFileHandle: null,
+  // true = AppState.drops foi reconstruído do servidor (aparelho sem arquivo local, ex: celular).
+  // Nesse modo o cliente NÃO re-sincroniza os drops (senão gravaria de volta um dado derivado).
+  dropsFromServer: false,
   liveFilePollWorker: null,
   lastReadFileSize: 0,
   pendingLineBuffer: '',

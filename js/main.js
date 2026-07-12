@@ -30,6 +30,7 @@ import {
   saveEditedLogin,
 } from './features/admin.js';
 import { setRankingFilterItem, setRankingCompareUsername, setRankingPeriod } from './features/leaderboard.js';
+import { loadServerFarmDropsIfEmpty } from './features/leaderboard.js';
 import { setGuildPanelPeriod, setGuildPanelGuild } from './features/guild-panel.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
@@ -228,7 +229,10 @@ if (!authenticated) {
   initFarmGoalBaseline();
   initFileInputListener();
   renderPage();
-  resumeLiveFileConnection();
+  // Aguarda tentar reconectar o arquivo local (no PC). Se não houver arquivo (ex: celular),
+  // carrega o farme completo do servidor pra a Visão geral aparecer igual ao PC.
+  await resumeLiveFileConnection();
+  loadServerFarmDropsIfEmpty();
   startPresenceHeartbeat();
   startEventScheduleChecks();
   startDropCounterTicker();

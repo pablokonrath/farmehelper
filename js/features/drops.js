@@ -17,6 +17,33 @@ export function getAllDrops() {
   return [...AppState.drops, ...AppState.manualDrops];
 }
 
+// Contagem por dia de TODOS os itens do log (sem filtro de ranking) — vira o snapshot que
+// alimenta farm_drops_daily, deixando o servidor com o farme completo pra qualquer aparelho
+// mostrar a Visão geral igual ao PC. Só do log (AppState.drops); os manuais o cliente carrega e
+// soma à parte, então incluí-los aqui contaria em dobro no aparelho que só lê do servidor.
+export function computeAllDropsByDate() {
+  const result = {};
+  AppState.drops.forEach(d => {
+    if (!d.date || !d.name) return;
+    (result[d.date] || (result[d.date] = {}))[d.name] = (result[d.date][d.name] || 0) + 1;
+  });
+  return result;
+}
+
+// Reconstrói AppState.drops a partir do agregado do servidor (aparelho sem o arquivo local, ex:
+// celular): expande cada contagem em N "drops" sintéticos, pra a Visão geral/Relatório renderizar
+// igual ao PC. Sem horário real (o agregado é por dia), então KPIs de tempo ficam de fora.
+export function expandServerDropsToState(aggregate) {
+  const drops = [];
+  Object.entries(aggregate || {}).forEach(([date, items]) => {
+    Object.entries(items).forEach(([name, qty]) => {
+      for (let i = 0; i < qty; i++) drops.push({ date, name, manual: false });
+    });
+  });
+  AppState.drops = drops;
+  AppState.dropsFromServer = true;
+}
+
 // Aplica o filtro "Filtrar apenas itens rastreados" (Cálculo de farme) quando ativo — usado
 // tanto pela lista principal de drops quanto pelo comparador de dias, pra manter os dois
 // consistentes com a mesma lista de palavras rastreadas.

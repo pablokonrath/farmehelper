@@ -122,6 +122,7 @@ async function startLiveFilePolling(fileHandle) {
 
   const file = await fileHandle.getFile();
   AppState.drops = parseLogLines(LOG_FILE_DECODER.decode(await file.arrayBuffer()));
+  AppState.dropsFromServer = false; // agora a fonte é o arquivo real, não o agregado do servidor
   AppState.lastReadFileSize = file.size;
   AppState.pendingLineBuffer = '';
 
@@ -165,6 +166,7 @@ export function initFileInputListener() {
     } catch {
       AppState.drops = parseLogLines(await file.text());
     }
+    AppState.dropsFromServer = false; // fonte agora é o arquivo enviado, não o agregado do servidor
     e.target.value = '';
 
     document.getElementById('fstat').textContent = AppState.drops.length.toLocaleString('pt-BR') + ' drops carregados';
