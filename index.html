@@ -2,7 +2,16 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>DropList — Cabal Online BR</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#080b14" />
+    <link rel="icon" type="image/png" href="icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="icons/icon-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="DropList" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -72,6 +81,10 @@
       </div>
     </div>
     <div class="wrap" id="appWrap" style="display: none">
+      <button class="mmenu-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <i class="ti ti-menu-2"></i>
+      </button>
+      <div class="sb-overlay" onclick="toggleSidebar()"></div>
       <aside class="sb">
         <div class="sb-head">
           <div class="sb-logo"><i class="ti ti-sword"></i>DropList</div>

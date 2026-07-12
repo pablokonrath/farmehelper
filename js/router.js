@@ -19,6 +19,8 @@ import { renderLeaderPage } from './pages/leader-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
+  // Fecha a gaveta lateral no celular ao escolher uma página (no desktop não tem efeito).
+  document.getElementById('appWrap')?.classList.remove('sb-open');
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('on'));
   const navButton = document.getElementById('nb-' + page);
   if (navButton) navButton.classList.add('on');

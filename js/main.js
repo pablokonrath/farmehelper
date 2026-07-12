@@ -86,11 +86,17 @@ import {
 import { exportDropsToCSV } from './features/export.js';
 import { maskDateInputBR, parseDateInputBR, maskAlzInputLive, maskTimeInputBR } from './utils/formatting.js';
 
+// Abre/fecha a gaveta lateral no celular (o botão hambúrguer, ver index.html/styles.css).
+function toggleSidebar() {
+  document.getElementById('appWrap')?.classList.toggle('sb-open');
+}
+
 // As páginas são geradas via template string com atributos onclick/onchange/oninput
 // (em vez de addEventListener), então cada função referenciada neles precisa existir
 // no escopo global — módulos ES não expõem isso automaticamente.
 Object.assign(window, {
   navigateTo,
+  toggleSidebar,
   connectLiveFile,
   reconnectLiveFile,
   setSearchQuery,
