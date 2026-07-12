@@ -27,6 +27,10 @@ export function setRushCardCashPrice(value) {
   if (gemaHint) gemaHint.textContent = costPerGem;
   const gemaSuggestion = document.getElementById('gemaSuggestion');
   if (gemaSuggestion) gemaSuggestion.textContent = costPerGem;
+  // Recalcula o preço da gema no reset (Card Cash ÷ 1000) ao vivo — pra não ficar com o valor
+  // antigo quando o Card Cash muda depois de abrir os campos de reset.
+  const gemPriceInput = document.getElementById('dgGemPrice');
+  if (gemPriceInput) gemPriceInput.value = formatNumber(getCostPerGem());
   saveRushParams().catch(err => console.error('Falha ao salvar Card Cash:', err));
 }
 
