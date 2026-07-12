@@ -50,7 +50,56 @@ function renderPicker() {
   ${bigChoice("quickPick('sessao')", active ? '⏹️' : '▶️',
     active ? 'Encerrar a sessão de DG' : 'Iniciar uma sessão de DG',
     active ? `Você está em ${active.dungeonName} agora` : 'Cronometra o farme e liga a vigilância')}
+  ${bigChoice("quickPick('desejo')", '🎁', 'Adicionar item ao desejo', 'Ser avisado quando alguém dropar')}
+  ${bigChoice("quickPick('rastrear')", '🔔', 'Rastrear um item p/ alerta', 'Receber alerta quando você dropar')}
+  ${bigChoice("quickPick('rush')", '⚔️', 'Montar o rush de hoje', 'Escolher DGs e salvar o custo do dia')}
 </div>`;
+}
+
+function renderDesejo(qm) {
+  if (qm.step === 'done') {
+    return doneCard('🎁', 'Adicionado aos desejos!', `"${qm.data.itemName}" entrou na sua lista. Quando alguém dropar, chega no seu correio.`, 'desejo');
+  }
+  const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${n}">`).join('');
+  const inner = `<label class="lbl">Qual item você quer comprar?</label>
+    <input class="inp" id="qm-wish" list="qm-items2" autocomplete="off" placeholder="ex: Nucleo Arcano (Altíssimo)">
+    <datalist id="qm-items2">${opts}</datalist>${errLine(qm)}
+    <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-check"></i>Adicionar aos desejos</button>`;
+  return stepShell('Lista de desejos', inner);
+}
+
+function renderRastrear(qm) {
+  if (qm.step === 'done') {
+    return doneCard('🔔', 'Item rastreado!', `Vou te alertar (som/pop-up) quando "${qm.data.itemName}" cair no seu farme.`, 'rastrear');
+  }
+  const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${n}">`).join('');
+  const inner = `<label class="lbl">Qual item você quer rastrear?</label>
+    <input class="inp" id="qm-track" list="qm-items3" autocomplete="off" placeholder="ex: joia, extensor...">
+    <datalist id="qm-items3">${opts}</datalist>
+    <div class="hint">Quando esse item cair no seu farme, você recebe o alerta na hora.</div>${errLine(qm)}
+    <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-check"></i>Rastrear item</button>`;
+  return stepShell('Rastrear item', inner);
+}
+
+function renderRush(qm) {
+  if (qm.step === 'done') {
+    return doneCard('⚔️', 'Rush de hoje salvo!', `Custo total estimado: ${formatAlzGamer(qm.data.savedTotal || 0)}. Dá pra ver e ajustar em "DGs de rush diário".`, 'rush');
+  }
+  const cart = qm.data.cart || [];
+  const opts = AppState.dungeonList.map(dg => `<option value="${dg.id}">${dg.name}</option>`).join('');
+  const cartList = cart.length ? `<div style="margin-bottom:12px">${cart.map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+      <span><strong>${it.repetitions}×</strong> ${it.name}</span>
+      <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="quickRushRemove(${i})" title="Remover"><i class="ti ti-x"></i></button>
+    </div>`).join('')}</div>` : '<div class="empty" style="padding:10px 0">Nenhuma DG ainda. Adicione abaixo.</div>';
+  const inner = `${cartList}
+    <label class="lbl">Adicionar DG ao rush de hoje</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <select class="inp" id="qm-rush-dg" style="flex:1;min-width:160px"><option value="">Selecione a DG...</option>${opts}</select>
+      <input class="inp" id="qm-rush-reps" type="number" min="1" value="1" style="width:90px" title="Quantas vezes">
+      <button class="btn btn-d" onclick="quickRushAdd()"><i class="ti ti-plus"></i>Adicionar</button>
+    </div>${errLine(qm)}
+    <button class="btn btn-s" style="margin-top:16px;width:100%" onclick="quickNext()"><i class="ti ti-device-floppy"></i>Finalizar e salvar rush de hoje</button>`;
+  return stepShell('Montar rush de hoje', inner);
 }
 
 function renderVenda(qm) {
@@ -121,5 +170,8 @@ export function renderQuickPage() {
   if (qm.action === 'venda') return HEADER + renderVenda(qm);
   if (qm.action === 'meta') return HEADER + renderMeta(qm);
   if (qm.action === 'sessao') return HEADER + renderSessao(qm);
+  if (qm.action === 'desejo') return HEADER + renderDesejo(qm);
+  if (qm.action === 'rastrear') return HEADER + renderRastrear(qm);
+  if (qm.action === 'rush') return HEADER + renderRush(qm);
   return HEADER + renderPicker();
 }

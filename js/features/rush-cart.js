@@ -68,6 +68,23 @@ export function calculateRushCartCost() {
   };
 }
 
+// Monta um item de carrinho simples (DG × repetições, sem reset) a partir do id da DG — usado
+// pelo Modo rápido, que não pede as opções avançadas (gemas de reset etc.).
+export function buildCartItem(dungeonId, repetitions) {
+  const dungeon = AppState.dungeonList.find(d => d.id === dungeonId);
+  if (!dungeon) return null;
+  return {
+    name: dungeon.name,
+    alzCost: dungeon.alzCost,
+    ticketsPerRun: dungeon.ticketsPerRun || 0,
+    gemsPerRun: dungeon.gemsPerRun || 0,
+    repetitions: Math.max(1, parseInt(repetitions, 10) || 1),
+    usedReset: false,
+    resetGemQuantity: 0,
+    resetGemUnitPrice: 0,
+  };
+}
+
 export function addDungeonToCart() {
   const select = document.getElementById('dgS');
   if (!select) return;

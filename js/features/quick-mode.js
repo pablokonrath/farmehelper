@@ -2,6 +2,9 @@ import { AppState } from '../state/app-state.js';
 import { recordSale } from './sales.js';
 import { setDailyGoal } from './farm-goal.js';
 import { startDgSession, endDgSession, getActiveSessionSummary } from './dg-session.js';
+import { addWishlistItemByName } from './wishlist.js';
+import { addTrackedKeywordByName } from './keywords.js';
+import { buildCartItem, saveRushForDay, calculateRushCartCost } from './rush-cart.js';
 import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { navigateTo, renderPage } from '../router.js';
@@ -71,6 +74,47 @@ export function quickNext() {
         qm.step = 'done-start';
       }
     }
+  } else if (qm.action === 'desejo') {
+    if (qm.step === 1) {
+      const item = val('qm-wish');
+      if (!item) return fail('Digite o item que você quer.');
+      if (!addWishlistItemByName(item)) return fail('Esse item já está na sua lista.');
+      qm.data.itemName = item; qm.step = 'done';
+    }
+  } else if (qm.action === 'rastrear') {
+    if (qm.step === 1) {
+      const item = val('qm-track');
+      if (!item) return fail('Digite o item pra rastrear.');
+      if (!addTrackedKeywordByName(item, true)) return fail('Você já rastreia esse item.');
+      qm.data.itemName = item; qm.step = 'done';
+    }
+  } else if (qm.action === 'rush') {
+    if (qm.step === 1) {
+      if (!qm.data.cart || !qm.data.cart.length) return fail('Adicione ao menos uma DG.');
+      AppState.rushCart = qm.data.cart;
+      AppState.rushCartDate = todayISODate();
+      saveRushForDay();
+      qm.data.savedTotal = calculateRushCartCost().total;
+      qm.step = 'done';
+    }
   }
+  renderPage();
+}
+
+// Adiciona a DG escolhida (com repetições) ao carrinho temporário do Modo rápido — sem finalizar.
+export function quickRushAdd() {
+  const qm = AppState.quickMode;
+  qm.error = '';
+  const id = (document.getElementById('qm-rush-dg')?.value || '').trim();
+  if (!id) { qm.error = 'Escolha a DG.'; renderPage(); return; }
+  const item = buildCartItem(id, document.getElementById('qm-rush-reps')?.value);
+  if (!item) { qm.error = 'DG inválida.'; renderPage(); return; }
+  (qm.data.cart || (qm.data.cart = [])).push(item);
+  renderPage();
+}
+
+export function quickRushRemove(index) {
+  const cart = AppState.quickMode.data.cart;
+  if (cart) cart.splice(index, 1);
   renderPage();
 }

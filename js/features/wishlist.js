@@ -5,14 +5,22 @@ import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
 
-export function addWishlistItem() {
-  const input = document.getElementById('newWishlistItem');
-  const name = input?.value.trim();
-  if (!name || AppState.wishlistItems.includes(name)) return;
+// Adiciona um item à lista de desejos por nome (sem tocar no DOM nem re-renderizar). Devolve
+// false se vazio ou duplicado. Usado pela página e pelo Modo rápido.
+export function addWishlistItemByName(name) {
+  name = (name || '').trim();
+  if (!name || AppState.wishlistItems.includes(name)) return false;
   AppState.wishlistItems.push(name);
   saveWishlistItems().catch(err => console.error('Falha ao salvar lista de desejos:', err));
-  input.value = '';
-  renderPage();
+  return true;
+}
+
+export function addWishlistItem() {
+  const input = document.getElementById('newWishlistItem');
+  if (addWishlistItemByName(input?.value)) {
+    input.value = '';
+    renderPage();
+  }
 }
 
 export function removeWishlistItem(name) {
