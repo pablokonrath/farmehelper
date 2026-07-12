@@ -51,24 +51,22 @@ export function renderAlertsPage() {
   </div>
 </div>`;
 
-  // 2) Watchdog + seu aviso de Telegram (juntos, pra não confundir)
-  const watchdogRelayHint = !s.watchdogEnabled
-    ? 'Ligue a vigilância acima primeiro.'
-    : !linked
-      ? 'Vincule o Telegram (na seção “Fora do app”) primeiro.'
-      : 'Se o helper travar, chega no Telegram e repete até você voltar a dropar.';
+  // 2) Watchdog — agora 100% automático com a sessão de DG (sem interruptor manual). Aqui ficam
+  // só os limites e o aviso de travamento no Telegram.
+  const watchdogRelayHint = !linked
+    ? 'Vincule o Telegram (na seção “Fora do app”) primeiro.'
+    : 'Se o helper travar, chega no Telegram e repete até você voltar a dropar.';
   const watchdogCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-shield-bolt"></i>Vigilância de inatividade (watchdog)</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Avisa quando o helper trava (sem nenhum drop) ou um item rastreado some. <strong>Liga e desliga sozinho</strong> quando você inicia/encerra uma sessão de DG — então nem precisa lembrar. Dá pra ligar na mão também, pra farme sem sessão.</div>
-  ${toggleRow('Ativar vigilância', 'Liga/desliga sozinho com a sessão de DG. Monitora a inatividade enquanto o arquivo ao vivo está conectado.', s.watchdogEnabled, 'setWatchdogEnabled(this.checked)', { extra: ';' + div })}
-  <div class="g3" style="padding-top:12px">
+  <div class="pg-sub" style="margin:-4px 0 10px">Avisa quando o helper trava (sem nenhum drop) ou um item rastreado some. <strong>Liga e desliga sozinho</strong> junto com a sessão de DG — você não ativa nada. (Farme na mão não gera log, então não faz sentido vigiar fora de uma sessão.)</div>
+  <div class="g3">
     <div><label class="lbl">Alertar sem nenhum drop por (minutos)</label><input class="inp" type="number" min="1" value="${s.noDropThresholdMinutes}" onchange="setNoDropThresholdMinutes(this.value)">
     <div class="hint">Silêncio total é forte indício de que o helper travou.</div></div>
     <div style="grid-column:span 2"><label class="lbl">Alertar sem dropar um item rastreado por (minutos)</label><input class="inp" type="number" min="1" value="${s.itemSilenceThresholdMinutes}" onchange="setItemSilenceThresholdMinutes(this.value)">
     <div class="hint">Item específico (ex: joia) pode demorar mais — use um limite mais alto que o de cima.</div></div>
   </div>
-  ${toggleRow('Avisar travamento no Telegram', watchdogRelayHint, s.telegramWatchdogRelayEnabled, 'setTelegramWatchdogRelayEnabled(this.checked)', { disabled: !s.watchdogEnabled || !linked, extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' + (!s.watchdogEnabled || !linked ? ';opacity:.55' : '') })}
+  ${toggleRow('Avisar travamento no Telegram', watchdogRelayHint, s.telegramWatchdogRelayEnabled, 'setTelegramWatchdogRelayEnabled(this.checked)', { disabled: !linked, extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' + (!linked ? ';opacity:.55' : '') })}
 </div>`;
 
   // 3) Eventos programados (TG / World Boss)
