@@ -78,7 +78,7 @@ function renderIntegrityFlagsCard() {
   return `
 <div class="card">
   <div class="ctitle"><i class="ti ti-shield-exclamation"></i>Alertas de integridade</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Sinalizações automáticas de possível dado forjado (arquivo editado manualmente ou pico de drops numa sincronização). É heurística, não prova de trapaça — revise caso a caso.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Sinalização automática de possível dado forjado: o trecho já escrito do log mudou entre duas leituras (edição manual do arquivo). É heurística, não prova de trapaça — revise caso a caso.</div>
   ${AppState.isIntegrityFlagsLoading ? '<div class="empty">Carregando...</div>' :
     !AppState.integrityFlags.length ? '<div class="empty" style="padding:14px 0">Nenhum alerta registrado.</div>' : `
   <table><thead><tr><th>Usuário</th><th style="width:120px">Tipo</th><th>Detalhe</th><th style="width:140px">Quando</th></tr></thead><tbody>
