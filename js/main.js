@@ -229,6 +229,14 @@ Object.assign(window, {
   setPriceHistoryItem,
 });
 
+// Registra o service worker (o MESMO arquivo/escopo que o OneSignal usa) já no carregamento, pra o
+// app poder ser INSTALADO como PWA de verdade (janela própria / WebAPK) mesmo antes de ligar o push.
+// Sem isso o navegador só cria um atalho que abre dentro dele. Quando o push é ativado, o OneSignal
+// reaproveita esta mesma registração (mesmo script, escopo '/'), então não há conflito.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('OneSignalSDKWorker.js').catch(() => {});
+}
+
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
 // montar qualquer coisa. Sem sessão válida, só a tela de login é mostrada.
 const authenticated = await checkSession();
