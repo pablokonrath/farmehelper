@@ -47,7 +47,7 @@ import {
 
 import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice } from './features/pricing.js';
 import { addTrackedKeyword, removeTrackedKeyword, resetTrackedKeywords, toggleKeywordAlert } from './features/keywords.js';
-import { addWishlistItem, removeWishlistItem, markAllWishlistMatchesSeen, clearWishlistMatches, startOffer, cancelOffer, sendWishlistOffer, markOffersSeen, clearOffers } from './features/wishlist.js';
+import { addWishlistItem, removeWishlistItem, markAllWishlistMatchesSeen, clearWishlistMatches, startOffer, cancelOffer, sendWishlistOffer, markOffersSeen, clearOffers, respondToOffer, markSentOffersSeen } from './features/wishlist.js';
 import { saveDungeonEdit, deleteDungeon, addNewDungeon, resetDungeonList } from './features/dungeon-manager.js';
 import {
   requestNotificationPermission,
@@ -138,6 +138,8 @@ Object.assign(window, {
   sendWishlistOffer,
   markOffersSeen,
   clearOffers,
+  respondToOffer,
+  markSentOffersSeen,
   requestNotificationPermission,
   testNotification,
   markAllAlertsSeen,

@@ -130,6 +130,59 @@ export async function loadWishlistOffers() {
   renderPage();
 }
 
+// O vendedor aceita ou recusa uma proposta recebida; o comprador é avisado (tela + Telegram).
+export async function respondToOffer(id, status) {
+  const offer = AppState.wishlistOffers.find(o => o.id === id);
+  const who = offer ? offer.buyerUsername : 'o comprador';
+  const msg = status === 'accepted'
+    ? `Aceitar a proposta de ${who}? A pessoa vai ser avisada (e no Telegram, se ela vinculou).`
+    : `Recusar a proposta de ${who}?`;
+  if (!confirm(msg)) return;
+  try {
+    const response = await fetch(`${API_BASE}/wishlist-offers.php`, {
+      method: 'PUT',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ respond: id, status }),
+    });
+    if (!response.ok) {
+      console.error('Falha ao responder proposta:', response.status, await response.text());
+      alert('Não foi possível responder a proposta.');
+      return;
+    }
+    if (offer) offer.status = status;
+    showInfoToast(status === 'accepted'
+      ? 'Proposta aceita — combine a troca no jogo ou pelo Seguro Neo (GM).'
+      : 'Proposta recusada.');
+    renderPage();
+  } catch (err) {
+    console.error('Erro de conexão ao responder proposta:', err);
+  }
+}
+
+// Propostas que EU enviei (sou o comprador) + o status da resposta de cada uma.
+export async function loadWishlistSentOffers() {
+  AppState.isWishlistSentOffersLoading = true;
+  try {
+    const response = await fetch(`${API_BASE}/wishlist-offers.php?box=sent`, { credentials: 'same-origin' });
+    AppState.wishlistSentOffers = response.ok ? await response.json() : [];
+  } catch {
+    AppState.wishlistSentOffers = [];
+  }
+  AppState.isWishlistSentOffersLoading = false;
+  renderPage();
+}
+
+export async function markSentOffersSeen() {
+  AppState.wishlistSentOffers.forEach(o => (o.buyerSeen = true));
+  renderPage();
+  try {
+    await fetch(`${API_BASE}/wishlist-offers.php`, { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ buyerSeen: true }) });
+  } catch (err) {
+    console.error('Erro ao marcar respostas como vistas:', err);
+  }
+}
+
 export async function markOffersSeen() {
   AppState.wishlistOffers.forEach(o => (o.seen = true));
   renderPage();

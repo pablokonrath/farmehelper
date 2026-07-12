@@ -188,6 +188,9 @@ export const AppState = {
   wishlistOffers: [],
   isWishlistOffersLoading: false,
   offeringMatchId: null,
+  // Propostas que EU enviei (sou o comprador), com o status da resposta do vendedor.
+  wishlistSentOffers: [],
+  isWishlistSentOffersLoading: false,
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
   knownItemNames: [],
