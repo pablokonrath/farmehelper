@@ -12,7 +12,6 @@ import { addEventTime, removeEventTime, startEventScheduleChecks } from './featu
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
-import { loadAgentToken, regenerateAgentToken } from './features/agent.js';
 import {
   createUser,
   addRankingItem,
@@ -30,7 +29,6 @@ import {
   saveEditedLogin,
 } from './features/admin.js';
 import { setRankingFilterItem, setRankingCompareUsername, setRankingPeriod } from './features/leaderboard.js';
-import { loadServerFarmDropsIfEmpty } from './features/leaderboard.js';
 import { setGuildPanelPeriod, setGuildPanelGuild } from './features/guild-panel.js';
 
 import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
@@ -208,8 +206,6 @@ Object.assign(window, {
   setResetConfig,
   setGuildPanelPeriod,
   setGuildPanelGuild,
-  loadAgentToken,
-  regenerateAgentToken,
 });
 
 // Com o backend por trás, o app inteiro fica atrás de login — verifica a sessão antes de
@@ -229,10 +225,7 @@ if (!authenticated) {
   initFarmGoalBaseline();
   initFileInputListener();
   renderPage();
-  // Aguarda tentar reconectar o arquivo local (no PC). Se não houver arquivo (ex: celular),
-  // carrega o farme completo do servidor pra a Visão geral aparecer igual ao PC.
-  await resumeLiveFileConnection();
-  loadServerFarmDropsIfEmpty();
+  resumeLiveFileConnection();
   startPresenceHeartbeat();
   startEventScheduleChecks();
   startDropCounterTicker();

@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { getAllDrops, summarizeDropsByItem, computeAllDropsByDate, expandServerDropsToState, updateBalanceSidebar } from './drops.js';
+import { getAllDrops, summarizeDropsByItem } from './drops.js';
 import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
@@ -91,26 +91,7 @@ async function doSyncTrackedDropCounts() {
     // Contagem dos itens rastreados pessoais — alimenta o /drop do bot do Telegram, que é
     // sobre "o que EU dropei", não sobre o ranking global.
     putCounts('tracked-drop-counts.php', computeTrackedKeywordCountsByDate(), 'meus drops rastreados'),
-    // Farme completo (todos os itens) — snapshot que deixa o servidor com o farme inteiro pra o
-    // celular mostrar a Visão geral igual ao PC (ver farm-drops.php / expandServerDropsToState).
-    putCounts('farm-drops.php', { data: computeAllDropsByDate() }, 'farme completo'),
   ]);
-}
-
-// Aparelho sem arquivo local (celular): carrega o farme completo do servidor e reconstrói
-// AppState.drops, pra a Visão geral aparecer igual ao PC. Não faz nada quando há arquivo local
-// (aí os drops vêm do próprio arquivo, que é a fonte da verdade).
-export async function loadServerFarmDropsIfEmpty() {
-  if (AppState.liveFileHandle || AppState.drops.length) return;
-  try {
-    const response = await fetch(`${API_BASE}/farm-drops.php`, { credentials: 'same-origin' });
-    if (!response.ok) return;
-    expandServerDropsToState(await response.json());
-    updateBalanceSidebar();
-    renderPage();
-  } catch (err) {
-    console.error('Falha ao carregar o farme do servidor:', err);
-  }
 }
 
 // Throttle: no máximo 1 envio por minuto. Farmando, isso é chamado a cada poucos segundos (toda
@@ -124,9 +105,6 @@ let lastSyncAt = 0;
 let trailingSyncTimer = null;
 
 export function syncTrackedDropCounts() {
-  // No celular os drops foram reconstruídos do servidor — re-sincronizar gravaria de volta um
-  // dado derivado (e sobrescreveria o snapshot real vindo do PC). Nunca sincroniza nesse modo.
-  if (AppState.dropsFromServer) return;
   const elapsed = Date.now() - lastSyncAt;
   if (elapsed >= SYNC_MIN_INTERVAL_MS) {
     if (trailingSyncTimer) { clearTimeout(trailingSyncTimer); trailingSyncTimer = null; }

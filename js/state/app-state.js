@@ -123,9 +123,6 @@ export const AppState = {
   compareDayB: '',
   compareItemFilter: '',
   liveFileHandle: null,
-  // true = AppState.drops foi reconstruído do servidor (aparelho sem arquivo local, ex: celular).
-  // Nesse modo o cliente NÃO re-sincroniza os drops (senão gravaria de volta um dado derivado).
-  dropsFromServer: false,
   liveFilePollWorker: null,
   lastReadFileSize: 0,
   pendingLineBuffer: '',
@@ -185,8 +182,6 @@ export const AppState = {
   knownItemNames: [],
   telegramLinkCode: null,
   telegramBotLink: null,
-  // Token do agente do PC (droplist-agent.ps1), carregado sob demanda em Alertas. Ver agent.js.
-  agentToken: null,
   // Meta de farme do dia (Alz), guardada em app_settings. 0 = sem meta definida. Ver farm-goal.js.
   dailyGoalAlz: 0,
   // Data em que a meta de hoje já foi comemorada (in-memory) — evita repetir o parabéns a cada
