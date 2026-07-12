@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { saveWishlistItems } from '../state/persistence.js';
+import { showInfoToast } from './alerts.js';
 import { renderPage } from '../router.js';
 
 const API_BASE = 'api';
@@ -76,5 +77,76 @@ export async function clearWishlistMatches() {
     if (!response.ok) console.error('Falha ao limpar correio:', response.status, await response.text());
   } catch (err) {
     console.error('Erro de conexão ao limpar correio:', err);
+  }
+}
+
+// --- Propostas de compra ---
+
+// Abre o campo de valor da proposta num aviso do correio (guarda qual, pra renderizar o input).
+export function startOffer(matchId) {
+  AppState.offeringMatchId = matchId;
+  renderPage();
+}
+
+export function cancelOffer() {
+  AppState.offeringMatchId = null;
+  renderPage();
+}
+
+export async function sendWishlistOffer() {
+  const match = AppState.wishlistMatches.find(m => m.id === AppState.offeringMatchId);
+  if (!match) return;
+  const offerPrice = parseInt(String(document.getElementById('offerPriceInput')?.value || '').replace(/\D/g, ''), 10) || 0;
+  if (offerPrice <= 0) return;
+  AppState.offeringMatchId = null;
+  renderPage();
+  try {
+    const response = await fetch(`${API_BASE}/wishlist-offers.php`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dropperUsername: match.dropperUsername, itemName: match.itemName, offerPrice }),
+    });
+    if (!response.ok) {
+      console.error('Falha ao enviar proposta:', response.status, await response.text());
+      alert('Não foi possível enviar a proposta.');
+    } else {
+      showInfoToast('Proposta enviada para ' + match.dropperUsername);
+    }
+  } catch (err) {
+    console.error('Erro de conexão ao enviar proposta:', err);
+  }
+}
+
+export async function loadWishlistOffers() {
+  AppState.isWishlistOffersLoading = true;
+  try {
+    const response = await fetch(`${API_BASE}/wishlist-offers.php`, { credentials: 'same-origin' });
+    AppState.wishlistOffers = response.ok ? await response.json() : [];
+  } catch {
+    AppState.wishlistOffers = [];
+  }
+  AppState.isWishlistOffersLoading = false;
+  renderPage();
+}
+
+export async function markOffersSeen() {
+  AppState.wishlistOffers.forEach(o => (o.seen = true));
+  renderPage();
+  try {
+    await fetch(`${API_BASE}/wishlist-offers.php`, { method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seen: true }) });
+  } catch (err) {
+    console.error('Erro ao marcar propostas como vistas:', err);
+  }
+}
+
+export async function clearOffers() {
+  if (!confirm('Limpar todas as propostas recebidas?')) return;
+  AppState.wishlistOffers = [];
+  renderPage();
+  try {
+    await fetch(`${API_BASE}/wishlist-offers.php`, { method: 'DELETE', credentials: 'same-origin' });
+  } catch (err) {
+    console.error('Erro ao limpar propostas:', err);
   }
 }

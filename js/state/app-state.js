@@ -183,6 +183,11 @@ export const AppState = {
   wishlistItems: [],
   wishlistMatches: [],
   isWishlistMatchesLoading: false,
+  // Propostas de compra: recebidas (sou o vendedor) + qual aviso do correio está com o campo de
+  // proposta aberto (só UI).
+  wishlistOffers: [],
+  isWishlistOffersLoading: false,
+  offeringMatchId: null,
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
   knownItemNames: [],

@@ -252,6 +252,22 @@ CREATE TABLE IF NOT EXISTS wishlist_matches (
   FOREIGN KEY (wishlist_user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Propostas de compra: o dono da lista de desejos manda uma proposta com valor pra quem dropou
+-- o item; o vendedor vê em "Propostas recebidas" e chama o comprador no jogo pra fechar.
+CREATE TABLE IF NOT EXISTS wishlist_offers (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  seller_user_id INT NOT NULL,
+  buyer_user_id INT NOT NULL,
+  buyer_username VARCHAR(64) NOT NULL,
+  buyer_guild VARCHAR(64) NULL,
+  item_name VARCHAR(255) NOT NULL,
+  offer_price BIGINT NOT NULL,
+  ts TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  seen TINYINT(1) NOT NULL DEFAULT 0,
+  FOREIGN KEY (seller_user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (buyer_user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Horários recorrentes (agenda compartilhada, admin cadastra) de TG/World Boss. Guardado sem
 -- timezone — o "está na hora?" é checado no navegador de cada jogador com a hora local dele.
 CREATE TABLE IF NOT EXISTS event_schedule (

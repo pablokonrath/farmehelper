@@ -12,7 +12,7 @@ import { updateCartPreview } from './features/rush-cart.js';
 import { loadLeaderboardData } from './features/leaderboard.js';
 import { loadUsers } from './features/admin.js';
 import { loadAdminActionLog, loadIntegrityFlags } from './features/admin-log.js';
-import { loadWishlistMatches } from './features/wishlist.js';
+import { loadWishlistMatches, loadWishlistOffers } from './features/wishlist.js';
 import { renderWishlistPage } from './pages/wishlist-page.js';
 import { renderSessionsPage } from './pages/sessions-page.js';
 import { loadGuildPanelData } from './features/guild-panel.js';
@@ -34,7 +34,7 @@ export function navigateTo(page) {
     loadUsers();
     loadAdminActionLog();
     loadIntegrityFlags();
-  } else if (page === 'wishlist') loadWishlistMatches();
+  } else if (page === 'wishlist') { loadWishlistMatches(); loadWishlistOffers(); }
   else if (page === 'lider') loadGuildPanelData();
   else renderPage();
 }
