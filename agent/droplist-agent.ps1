@@ -50,8 +50,11 @@ while ($true) {
 
       if ($items.Count -gt 0) {
         $payload = @{ token = $Token; items = $items } | ConvertTo-Json -Compress
+        # PowerShell 5.1 manda string com a codificacao errada e quebra os acentos (Nucleo,
+        # Pocao...), corrompendo o JSON no servidor (dava 401). Envia como bytes UTF-8 pra garantir.
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($payload)
         try {
-          Invoke-RestMethod -Uri $ApiUrl -Method Post -Body $payload -ContentType 'application/json' -TimeoutSec 15 | Out-Null
+          Invoke-RestMethod -Uri $ApiUrl -Method Post -Body $bytes -ContentType 'application/json; charset=utf-8' -TimeoutSec 15 | Out-Null
         } catch {
           Write-Host ("[" + (Get-Date -Format "HH:mm:ss") + "] falha ao enviar: " + $_.Exception.Message) -ForegroundColor Yellow
         }
