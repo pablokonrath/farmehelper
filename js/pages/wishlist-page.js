@@ -32,7 +32,7 @@ export function renderWishlistPage() {
   ${matches.map(m => `<tr>
     <td>${formatDateTimeBR(m.ts)}</td>
     <td>${m.itemName}</td>
-    <td>${m.dropperUsername}</td>
+    <td><span style="display:inline-flex;align-items:center;gap:6px">${m.dropperUsername}<button title="Copiar nick pra chamar no chat do jogo" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:13px;padding:0;display:flex" onclick="copyNick('${m.dropperUsername}')"><i class="ti ti-copy"></i></button></span></td>
     <td>${m.dropperGuild || '<span style="color:var(--muted)">—</span>'}</td>
     <td>${m.seen ? '<span class="badge badge-muted">Visto</span>' : '<span class="badge badge-acc">Novo</span>'}</td>
   </tr>`).join('')}

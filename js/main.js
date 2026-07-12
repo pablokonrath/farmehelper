@@ -70,6 +70,7 @@ import {
   setTelegramDropRelayEnabled,
   setTelegramWishlistRelayEnabled,
   setTelegramWatchdogRelayEnabled,
+  showInfoToast,
 } from './features/alerts.js';
 import {
   addDungeonToCart,
@@ -92,12 +93,21 @@ function toggleSidebar() {
   document.getElementById('appWrap')?.classList.toggle('sb-open');
 }
 
+// Copia o nick de um jogador (ex: quem dropou seu desejo no correio) pra você sussurrar no chat
+// do jogo, sem redigitar. Mostra um "copiado" rapidinho.
+function copyNick(nick) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(nick).then(() => showInfoToast('Nick copiado: ' + nick)).catch(() => {});
+  }
+}
+
 // As páginas são geradas via template string com atributos onclick/onchange/oninput
 // (em vez de addEventListener), então cada função referenciada neles precisa existir
 // no escopo global — módulos ES não expõem isso automaticamente.
 Object.assign(window, {
   navigateTo,
   toggleSidebar,
+  copyNick,
   connectLiveFile,
   reconnectLiveFile,
   setSearchQuery,

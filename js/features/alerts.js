@@ -343,6 +343,17 @@ export function showGoalToast(title, body) {
   }
 }
 
+// Toast curtinho de confirmação (ex: "Nick copiado") — só visual, sem som nem notificação do SO.
+export function showInfoToast(text) {
+  const container = document.getElementById('alertToastContainer');
+  if (!container) return;
+  const el = document.createElement('div');
+  el.className = 'alert-toast';
+  el.innerHTML = `<i class="ti ti-check" style="color:var(--ok);flex-shrink:0;margin-top:1px"></i><div style="flex:1;min-width:0;font-size:13px">${text}</div>`;
+  container.appendChild(el);
+  setTimeout(() => el.remove(), 2000);
+}
+
 export function testNotification() {
   fireAlert({ id: 'test-' + Date.now(), timestamp: new Date().toISOString(), itemName: 'Item de teste', keyword: 'teste', quantity: 1, seen: false });
 }
