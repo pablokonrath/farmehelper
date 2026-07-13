@@ -4,7 +4,11 @@
 // Chamado depois do login, então já está protegido por sessão como qualquer outro endpoint.
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
-require_login();
+// Só o admin mestre. Antes era só require_login(), mas este endpoint zera/reescreve o catálogo
+// GLOBAL de DGs — qualquer usuário logado poderia chamá-lo direto e sobrescrever isso pra todo
+// mundo. Na prática é legado (contas novas nem chegam a chamar), e o único que já usou foi o
+// próprio dono (que migrou do localStorage), então gatear no mestre não quebra ninguém.
+require_master_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_response(['error' => 'method_not_allowed'], 405);
 
@@ -13,11 +17,11 @@ $db = get_db();
 $uid = current_user_id();
 $db->beginTransaction();
 
-// itemPrices e dungeonList são globais/compartilhados (sem user_id) — sem mudança aqui.
+// item_prices é POR USUÁRIO (PK user_id+item_name) — escopa no dono, nunca zera a tabela toda.
 $itemPrices = $body['itemPrices'] ?? [];
-$db->exec('DELETE FROM item_prices');
-$stmt = $db->prepare('INSERT INTO item_prices (item_name, price) VALUES (:name, :price)');
-foreach ($itemPrices as $name => $price) $stmt->execute(['name' => $name, 'price' => (int) $price]);
+$db->prepare('DELETE FROM item_prices WHERE user_id = :uid')->execute(['uid' => $uid]);
+$stmt = $db->prepare('INSERT INTO item_prices (user_id, item_name, price) VALUES (:uid, :name, :price)');
+foreach ($itemPrices as $name => $price) $stmt->execute(['uid' => $uid, 'name' => $name, 'price' => (int) $price]);
 
 // dungeonList vem sempre preenchido do client (AppState nunca fica com a lista vazia — ver
 // DEFAULT_DUNGEONS em app-state.js), então não precisa de guarda contra lista vazia aqui.
