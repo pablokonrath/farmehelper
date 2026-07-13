@@ -1,6 +1,6 @@
 {
-  "name": "DropList — Central de Farme",
-  "short_name": "DropList",
+  "name": "FarmHub — Central de Farme",
+  "short_name": "FarmHub",
   "description": "Central de farme e monitoramento para Cabal Neo.",
   "start_url": "./",
   "scope": "./",

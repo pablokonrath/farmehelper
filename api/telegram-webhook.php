@@ -40,7 +40,7 @@ if (preg_match('/^\/start\s+(\S+)/i', $text, $m)) {
   $stmt->execute(['code' => $code]);
   $row = $stmt->fetch();
   if (!$row) {
-    send_telegram_message($chatId, 'Código inválido ou expirado. Gere um novo em Alertas, no DropList.');
+    send_telegram_message($chatId, 'Código inválido ou expirado. Gere um novo em Alertas, no FarmHub.');
     json_response(['ok' => true]);
   }
   $userId = (int) $row['user_id'];
@@ -49,7 +49,7 @@ if (preg_match('/^\/start\s+(\S+)/i', $text, $m)) {
   $db->prepare('INSERT INTO alert_settings (user_id, telegram_chat_id) VALUES (:uid, :chatId)
     ON DUPLICATE KEY UPDATE telegram_chat_id = VALUES(telegram_chat_id)')
     ->execute(['uid' => $userId, 'chatId' => $chatId]);
-  send_telegram_message($chatId, '✅ Telegram vinculado! Você recebe avisos de TG/World Boss por aqui (se estiverem ativados em Alertas no DropList). Manda /drop <nome do item> pra consultar quanto você já dropou.');
+  send_telegram_message($chatId, '✅ Telegram vinculado! Você recebe avisos de TG/World Boss por aqui (se estiverem ativados em Alertas no FarmHub). Manda /drop <nome do item> pra consultar quanto você já dropou.');
   json_response(['ok' => true]);
 }
 
@@ -59,7 +59,7 @@ if (preg_match('/^\/drop(?:\s+(.+))?$/i', $text, $m)) {
   $stmt->execute(['chatId' => $chatId]);
   $row = $stmt->fetch();
   if (!$row) {
-    send_telegram_message($chatId, 'Sua conta do DropList ainda não está vinculada. Gere um código em Alertas e manda /start CODIGO.');
+    send_telegram_message($chatId, 'Sua conta do FarmHub ainda não está vinculada. Gere um código em Alertas e manda /start CODIGO.');
     json_response(['ok' => true]);
   }
   $uid = (int) $row['user_id'];
@@ -74,7 +74,7 @@ if (preg_match('/^\/drop(?:\s+(.+))?$/i', $text, $m)) {
     $stmt->execute(['uid' => $uid, 'today' => $today]);
     $items = $stmt->fetchAll();
     if (!$items) {
-      send_telegram_message($chatId, 'Nenhum drop rastreado registrado hoje ainda. (Precisa estar com o DropList aberto pra registrar.)');
+      send_telegram_message($chatId, 'Nenhum drop rastreado registrado hoje ainda. (Precisa estar com o FarmHub aberto pra registrar.)');
     } else {
       $lines = array_map(fn($i) => $i['item_name'] . ': ' . number_format((int) $i['quantity'], 0, ',', '.'), $items);
       send_telegram_message($chatId, "Drops rastreados de hoje:\n" . implode("\n", $lines));
@@ -103,5 +103,5 @@ if (preg_match('/^\/drop(?:\s+(.+))?$/i', $text, $m)) {
   json_response(['ok' => true]);
 }
 
-send_telegram_message($chatId, "Comandos disponíveis:\n/drop — lista tudo que você dropou hoje\n/drop <nome do item> — consulta o total já dropado desse item\n/start <código> — vincula sua conta do DropList (gere o código em Alertas)");
+send_telegram_message($chatId, "Comandos disponíveis:\n/drop — lista tudo que você dropou hoje\n/drop <nome do item> — consulta o total já dropado desse item\n/start <código> — vincula sua conta do FarmHub (gere o código em Alertas)");
 json_response(['ok' => true]);

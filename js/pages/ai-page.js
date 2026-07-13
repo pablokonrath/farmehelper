@@ -20,7 +20,7 @@ function renderApiKeySettings() {
   return `<div class="card">
 <div class="ctitle"><i class="ti ti-key"></i>Chave de API da Anthropic</div>
 <div style="font-size:12px;color:var(--muted);margin-bottom:8px">
-Como o DropList ainda não tem um servidor próprio, a análise com IA chama a API da Anthropic direto do seu navegador. Cole sua chave abaixo — ela fica salva só no seu navegador (localStorage) e é enviada apenas para api.anthropic.com. Não use isso em um computador compartilhado. Crie uma chave em <span class="mono">console.anthropic.com</span>.
+Como o FarmHub ainda não tem um servidor próprio, a análise com IA chama a API da Anthropic direto do seu navegador. Cole sua chave abaixo — ela fica salva só no seu navegador (localStorage) e é enviada apenas para api.anthropic.com. Não use isso em um computador compartilhado. Crie uma chave em <span class="mono">console.anthropic.com</span>.
 </div>
 <div class="row">
   <input class="inp" id="aiKeyInput" type="password" placeholder="sk-ant-...">

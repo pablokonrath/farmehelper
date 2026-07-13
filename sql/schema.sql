@@ -1,4 +1,4 @@
--- DropList — esquema do banco (MySQL 5.7+/MariaDB), pra uma instalação NOVA do zero.
+-- FarmHub — esquema do banco (MySQL 5.7+/MariaDB), pra uma instalação NOVA do zero.
 -- Se você já tem um banco em produção com dados (schema antigo, de usuário único), NÃO rode
 -- este arquivo nele — use sql/migrate_to_multiuser.sql, que preserva os dados existentes.
 --
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   -- citando esse mesmo ID, sem precisar persistir player_id/subscription aqui.
   push_enabled TINYINT(1) NOT NULL DEFAULT 0,
   telegram_chat_id VARCHAR(64) NULL,
-  -- Envia o drop rastreado pro Telegram na hora que cai (com o DropList aberto) — ver
+  -- Envia o drop rastreado pro Telegram na hora que cai (com o FarmHub aberto) — ver
   -- api/telegram-relay-drop.php. Desligado por padrão, é opt-in por jogador.
   telegram_drop_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   -- Avisa no Telegram quando alguém dropa um item da lista de desejos deste usuário — funciona
@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   -- api/wishlist-check.php). Opt-in, desligado por padrão.
   telegram_wishlist_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   -- Manda o alerta do watchdog (helper travado / item sumido) pro Telegram — ver
-  -- api/telegram-relay-watchdog.php. Só com o DropList aberto. Opt-in, desligado por padrão.
+  -- api/telegram-relay-watchdog.php. Só com o FarmHub aberto. Opt-in, desligado por padrão.
   telegram_watchdog_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -1,6 +1,6 @@
 // Roda em thread separada de propósito: navegadores jogam o setInterval da aba principal
 // pra 1 execução por minuto (ou menos) quando ela fica em segundo plano, o que fazia os
-// alertas só chegarem quando o DropList estava com a aba em foco. Timers dentro de um Worker
+// alertas só chegarem quando o FarmHub estava com a aba em foco. Timers dentro de um Worker
 // não sofrem esse throttling de aba oculta, então o polling do arquivo continua nos 5s
 // normais mesmo com o navegador minimizado ou em outra aba.
 const LOG_FILE_DECODER = new TextDecoder('windows-1252');

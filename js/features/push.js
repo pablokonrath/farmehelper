@@ -41,7 +41,7 @@ function loadOneSignal() {
 export async function enablePushNotifications() {
   try {
     const OneSignal = await loadOneSignal();
-    // Associa esse navegador ao próprio user_id do DropList — o servidor manda notificação
+    // Associa esse navegador ao próprio user_id do FarmHub — o servidor manda notificação
     // citando esse mesmo ID (ver cron-check-events.php), sem precisar guardar nenhum
     // player_id/subscription no nosso banco. Prefixo "droplist_" porque o OneSignal bloqueia
     // external_id genérico demais (ex: "1", "0") pra evitar colisão acidental entre apps

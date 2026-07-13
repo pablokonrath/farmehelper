@@ -1,5 +1,5 @@
 <?php
-// Chamado pelo cliente (com o DropList aberto) quando o watchdog detecta helper travado / item
+// Chamado pelo cliente (com o FarmHub aberto) quando o watchdog detecta helper travado / item
 // rastreado sumido — manda o aviso pro Telegram do jogador, pra ele saber mesmo longe do PC.
 // Não funciona com o navegador fechado: quem detecta o travamento é a aba lendo o log do jogo.
 require_once __DIR__ . '/auth.php';

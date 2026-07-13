@@ -82,7 +82,7 @@ export function renderAlertsPage() {
   const outsideCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-device-mobile"></i>Fora do app (push + Telegram)</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Receba avisos com o DropList fechado. TG/World Boss e “desejo dropado” chegam mesmo offline; alertas do seu próprio drop só com o app aberto.</div>
+  <div class="pg-sub" style="margin:-4px 0 10px">Receba avisos com o FarmHub fechado. TG/World Boss e “desejo dropado” chegam mesmo offline; alertas do seu próprio drop só com o app aberto.</div>
   ${toggleRow('Notificação push do navegador', 'Chega mesmo com o navegador fechado, direto no dispositivo.', s.pushEnabled, "this.checked ? enablePushNotifications() : disablePushNotifications()", { extra: ';' + div })}
   <div style="padding-top:12px">
     <div style="font-weight:600;font-size:13px;margin-bottom:6px">Telegram</div>
@@ -91,8 +91,8 @@ export function renderAlertsPage() {
           <span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>
           <button class="btn btn-d btn-xs" onclick="unlinkTelegram()"><i class="ti ti-unlink"></i>Desvincular</button>
         </div>
-        ${toggleRow('Enviar drops rastreados pro Telegram', 'Quando um item rastreado cair, chega no Telegram. Só com o DropList aberto (mesmo minimizado).', s.telegramDropRelayEnabled, 'setTelegramDropRelayEnabled(this.checked)', { extra: ';padding-top:14px' })}
-        ${toggleRow('Avisar quando dropar meu desejo', 'Quando alguém dropar um item da sua lista de desejos, chega no Telegram com quem dropou — funciona até com o DropList fechado.', s.telegramWishlistRelayEnabled, 'setTelegramWishlistRelayEnabled(this.checked)', { extra: ';padding-top:12px' })}
+        ${toggleRow('Enviar drops rastreados pro Telegram', 'Quando um item rastreado cair, chega no Telegram. Só com o FarmHub aberto (mesmo minimizado).', s.telegramDropRelayEnabled, 'setTelegramDropRelayEnabled(this.checked)', { extra: ';padding-top:14px' })}
+        ${toggleRow('Avisar quando dropar meu desejo', 'Quando alguém dropar um item da sua lista de desejos, chega no Telegram com quem dropou — funciona até com o FarmHub fechado.', s.telegramWishlistRelayEnabled, 'setTelegramWishlistRelayEnabled(this.checked)', { extra: ';padding-top:12px' })}
         <div style="font-size:11px;color:var(--muted);margin-top:10px">No Telegram, mande <strong>/drop</strong> pra ver os drops rastreados de hoje, ou <strong>/drop nome</strong> pra o total de um item.</div>`
       : `<button class="btn btn-d btn-xs" onclick="generateTelegramLinkCode()"><i class="ti ti-brand-telegram"></i>Gerar código de vínculo</button>
         ${AppState.telegramLinkCode ? `

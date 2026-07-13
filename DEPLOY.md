@@ -1,4 +1,4 @@
-# Deploy do DropList na Hostinger
+# Deploy do FarmHub na Hostinger
 
 Passo a passo pra colocar o backend PHP/MySQL no ar. Tudo aqui é feito pelo hPanel da
 Hostinger (painel de controle da hospedagem) — nenhum acesso SSH é necessário.
@@ -19,7 +19,7 @@ push, sem precisar subir arquivo por FTP/Gerenciador de Arquivos toda vez:
    O Git deve pedir login do GitHub na primeira vez (via navegador ou token) — segue o fluxo
    que aparecer.
 3. No hPanel, vá em **Avançado → Git**, cole a URL do repositório, escolha a branch `main` e
-   a pasta de destino (a raiz pública do domínio/subdomínio onde o DropList vai ficar).
+   a pasta de destino (a raiz pública do domínio/subdomínio onde o FarmHub vai ficar).
    Pra repositório **privado** a Hostinger vai pedir autenticação — ela geralmente mostra uma
    chave SSH pública própria que você precisa adicionar em GitHub → Settings → Deploy Keys
    do repositório (com permissão só de leitura já basta).
@@ -99,7 +99,7 @@ gerar/trocar uma senha.
 2. Digite o usuário e a senha criados no passo 4. Deve entrar no app.
    - Se aparecer "Usuário ou senha incorretos": confira se o `INSERT` no passo 4 rodou sem
      erro (veja no phpMyAdmin, tabela `users`, se a linha existe) e se colou o hash certo.
-3. **Se esse navegador já tinha dados salvos** (preços, rush, DGs) de quando o DropList
+3. **Se esse navegador já tinha dados salvos** (preços, rush, DGs) de quando o FarmHub
    ainda usava só localStorage: no primeiro login, o app deve migrar tudo automaticamente
    pro banco, associado à conta que você acabou de logar (isso acontece sozinho, sem
    precisar apertar nada). Confira no phpMyAdmin se as tabelas `item_prices`/`rush_history`/
@@ -112,7 +112,7 @@ gerar/trocar uma senha.
 ## Criando conta pra outra pessoa
 
 Se sua conta é admin (veja a seção **"Admin: conta administradora e ranking"** abaixo), é só
-usar a tela **Admin** dentro do próprio DropList — sem precisar mexer no phpMyAdmin. Se ainda
+usar a tela **Admin** dentro do próprio FarmHub — sem precisar mexer no phpMyAdmin. Se ainda
 não rodou aquela migração, o jeito manual continua funcionando: repete o passo 4 (gerar hash
 pra senha da pessoa, apagar `generate-password-hash.php` depois) com um `username` diferente.
 
@@ -132,7 +132,7 @@ Se seu banco já tem a tabela `users` (ou seja, você já rodou a migração mul
 1. No phpMyAdmin, aba **SQL**, cole o conteúdo de `sql/migrate_admin_and_leaderboard.sql`,
    trocando `pablokonrath` (na linha do `UPDATE`) pelo username que você usa pra logar, caso
    tenha escolhido outro. Execute.
-2. Recarregue o DropList e loga de novo — deve aparecer um item **Admin** novo na barra
+2. Recarregue o FarmHub e loga de novo — deve aparecer um item **Admin** novo na barra
    lateral, só na sua conta.
 3. Pra criar conta de outra pessoa, usa essa tela em vez do phpMyAdmin daqui pra frente.
 4. Na tela **Admin**, card **"Itens do ranking"**, cadastre os itens que devem entrar no
@@ -141,7 +141,7 @@ Se seu banco já tem a tabela `users` (ou seja, você já rodou a migração mul
    se preenche sozinho conforme o arquivo de log de cada pessoa for lido/atualizado
    (sincroniza a contagem automaticamente, sem precisar fazer nada manual em cada conta).
 
-Se você está instalando o DropList do zero (nunca rodou nenhuma migração antes), não precisa
+Se você está instalando o FarmHub do zero (nunca rodou nenhuma migração antes), não precisa
 desse script — `sql/schema.sql` já cria tudo pronto. Só lembre de rodar
 `UPDATE users SET is_admin = 1 WHERE username = 'seu_usuario';` depois de criar sua conta no
 passo 4 lá em cima, se quiser que ela seja admin.
@@ -435,7 +435,7 @@ https://api.telegram.org/botSEU_TOKEN/setWebhook?url=https://SEU_DOMINIO/api/tel
 Deve responder `{"ok":true,"result":true,...}`. Isso avisa o Telegram pra mandar toda mensagem
 recebida pelo bot direto pro `telegram-webhook.php` do site.
 
-**Como o jogador ativa, na página Alertas do DropList:**
+**Como o jogador ativa, na página Alertas do FarmHub:**
 
 - **Push**: liga o interruptor "Notificação push do navegador" — o navegador vai pedir
   permissão de notificação.
@@ -463,7 +463,7 @@ Duas coisas:
   total acumulado do item.
 - **Envio na hora**: na página Alertas, com o Telegram vinculado, aparece o interruptor "Enviar
   drops rastreados pro Telegram". Ligado, cada item rastreado que cair chega como mensagem no
-  Telegram na hora. **Importante:** isso só funciona com o **DropList aberto** (mesmo minimizado,
+  Telegram na hora. **Importante:** isso só funciona com o **FarmHub aberto** (mesmo minimizado,
   em segundo plano) — quem detecta o drop é a aba lendo o log do jogo, então com o navegador
   totalmente fechado não há como saber que um item caiu. Diferente do TG/World Boss, que são
   horários fixos e por isso o servidor consegue avisar sozinho.
@@ -494,7 +494,7 @@ Duas melhorias no watchdog (a Vigilância de inatividade):
 - **Aviso no Telegram**: com o Telegram vinculado, aparece em Alertas o interruptor "Avisar
   travamento (watchdog) no Telegram". Ligado, quando o helper trava (fica sem drop) o aviso
   chega no seu Telegram, não só no PC — bom pra quem farma AFK longe do computador. Precisa do
-  watchdog ligado e do DropList aberto (é a aba que detecta o travamento).
+  watchdog ligado e do FarmHub aberto (é a aba que detecta o travamento).
 - **Repete até voltar a farmar**: o aviso de "sem nenhum drop" agora se repete a cada intervalo
   do limite configurado enquanto continuar parado (antes avisava 1 vez só e parava), e para
   sozinho assim que cai um drop de novo. Vale pro aviso na tela e pro Telegram.

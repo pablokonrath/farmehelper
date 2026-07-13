@@ -159,7 +159,7 @@ function handleWorkerMessage(event) {
 
 // Lê o arquivo inteiro e começa o polling de 5 em 5s dentro de um Worker — timers de Worker não
 // sofrem o throttling que os navegadores aplicam a setInterval de abas em segundo plano, então
-// os alertas continuam chegando mesmo com o DropList minimizado ou em outra aba (ver live-poll-worker.js).
+// os alertas continuam chegando mesmo com o FarmHub minimizado ou em outra aba (ver live-poll-worker.js).
 async function startLiveFilePolling(fileHandle) {
   AppState.liveFileHandle = fileHandle;
 

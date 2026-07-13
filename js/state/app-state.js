@@ -76,14 +76,14 @@ export const DEFAULT_ALERT_SETTINGS = {
   // desligados por padrão, exigem ação explícita do usuário (ativar push / vincular Telegram).
   pushEnabled: false,
   telegramChatId: null,
-  // Envia o drop rastreado pro Telegram na hora que cai (só com o DropList aberto — quem detecta
+  // Envia o drop rastreado pro Telegram na hora que cai (só com o FarmHub aberto — quem detecta
   // o drop é a aba lendo o log, ver telegram-relay-drop.php). Opt-in, desligado por padrão.
   telegramDropRelayEnabled: false,
   // Avisa no Telegram quando alguém dropa um item da minha lista de desejos — funciona até com o
   // meu navegador fechado (quem dispara é o navegador de quem dropou). Opt-in, desligado.
   telegramWishlistRelayEnabled: false,
   // Manda o alerta do watchdog (helper travado / item sumiu) pro Telegram — pra saber que travou
-  // mesmo longe do PC. Opt-in, desligado. Só com o DropList aberto (quem detecta é a aba).
+  // mesmo longe do PC. Opt-in, desligado. Só com o FarmHub aberto (quem detecta é a aba).
   telegramWatchdogRelayEnabled: false,
 };
 

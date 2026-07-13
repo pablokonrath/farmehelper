@@ -113,7 +113,7 @@ function renderAdminActionLogCard() {
 export function renderAdminPage() {
   return `
 <div class="pg-title"><i class="ti ti-shield-lock"></i>Admin</div>
-<div class="pg-sub">Crie contas pra outras pessoas da guild usarem o DropList.</div>
+<div class="pg-sub">Crie contas pra outras pessoas da guild usarem o FarmHub.</div>
 
 <div class="card">
   <div class="ctitle"><i class="ti ti-user-plus"></i>Criar conta</div>

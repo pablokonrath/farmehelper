@@ -1,5 +1,5 @@
 <?php
-// Chamado pelo próprio cliente (com o DropList aberto) toda vez que um drop rastreado dispara
+// Chamado pelo próprio cliente (com o FarmHub aberto) toda vez que um drop rastreado dispara
 // um alerta — repassa pro Telegram do jogador na hora. Não funciona com o navegador fechado:
 // quem detecta o drop é a aba lendo o log do jogo, não o servidor (ver DEPLOY.md).
 require_once __DIR__ . '/auth.php';
