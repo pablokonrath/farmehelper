@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { formatDateTimeBR } from '../utils/formatting.js';
+import { esc, escAttr } from '../utils/escape.js';
 
 const FLAG_TYPE_BADGES = {
   drop_spike: '<span class="badge badge-warn">Pico de drops</span>',
@@ -84,9 +85,9 @@ function renderIntegrityFlagsCard() {
     !AppState.integrityFlags.length ? '<div class="empty" style="padding:14px 0">Nenhum alerta registrado.</div>' : `
   <table><thead><tr><th>Usuário</th><th style="width:120px">Tipo</th><th>Detalhe</th><th style="width:140px">Quando</th></tr></thead><tbody>
   ${AppState.integrityFlags.map(f => `<tr>
-    <td>${f.username}</td>
-    <td>${FLAG_TYPE_BADGES[f.type] || f.type}</td>
-    <td style="font-size:12px">${f.details || ''}</td>
+    <td>${esc(f.username)}</td>
+    <td>${FLAG_TYPE_BADGES[f.type] || esc(f.type)}</td>
+    <td style="font-size:12px">${esc(f.details || '')}</td>
     <td style="font-size:12px;color:var(--muted)">${formatDateTimeBR(f.createdAt)}</td>
   </tr>`).join('')}
   </tbody></table>`}
@@ -102,8 +103,8 @@ function renderAdminActionLogCard() {
     !AppState.adminActionLog.length ? '<div class="empty" style="padding:14px 0">Nenhuma ação registrada ainda.</div>' : `
   <table><thead><tr><th style="width:120px">Admin</th><th>Ação</th><th style="width:140px">Quando</th></tr></thead><tbody>
   ${AppState.adminActionLog.map(a => `<tr>
-    <td style="font-weight:500">${a.adminUsername}</td>
-    <td style="font-size:12px">${a.details || a.action}</td>
+    <td style="font-weight:500">${esc(a.adminUsername)}</td>
+    <td style="font-size:12px">${esc(a.details || a.action)}</td>
     <td style="font-size:12px;color:var(--muted)">${formatDateTimeBR(a.createdAt)}</td>
   </tr>`).join('')}
   </tbody></table>`}
@@ -119,11 +120,11 @@ export function renderAdminPage() {
   <div class="ctitle"><i class="ti ti-user-plus"></i>Criar conta</div>
   <div class="g3" style="align-items:end;margin-bottom:10px">
     <div><label class="lbl">Usuário</label><input class="inp" id="newUserUsername" placeholder="ex: fulano"></div>
-    <div><label class="lbl">Senha</label><input class="inp" id="newUserPassword" type="password" placeholder="mínimo 4 caracteres"></div>
+    <div><label class="lbl">Senha</label><input class="inp" id="newUserPassword" type="password" placeholder="mínimo 8 caracteres"></div>
     <div><label class="lbl">Guild</label>
       <select class="inp" id="newUserGuild">
         <option value="">Sem guild</option>
-        ${AppState.guilds.map(g => `<option value="${g}">${g}</option>`).join('')}
+        ${AppState.guilds.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
       </select>
     </div>
   </div>
@@ -142,7 +143,7 @@ ${AppState.isMasterAdmin ? `<div class="card">
   <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lista global de guilds (texto controlado, evita nomes duplicados escritos diferente).</div>
   ${!AppState.guilds.length ? '<div class="empty" style="padding:14px 0">Nenhuma guild cadastrada ainda.</div>' : `
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-  ${AppState.guilds.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${name}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeGuild('${name}')"><i class="ti ti-x"></i></button></span>`).join('')}
+  ${AppState.guilds.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(name)}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeGuild('${escAttr(name)}')"><i class="ti ti-x"></i></button></span>`).join('')}
   </div>`}
   <div class="row">
     <div style="flex:1"><label class="lbl">Nova guild</label><input class="inp" id="newGuild" placeholder="ex: Elysium"></div>
@@ -168,14 +169,14 @@ ${AppState.isMasterAdmin ? `<div class="card">
       ? (u.guild || 'Sem guild')
       : `<select class="inp inp-sm" onchange="setUserGuild(${u.id}, this.value)">
       <option value="">Sem guild</option>
-      ${AppState.guilds.map(g => `<option value="${g}"${u.guild === g ? ' selected' : ''}>${g}</option>`).join('')}
+      ${AppState.guilds.map(g => `<option value="${esc(g)}"${u.guild === g ? ' selected' : ''}>${esc(g)}</option>`).join('')}
     </select>`;
     return `<tr>
-    <td>${u.username}</td>
+    <td>${esc(u.username)}</td>
     <td>${typeCell}</td>
     <td>${guildCell}</td>
     <td>${formatDateTimeBR(u.createdAt)}</td>
-    ${AppState.isMasterAdmin ? `<td>${u.username === AppState.currentUsername ? '' : `<button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteUser(${u.id}, '${u.username}')" title="Excluir conta"><i class="ti ti-trash"></i></button>`}</td>` : ''}
+    ${AppState.isMasterAdmin ? `<td>${u.username === AppState.currentUsername ? '' : `<button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteUser(${u.id}, '${escAttr(u.username)}')" title="Excluir conta"><i class="ti ti-trash"></i></button>`}</td>` : ''}
   </tr>`;
   }).join('')}
   </tbody></table>`}
@@ -189,7 +190,7 @@ ${AppState.isMasterAdmin ? `
     <div><label class="lbl">Conta</label>
       <select class="inp" id="editLoginUserId" onchange="prefillEditLoginUsername(this.value)">
         <option value="">Selecione...</option>
-        ${AppState.adminUsers.map(u => `<option value="${u.id}">${u.username}</option>`).join('')}
+        ${AppState.adminUsers.map(u => `<option value="${u.id}">${esc(u.username)}</option>`).join('')}
       </select>
     </div>
     <div><label class="lbl">Novo usuário</label><input class="inp" id="editLoginUsername" placeholder="usuário atual"></div>
@@ -205,9 +206,9 @@ ${AppState.isMasterAdmin ? `<div class="card">
   ${!AppState.rankingItems.length ? '<div class="empty" style="padding:14px 0">Nenhum item no ranking ainda.</div>' : `
   <table style="margin-bottom:12px"><thead><tr><th>Item</th><th style="width:90px">Destaque</th><th style="width:40px">Ações</th></tr></thead><tbody>
   ${AppState.rankingItems.map(r => `<tr>
-    <td style="font-weight:500">${r.word}</td>
-    <td><button style="background:transparent;border:none;cursor:pointer;font-size:16px;color:${r.featured ? 'var(--gold)' : 'var(--muted)'}" onclick="toggleRankingItemFeatured('${r.word}')" title="Alternar destaque"><i class="ti ti-star${r.featured ? '-filled' : ''}"></i></button></td>
-    <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeRankingItem('${r.word}')"><i class="ti ti-x"></i></button></td>
+    <td style="font-weight:500">${esc(r.word)}</td>
+    <td><button style="background:transparent;border:none;cursor:pointer;font-size:16px;color:${r.featured ? 'var(--gold)' : 'var(--muted)'}" onclick="toggleRankingItemFeatured('${escAttr(r.word)}')" title="Alternar destaque"><i class="ti ti-star${r.featured ? '-filled' : ''}"></i></button></td>
+    <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeRankingItem('${escAttr(r.word)}')"><i class="ti ti-x"></i></button></td>
   </tr>`).join('')}
   </tbody></table>`}
   <div class="row">
@@ -222,7 +223,7 @@ ${AppState.isMasterAdmin ? `<div class="card">
   <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Lista global de categorias (ex: Sets, Armas, Dragonas) usada pra organizar o Relatório.</div>
   ${!AppState.itemCategories.length ? '<div class="empty" style="padding:14px 0">Nenhuma categoria criada ainda.</div>' : `
   <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-  ${AppState.itemCategories.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${name}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeItemCategory('${name}')"><i class="ti ti-x"></i></button></span>`).join('')}
+  ${AppState.itemCategories.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(name)}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeItemCategory('${escAttr(name)}')"><i class="ti ti-x"></i></button></span>`).join('')}
   </div>`}
   <div class="row">
     <div style="flex:1"><label class="lbl">Nova categoria</label><input class="inp" id="newItemCategory" placeholder="ex: Sets"></div>
@@ -236,10 +237,10 @@ ${AppState.isMasterAdmin ? `<div class="card">
   ${!AppState.knownItemNames.length ? '<div class="empty" style="padding:14px 0">Nenhum item cadastrado ainda.</div>' : `
   <table><thead><tr><th>Item</th><th style="width:180px">Categoria</th></tr></thead><tbody>
   ${[...AppState.knownItemNames].sort((a, b) => a.localeCompare(b)).map(name => `<tr>
-    <td>${name}</td>
-    <td><select class="inp inp-sm" onchange="setItemCategoryAssignment('${name}', this.value)">
+    <td>${esc(name)}</td>
+    <td><select class="inp inp-sm" onchange="setItemCategoryAssignment('${escAttr(name)}', this.value)">
       <option value="">Sem categoria</option>
-      ${AppState.itemCategories.map(cat => `<option value="${cat}"${AppState.itemCategoryAssignments[name] === cat ? ' selected' : ''}>${cat}</option>`).join('')}
+      ${AppState.itemCategories.map(cat => `<option value="${esc(cat)}"${AppState.itemCategoryAssignments[name] === cat ? ' selected' : ''}>${esc(cat)}</option>`).join('')}
     </select></td>
   </tr>`).join('')}
   </tbody></table>`}

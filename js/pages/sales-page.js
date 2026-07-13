@@ -4,6 +4,7 @@ import { computeSalesSummary } from '../features/sales.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
+import { esc } from '../utils/escape.js';
 
 export function renderSalesPage() {
   const summary = computeSalesSummary();
@@ -26,7 +27,7 @@ export function renderSalesPage() {
   <div class="row" style="align-items:flex-end">
     <div style="flex:1"><label class="lbl">Item</label>
       <input class="inp" id="saleItem" placeholder="ex: Anel Fatal" list="saleItemSugg">
-      <datalist id="saleItemSugg">${itemNames.map(n => `<option value="${n}">`).join('')}</datalist></div>
+      <datalist id="saleItemSugg">${itemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
     <div style="width:100px"><label class="lbl">Quantidade</label><input class="inp" id="saleQty" type="number" min="1" value="1"></div>
     <div style="width:150px"><label class="lbl">Valor de venda (unit.)</label><input class="inp" id="salePrice" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
     <div style="width:150px"><label class="lbl">Data</label>${renderDateInputBR({ id: 'saleDate', value: todayISODate() })}</div>
@@ -47,7 +48,7 @@ export function renderSalesPage() {
         const d = real - est;
         return `<tr>
           <td>${formatDateBR(s.date)}</td>
-          <td style="font-weight:500">${s.itemName}</td>
+          <td style="font-weight:500">${esc(s.itemName)}</td>
           <td>${s.qty}×</td>
           <td>${renderAlzValue(s.unitPrice)}</td>
           <td style="font-weight:600">${renderAlzValue(real)}</td>

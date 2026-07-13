@@ -2,6 +2,7 @@ import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { formatAlzGamer, formatNumber } from '../utils/formatting.js';
 import { getActiveSessionSummary } from '../features/dg-session.js';
 import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
+import { esc } from '../utils/escape.js';
 
 const HEADER = `<div class="pg-title"><i class="ti ti-bolt" style="color:var(--gold)"></i>Modo guiado</div>
 <div class="pg-sub">Escolha o que quer fazer — eu te guio passo a passo.</div>`;
@@ -50,7 +51,7 @@ function renderPicker() {
   ${bigChoice("quickPick('meta')", '🎯', 'Definir a meta do dia', 'Quanto de Alz você quer farmar hoje')}
   ${bigChoice("quickPick('sessao')", active ? '⏹️' : '▶️',
     active ? 'Encerrar a sessão de DG' : 'Iniciar uma sessão de DG',
-    active ? `Você está em ${active.dungeonName} agora` : 'Cronometra o farme e liga a vigilância')}
+    active ? `Você está em ${esc(active.dungeonName)} agora` : 'Cronometra o farme e liga a vigilância')}
   ${bigChoice("quickPick('desejo')", '🎁', 'Adicionar item ao desejo', 'Ser avisado quando alguém dropar')}
   ${bigChoice("quickPick('rastrear')", '🔔', 'Rastrear um item p/ alerta', 'Receber alerta quando você dropar')}
   ${bigChoice("quickPick('rush')", '⚔️', 'Montar o rush de hoje', 'Escolher DGs e salvar o custo do dia')}
@@ -59,9 +60,9 @@ function renderPicker() {
 
 function renderDesejo(qm) {
   if (qm.step === 'done') {
-    return doneCard('🎁', 'Adicionado aos desejos!', `"${qm.data.itemName}" entrou na sua lista. Quando alguém dropar, chega no seu correio.`, 'desejo');
+    return doneCard('🎁', 'Adicionado aos desejos!', `"${esc(qm.data.itemName)}" entrou na sua lista. Quando alguém dropar, chega no seu correio.`, 'desejo');
   }
-  const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${n}">`).join('');
+  const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${esc(n)}">`).join('');
   const inner = `<label class="lbl">Qual item você quer comprar?</label>
     <input class="inp" id="qm-wish" list="qm-items2" autocomplete="off" placeholder="ex: Nucleo Arcano (Altíssimo)">
     <datalist id="qm-items2">${opts}</datalist>${errLine(qm)}
@@ -71,9 +72,9 @@ function renderDesejo(qm) {
 
 function renderRastrear(qm) {
   if (qm.step === 'done') {
-    return doneCard('🔔', 'Item rastreado!', `Vou te alertar (som/pop-up) quando "${qm.data.itemName}" cair no seu farme.`, 'rastrear');
+    return doneCard('🔔', 'Item rastreado!', `Vou te alertar (som/pop-up) quando "${esc(qm.data.itemName)}" cair no seu farme.`, 'rastrear');
   }
-  const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${n}">`).join('');
+  const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${esc(n)}">`).join('');
   const inner = `<label class="lbl">Qual item você quer rastrear?</label>
     <input class="inp" id="qm-track" list="qm-items3" autocomplete="off" placeholder="ex: joia, extensor...">
     <datalist id="qm-items3">${opts}</datalist>
@@ -115,11 +116,11 @@ function renderRushValores(qm) {
 
 function renderRushDGs(qm) {
   const cart = qm.data.cart || [];
-  const opts = AppState.dungeonList.map(dg => `<option value="${dg.id}">${dg.name}</option>`).join('');
+  const opts = AppState.dungeonList.map(dg => `<option value="${esc(dg.id)}">${esc(dg.name)}</option>`).join('');
   const gemHint = formatNumber(getCostPerGem());
   const cartList = cart.length
     ? `<div style="margin-bottom:12px">${cart.map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
-        <span><strong>${it.repetitions}×</strong> ${it.name}${it.usedReset ? ` <span style="color:var(--gold);font-size:12px">· reset ${it.resetGemQuantity} gema(s)</span>` : ''}</span>
+        <span><strong>${it.repetitions}×</strong> ${esc(it.name)}${it.usedReset ? ` <span style="color:var(--gold);font-size:12px">· reset ${it.resetGemQuantity} gema(s)</span>` : ''}</span>
         <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="quickRushRemove(${i})" title="Remover"><i class="ti ti-x"></i></button>
       </div>`).join('')}</div>`
     : '<div class="empty" style="padding:10px 0">Nenhuma DG ainda. Adicione abaixo.</div>';
@@ -168,19 +169,19 @@ function renderRushPanorama(qm) {
 function renderVenda(qm) {
   const d = qm.data;
   if (qm.step === 'done') {
-    return doneCard('✅', 'Venda registrada!', `${d.qty}× ${d.itemName} — ${formatAlzGamer(d.unitPrice * d.qty)} no total.`, 'venda');
+    return doneCard('✅', 'Venda registrada!', `${d.qty}× ${esc(d.itemName)} — ${formatAlzGamer(d.unitPrice * d.qty)} no total.`, 'venda');
   }
   let inner, stepText;
   if (qm.step === 1) {
     stepText = 'Passo 1 de 4';
-    const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${n}">`).join('');
+    const opts = [...new Set(AppState.knownItemNames || [])].sort((a, b) => a.localeCompare(b)).map(n => `<option value="${esc(n)}">`).join('');
     inner = `<label class="lbl">Qual item você vendeu?</label>
-      <input class="inp" id="qm-item" list="qm-items" autocomplete="off" placeholder="ex: Nucleo Arcano (Altíssimo)" value="${d.itemName || ''}">
+      <input class="inp" id="qm-item" list="qm-items" autocomplete="off" placeholder="ex: Nucleo Arcano (Altíssimo)" value="${esc(d.itemName || '')}">
       <datalist id="qm-items">${opts}</datalist>${errLine(qm)}
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else if (qm.step === 2) {
     stepText = 'Passo 2 de 4';
-    inner = `<label class="lbl">Quantas unidades de "${d.itemName}"?</label>
+    inner = `<label class="lbl">Quantas unidades de "${esc(d.itemName)}"?</label>
       <input class="inp" id="qm-qty" type="number" min="1" value="${d.qty || 1}">${errLine(qm)}
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else if (qm.step === 3) {
@@ -190,7 +191,7 @@ function renderVenda(qm) {
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else {
     stepText = 'Passo 4 de 4 · confirmar';
-    inner = `<div style="font-size:14px;line-height:1.7">Vender <strong>${d.qty}×</strong> "${d.itemName}"<br>por <strong style="color:var(--gold)">${formatAlzGamer(d.unitPrice)}</strong> cada<br>= <strong style="color:var(--gold)">${formatAlzGamer(d.unitPrice * d.qty)}</strong> no total.</div>
+    inner = `<div style="font-size:14px;line-height:1.7">Vender <strong>${d.qty}×</strong> "${esc(d.itemName)}"<br>por <strong style="color:var(--gold)">${formatAlzGamer(d.unitPrice)}</strong> cada<br>= <strong style="color:var(--gold)">${formatAlzGamer(d.unitPrice * d.qty)}</strong> no total.</div>
       <button class="btn btn-s" style="margin-top:16px" onclick="quickNext()"><i class="ti ti-check"></i>Registrar venda</button>`;
   }
   return stepShell(stepText, inner);
@@ -209,18 +210,18 @@ function renderMeta(qm) {
 
 function renderSessao(qm) {
   if (qm.step === 'done-start') {
-    return doneCard('▶️', 'Sessão iniciada!', `Farmando em ${qm.data.dungeonName}. A vigilância (watchdog) ligou junto — te aviso se travar.`, 'sessao');
+    return doneCard('▶️', 'Sessão iniciada!', `Farmando em ${esc(qm.data.dungeonName)}. A vigilância (watchdog) ligou junto — te aviso se travar.`, 'sessao');
   }
   if (qm.step === 'done-end') {
-    return doneCard('✅', 'Sessão encerrada!', `${qm.data.endedName} — ${formatAlzGamer(qm.data.endedAlz || 0)} no total. Veja o resumo em "Sessões de farme".`, 'sessao');
+    return doneCard('✅', 'Sessão encerrada!', `${esc(qm.data.endedName)} — ${formatAlzGamer(qm.data.endedAlz || 0)} no total. Veja o resumo em "Sessões de farme".`, 'sessao');
   }
   const active = getActiveSessionSummary();
   let inner;
   if (active) {
-    inner = `<div style="font-size:14px;line-height:1.7;margin-bottom:6px">Você está farmando em <strong>${active.dungeonName}</strong>.<br>Já são <strong style="color:var(--gold)">${formatAlzGamer(active.totalAlz)}</strong> em ${active.dropCount} drops.</div>
+    inner = `<div style="font-size:14px;line-height:1.7;margin-bottom:6px">Você está farmando em <strong>${esc(active.dungeonName)}</strong>.<br>Já são <strong style="color:var(--gold)">${formatAlzGamer(active.totalAlz)}</strong> em ${active.dropCount} drops.</div>
       <button class="btn btn-s" style="margin-top:8px" onclick="quickNext()"><i class="ti ti-player-stop"></i>Encerrar sessão</button>`;
   } else {
-    const opts = AppState.dungeonList.map(dg => `<option value="${dg.id}">${dg.name}</option>`).join('');
+    const opts = AppState.dungeonList.map(dg => `<option value="${esc(dg.id)}">${esc(dg.name)}</option>`).join('');
     inner = `<label class="lbl">Em qual DG você vai farmar?</label>
       <select class="inp" id="qm-dg"><option value="">Selecione...</option>${opts}</select>${errLine(qm)}
       <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-player-play"></i>Iniciar sessão</button>`;

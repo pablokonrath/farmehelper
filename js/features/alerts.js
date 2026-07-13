@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveAlertSettings, saveAlertHistory } from '../state/persistence.js';
 import { normalizeForSearch } from '../utils/parsing.js';
+import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 import { relayDropToTelegram, relayWatchdogToTelegram } from './telegram.js';
 
@@ -70,8 +71,8 @@ function showAlertToast(entry, alertType = null) {
   toastEl.innerHTML = `
     <i class="ti ti-bell-ringing" style="color:var(--acc);flex-shrink:0;margin-top:1px"></i>
     <div style="flex:1;min-width:0">
-      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${entry.itemName}</div>
-      <div style="font-size:11px;color:var(--muted)">Palavra: ${entry.keyword}${entry.quantity > 1 ? ' • ' + entry.quantity + 'x' : ''}</div>
+      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(entry.itemName)}</div>
+      <div style="font-size:11px;color:var(--muted)">Palavra: ${esc(entry.keyword)}${entry.quantity > 1 ? ' • ' + entry.quantity + 'x' : ''}</div>
     </div>
     <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
   container.appendChild(toastEl);
@@ -110,8 +111,8 @@ function showWishlistToast(match) {
   toastEl.innerHTML = `
     <i class="ti ti-gift" style="color:var(--gold);flex-shrink:0;margin-top:1px"></i>
     <div style="flex:1;min-width:0">
-      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${match.itemName}</div>
-      <div style="font-size:11px;color:var(--muted)">${match.dropperUsername}${match.dropperGuild ? ' (' + match.dropperGuild + ')' : ''} dropou um item da sua lista de desejos</div>
+      <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(match.itemName)}</div>
+      <div style="font-size:11px;color:var(--muted)">${esc(match.dropperUsername)}${match.dropperGuild ? ' (' + esc(match.dropperGuild) + ')' : ''} dropou um item da sua lista de desejos</div>
     </div>
     <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
   container.appendChild(toastEl);
@@ -349,7 +350,7 @@ export function showInfoToast(text) {
   if (!container) return;
   const el = document.createElement('div');
   el.className = 'alert-toast';
-  el.innerHTML = `<i class="ti ti-check" style="color:var(--ok);flex-shrink:0;margin-top:1px"></i><div style="flex:1;min-width:0;font-size:13px">${text}</div>`;
+  el.innerHTML = `<i class="ti ti-check" style="color:var(--ok);flex-shrink:0;margin-top:1px"></i><div style="flex:1;min-width:0;font-size:13px">${esc(text)}</div>`;
   container.appendChild(el);
   setTimeout(() => el.remove(), 2000);
 }

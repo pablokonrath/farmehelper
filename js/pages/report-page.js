@@ -1,5 +1,6 @@
 import { getFilteredDrops, getItemPrice, getItemCategory, summarizeDropsByItem } from '../features/drops.js';
 import { renderAlzValue, formatDateBR } from '../utils/formatting.js';
+import { esc } from '../utils/escape.js';
 
 const NO_CATEGORY_LABEL = 'Sem categoria';
 
@@ -42,12 +43,12 @@ categories.map(category => {
   const totalInCategory = categoryDrops.reduce((sum, d) => sum + getItemPrice(d.name), 0);
   const rows = summarizeByDateAndItem(categoryDrops);
   return `<div class="card"><div class="sh" style="margin-bottom:8px">
-<div style="font-weight:600">${category} <span style="color:var(--muted);font-size:12px;font-weight:400">${categoryDrops.length} drops</span></div>
+<div style="font-weight:600">${esc(category)} <span style="color:var(--muted);font-size:12px;font-weight:400">${categoryDrops.length} drops</span></div>
 ${totalInCategory ? renderAlzValue(totalInCategory, true) : ''}
 </div><table><thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
 ${rows.map(r => `<tr>
   <td class="mono" style="color:var(--muted)">${formatDateBR(r.date)}</td>
-  <td style="font-size:12px">${r.name}</td>
+  <td style="font-size:12px">${esc(r.name)}</td>
   <td>${r.qty}×</td>
   <td>${r.total ? renderAlzValue(r.total) : '<span style="color:var(--muted)">—</span>'}</td>
 </tr>`).join('')}

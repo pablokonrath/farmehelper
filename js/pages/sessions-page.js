@@ -3,6 +3,7 @@ import { getActiveSessionSummary, computeDgComparison, computeResetWorth } from 
 import { getItemPrice } from '../features/drops.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
+import { esc } from '../utils/escape.js';
 
 // Progresso do rush de hoje: cruza o rush salvo do dia com as sessões de DG já feitas hoje. Uma
 // DG do rush é marcada "feita" quando existe uma sessão dela hoje (ou é a sessão ativa agora) —
@@ -26,7 +27,7 @@ function renderRushProgressCard() {
       const done = doneNames.has(it.name);
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px${done ? ';opacity:.65' : ''}">
         <i class="ti ti-${done ? 'circle-check' : 'circle'}" style="font-size:18px;color:${done ? 'var(--ok)' : 'var(--muted)'}"></i>
-        <span style="flex:1${done ? ';text-decoration:line-through;color:var(--muted)' : ';font-weight:600'}">${it.repetitions}× ${it.name}</span>
+        <span style="flex:1${done ? ';text-decoration:line-through;color:var(--muted)' : ';font-weight:600'}">${it.repetitions}× ${esc(it.name)}</span>
         <span class="badge ${done ? 'badge-ok' : 'badge-warn'}">${done ? 'Feita' : 'Falta'}</span>
       </div>`;
     }).join('')}
@@ -57,7 +58,7 @@ function sessionItemsRow(s) {
   const activeMs = s.activeDurationMs ?? s.durationMs;
   return `<tr><td colspan="9" style="background:var(--surf2);padding:14px 16px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px">
-      <span>Melhor drop: <strong style="color:var(--txt)">${s.bestItem ? `${s.bestItem.name} (${formatAlzGamer(s.bestItem.price)})` : '—'}</strong></span>
+      <span>Melhor drop: <strong style="color:var(--txt)">${s.bestItem ? `${esc(s.bestItem.name)} (${formatAlzGamer(s.bestItem.price)})` : '—'}</strong></span>
       <span>Alz por run: <strong style="color:var(--gold)">${alzPerRun != null ? formatAlzGamer(alzPerRun) : '—'}</strong></span>
       <span>Alz por hora: <strong style="color:var(--txt)">${s.alzPerHour != null ? formatAlzGamer(s.alzPerHour) + '/h' : '—'}</strong></span>
       <span>Tempo ativo: <strong style="color:var(--txt)">${formatDuration(activeMs)}</strong> · relógio total: ${formatDuration(s.durationMs)}</span>
@@ -65,7 +66,7 @@ function sessionItemsRow(s) {
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
     ${rows.map(r => `<tr>
-      <td>${r.name}</td>
+      <td>${esc(r.name)}</td>
       <td>${r.qty}×</td>
       <td>${r.value ? renderAlzValue(r.value) : '<span style="color:var(--muted)">—</span>'}</td>
     </tr>`).join('')}
@@ -85,7 +86,7 @@ export function renderSessionsPage() {
   ${active
     ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div>
-          <div style="font-weight:700;font-size:15px">${active.dungeonName}</div>
+          <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}</div>
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -98,7 +99,7 @@ export function renderSessionsPage() {
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
           <select class="inp" id="dgSessionSelect">
-            ${AppState.dungeonList.map(d => `<option value="${d.id}">${d.name}</option>`).join('')}
+            ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
           </select></div>
         <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value)"><i class="ti ti-player-play"></i>Iniciar</button></div>
       </div>`}
@@ -113,7 +114,7 @@ export function renderSessionsPage() {
     : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo total</th><th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
       ${comparison.map((c, i) => `<tr>
         <td class="rank">${i + 1}</td>
-        <td style="font-weight:500">${c.dungeonName}</td>
+        <td style="font-weight:500">${esc(c.dungeonName)}</td>
         <td>${c.sessions}</td>
         <td>${c.runs || '—'}</td>
         <td>${formatDuration(c.durationMs)}</td>
@@ -135,7 +136,7 @@ export function renderSessionsPage() {
         const expanded = !!AppState.expandedDgSessions[s.startAt];
         return `<tr>
         <td>${formatDateBR(s.date)}</td>
-        <td style="font-weight:500">${s.dungeonName}</td>
+        <td style="font-weight:500">${esc(s.dungeonName)}</td>
         <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
         <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
         <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
@@ -167,7 +168,7 @@ export function renderSessionsPage() {
       ? '<div class="empty">Nenhum DG com runs informadas ainda — preencha as runs no histórico acima.</div>'
       : `<table><thead><tr><th>DG</th><th>Alz / run</th><th>Custo de entrada / run</th><th>Líquido / run</th><th>Após reset</th><th>Veredito</th></tr></thead><tbody>
         ${reset.rows.map(r => `<tr>
-          <td style="font-weight:500">${r.dungeonName}</td>
+          <td style="font-weight:500">${esc(r.dungeonName)}</td>
           <td>${formatAlzGamer(r.alzPerRun)}</td>
           <td style="color:var(--muted)">${formatAlzGamer(r.entryCostPerRun)}</td>
           <td style="color:${r.netAlzPerRun >= 0 ? 'var(--txt)' : 'var(--err)'}">${formatAlzGamer(r.netAlzPerRun)}</td>

@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { isItemFeatured, getGuildUsernames, buildPlayerComparison } from '../features/leaderboard.js';
+import { esc } from '../utils/escape.js';
 
 const MEDAL_COLORS = ['#ffd700', '#c0c0c0', '#cd7f32'];
 const PODIUM_TITLES = ['Rei do Farm', 'Grinder Implacável', 'Caçador Dedicado'];
@@ -25,7 +26,7 @@ function renderCompareRow(row) {
     ? '<span style="color:var(--muted)">=</span>'
     : `<span style="color:${row.delta > 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700"><i class="ti ${row.delta > 0 ? 'ti-arrow-up' : 'ti-arrow-down'}"></i> ${Math.abs(row.delta)}</span>`;
   return `<tr>
-    <td style="font-weight:500">${row.name}</td>
+    <td style="font-weight:500">${esc(row.name)}</td>
     <td style="${higherIsMine ? 'font-weight:700;color:var(--acc)' : 'color:var(--muted)'}">${row.myQty || '—'}</td>
     <td style="${higherIsTheirs ? 'font-weight:700' : 'color:var(--muted)'}">${row.otherQty || '—'}</td>
     <td>${deltaCell}</td>
@@ -45,11 +46,11 @@ function renderCompareCard() {
   <label class="lbl">Escolher jogador</label>
   <select class="inp" onchange="setRankingCompareUsername(this.value)" style="margin-bottom:12px">
     <option value="">Selecione...</option>
-    ${otherUsernames.map(name => `<option value="${name}"${AppState.rankingCompareUsername === name ? ' selected' : ''}>${name}</option>`).join('')}
+    ${otherUsernames.map(name => `<option value="${esc(name)}"${AppState.rankingCompareUsername === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}
   </select>
   ${!AppState.rankingCompareUsername ? '' :
     !rows.length ? '<div class="empty" style="padding:14px 0">Nenhum item em comum registrado ainda.</div>' : `
-  <table><thead><tr><th>Item</th><th>Você</th><th>${AppState.rankingCompareUsername}</th><th>Diferença</th></tr></thead><tbody>
+  <table><thead><tr><th>Item</th><th>Você</th><th>${esc(AppState.rankingCompareUsername)}</th><th>Diferença</th></tr></thead><tbody>
   ${rows.map(renderCompareRow).join('')}
   </tbody></table>`}
 </div>`;
@@ -61,8 +62,8 @@ function renderPodiumSlot(row, position) {
   <div class="podium-slot p${position}">
     <div class="podium-medal"><i class="ti ti-medal" style="color:${MEDAL_COLORS[position - 1]}"></i></div>
     <div class="podium-title" style="color:${MEDAL_COLORS[position - 1]}">${PODIUM_TITLES[position - 1]}</div>
-    <div class="podium-name">${row.username}</div>
-    ${row.guild ? `<div class="podium-guild">${row.guild}</div>` : ''}
+    <div class="podium-name">${esc(row.username)}</div>
+    ${row.guild ? `<div class="podium-guild">${esc(row.guild)}</div>` : ''}
     <div class="podium-qty">${row.quantity}×</div>
     <div class="podium-stand">${position}º</div>
   </div>`;
@@ -82,7 +83,7 @@ function renderItemCard(itemName, rows) {
 
   return `
 <div class="card${featured ? ' card-featured' : ''}">
-  <div class="ctitle">${featured ? '<i class="ti ti-star-filled" style="color:var(--gold)"></i>' : '<i class="ti ti-target-arrow"></i>'} ${itemName}</div>
+  <div class="ctitle">${featured ? '<i class="ti ti-star-filled" style="color:var(--gold)"></i>' : '<i class="ti ti-target-arrow"></i>'} ${esc(itemName)}</div>
   <div class="guild-total">Top 3</div>
   <div class="podium">
     ${renderPodiumSlot(second, 2)}
@@ -93,7 +94,7 @@ function renderItemCard(itemName, rows) {
   <table><thead><tr><th style="width:50px">#</th><th>Usuário</th><th>Quantidade</th></tr></thead><tbody>
   ${rest.map((row, i) => `<tr>
     <td class="rank">${i + 4}</td>
-    <td>${row.username}${row.guild ? `<div style="font-size:10px;color:var(--muted)">${row.guild}</div>` : ''}</td>
+    <td>${esc(row.username)}${row.guild ? `<div style="font-size:10px;color:var(--muted)">${esc(row.guild)}</div>` : ''}</td>
     <td>${row.quantity}</td>
   </tr>`).join('')}
   </tbody></table>` : ''}
@@ -124,7 +125,7 @@ ${items.length ? `<div class="card">
   <label class="lbl">Filtrar item</label>
   <select class="inp" onchange="setRankingFilterItem(this.value)">
     <option value="">Todos os itens</option>
-    ${items.map(name => `<option value="${name}"${AppState.rankingFilterItem === name ? ' selected' : ''}>${name}</option>`).join('')}
+    ${items.map(name => `<option value="${esc(name)}"${AppState.rankingFilterItem === name ? ' selected' : ''}>${esc(name)}</option>`).join('')}
   </select>
 </div>` : ''}
 

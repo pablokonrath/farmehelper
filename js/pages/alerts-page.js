@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredAlertHistory } from '../features/alerts.js';
 import { formatDateTimeBR } from '../utils/formatting.js';
+import { esc } from '../utils/escape.js';
 
 // Uma linha "toggle" padrão (título + descrição à esquerda, interruptor à direita). `extra` entra
 // no style do container (ex: borda, opacidade quando desabilitado).
@@ -116,8 +117,8 @@ export function renderAlertsPage() {
   <table><thead><tr><th>Data / Hora</th><th>Item</th><th>Palavra</th><th>Qtd.</th><th>Status</th></tr></thead><tbody>
   ${history.map(e => `<tr>
     <td>${formatDateTimeBR(e.timestamp)}</td>
-    <td>${e.itemName}</td>
-    <td>${e.keyword}</td>
+    <td>${esc(e.itemName)}</td>
+    <td>${esc(e.keyword)}</td>
     <td>${e.quantity}</td>
     <td>${e.seen ? '<span class="badge badge-muted">Visto</span>' : '<span class="badge badge-acc">Novo</span>'}</td>
   </tr>`).join('')}

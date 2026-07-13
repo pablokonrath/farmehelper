@@ -3,6 +3,7 @@ import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
+import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
 export function setRushCartDate(value) {
@@ -105,14 +106,14 @@ export function renderRushPage() {
     <table style="margin-bottom:14px"><thead><tr><th>Nome da DG</th><th>Custo Alz (por run)</th><th>Tickets (por run)</th><th>Gemas de entrada (por run)</th>${AppState.isMasterAdmin ? '<th style="width:100px">Ações</th>' : ''}</tr></thead><tbody>
     ${AppState.dungeonList.map(dg => AppState.isMasterAdmin && AppState.editingDungeonId === dg.id ? `
       <tr style="background:var(--acc-bg)">
-        <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${dg.name}" style="min-width:160px"></td>
+        <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${esc(dg.name)}" style="min-width:160px"></td>
         <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="text" inputmode="numeric" value="${dg.alzCost ? formatNumber(dg.alzCost) : ''}" placeholder="0" style="width:110px" oninput="maskAlzInputLive(this)"></td>
         <td><input class="inp inp-sm" id="ed-tk-${dg.id}" type="number" min="0" value="${dg.ticketsPerRun || 0}" style="width:80px"></td>
         <td><input class="inp inp-sm" id="ed-g-${dg.id}" type="number" min="0" value="${dg.gemsPerRun || 0}" style="width:80px"></td>
         <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveDungeonEdit('${dg.id}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingDungeon()">✕</button></div></td>
       </tr>` :
       `<tr>
-        <td>${dg.name}</td>
+        <td>${esc(dg.name)}</td>
         <td>${dg.alzCost > 0 ? renderAlzValue(dg.alzCost) : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${dg.ticketsPerRun > 0 ? `<span class="badge badge-acc">${dg.ticketsPerRun}× Ticket</span>` : '<span class="badge badge-muted">—</span>'}</td>
         <td>${dg.gemsPerRun > 0 ? `<span class="badge badge-warn">${dg.gemsPerRun}× Gema</span>` : '<span class="badge badge-muted">—</span>'}</td>
@@ -146,7 +147,7 @@ export function renderRushPage() {
         if (d.alzCost > 0) parts.push(formatAlzGamer(d.alzCost) + '/run');
         if (d.ticketsPerRun > 0) parts.push(d.ticketsPerRun + '× ticket');
         if (d.gemsPerRun > 0) parts.push(d.gemsPerRun + '× gema');
-        return `<option value="${d.id}">${d.name}${parts.length ? ' — ' + parts.join(' + ') : ''}</option>`;
+        return `<option value="${esc(d.id)}">${esc(d.name)}${parts.length ? ' — ' + parts.join(' + ') : ''}</option>`;
       }).join('')}
       </select></div>
     <div><label class="lbl">Repetições</label><input class="inp" id="dgRp" type="number" min="1" value="1" oninput="updateCartPreview()"></div>
@@ -217,7 +218,7 @@ export function renderRushPage() {
     if (entryGems > 0) typeBadges.push(`<span class="badge badge-warn">${entryGems}× Gema</span>`);
     if (!typeBadges.length) typeBadges.push('<span class="badge badge-muted">Alz</span>');
     return `<tr>
-      <td style="font-weight:500">${item.name}</td>
+      <td style="font-weight:500">${esc(item.name)}</td>
       <td>${typeBadges.join(' ')}</td>
       <td>${item.repetitions}×</td>
       <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}</td>

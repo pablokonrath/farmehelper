@@ -3,6 +3,7 @@ import { getItemPrice, summarizeDropsByItem } from './drops.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
+import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled } from './alerts.js';
 import { renderPage } from '../router.js';
 
@@ -220,7 +221,7 @@ export function startDgSessionTicker() {
     const clock = mins > 0 ? `${mins}min ${secs}s` : `${secs}s`;
     if (sidebar) {
       sidebar.style.display = 'block';
-      sidebar.innerHTML = `<i class="ti ti-crosshair" style="color:var(--gold)"></i> ${summary.dungeonName} · ${clock} · <strong>${formatAlzGamer(summary.totalAlz)}</strong>`;
+      sidebar.innerHTML = `<i class="ti ti-crosshair" style="color:var(--gold)"></i> ${esc(summary.dungeonName)} · ${clock} · <strong>${formatAlzGamer(summary.totalAlz)}</strong>`;
     }
     if (pageBox) {
       pageBox.innerHTML = `${clock} · ${summary.dropCount} drops · <strong style="color:var(--gold)">${formatAlzGamer(summary.totalAlz)}</strong>${summary.alzPerHour != null ? ` · ${formatAlzGamer(summary.alzPerHour)}/h` : ''}`;

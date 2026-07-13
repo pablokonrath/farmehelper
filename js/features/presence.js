@@ -1,4 +1,5 @@
 import { fireWishlistMatchAlert } from './alerts.js';
+import { esc } from '../utils/escape.js';
 
 const API_BASE = 'api';
 const HEARTBEAT_INTERVAL_MS = 60000;
@@ -12,8 +13,8 @@ function renderOnlinePopoverList(users) {
   if (!users.length) return '<div style="padding:8px 2px;color:var(--muted);font-size:12px">Ninguém online agora.</div>';
   return users.map(u => `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 2px;border-bottom:1px solid var(--border)">
-      <span style="font-size:13px;font-weight:500">${u.username}</span>
-      ${u.guild ? `<span style="font-size:11px;color:var(--muted)">${u.guild}</span>` : ''}
+      <span style="font-size:13px;font-weight:500">${esc(u.username)}</span>
+      ${u.guild ? `<span style="font-size:11px;color:var(--muted)">${esc(u.guild)}</span>` : ''}
     </div>`).join('');
 }
 

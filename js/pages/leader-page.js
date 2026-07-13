@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { formatNumber } from '../utils/formatting.js';
+import { esc } from '../utils/escape.js';
 
 const PERIODS = [['today', 'Hoje'], ['week', 'Semana'], ['month', 'Mês']];
 
@@ -22,7 +23,7 @@ export function renderLeaderPage() {
     ? `<div style="width:200px"><label class="lbl">Guild</label>
         <select class="inp" onchange="setGuildPanelGuild(this.value)">
           <option value=""${AppState.guildPanelGuild ? '' : ' selected'}>Minha guild</option>
-          ${AppState.guilds.map(g => { const name = typeof g === 'string' ? g : g.name; return `<option value="${name}"${AppState.guildPanelGuild === name ? ' selected' : ''}>${name}</option>`; }).join('')}
+          ${AppState.guilds.map(g => { const name = typeof g === 'string' ? g : g.name; return `<option value="${esc(name)}"${AppState.guildPanelGuild === name ? ' selected' : ''}>${esc(name)}</option>`; }).join('')}
         </select></div>`
     : '';
 
@@ -57,13 +58,13 @@ export function renderLeaderPage() {
 
   const table = `
 <div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-users"></i>${guildLabel} <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${data.memberCount} membros</span></div></div>
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-users"></i>${esc(guildLabel)} <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${data.memberCount} membros</span></div></div>
   ${!data.members.length
     ? '<div class="empty">Nenhum membro nesta guild ainda.</div>'
     : `<table><thead><tr><th style="width:36px">#</th><th>Jogador</th><th>Status</th><th>Drops no período</th></tr></thead><tbody>
       ${data.members.map((m, i) => `<tr${m.online ? ' style="background:var(--ok-bg)"' : ''}>
         <td class="rank">${i + 1}</td>
-        <td style="font-weight:500">${m.username}${m.username === AppState.currentUsername ? ' <span style="color:var(--muted);font-size:11px">(você)</span>' : ''}</td>
+        <td style="font-weight:500">${esc(m.username)}${m.username === AppState.currentUsername ? ' <span style="color:var(--muted);font-size:11px">(você)</span>' : ''}</td>
         <td>${m.online
           ? '<span class="badge badge-ok"><i class="ti ti-point-filled"></i> Online</span>'
           : `<span style="color:var(--muted);font-size:12px">${formatLastSeen(m.lastSeenAt)}</span>`}</td>
@@ -81,9 +82,9 @@ export function renderLeaderPage() {
     ? '<div class="empty">Nenhum item do ranking dropado no período.</div>'
     : `<table><thead><tr><th>Item</th><th style="width:60px">Total</th><th>Quem dropou</th></tr></thead><tbody>
       ${breakdown.map(it => `<tr>
-        <td style="font-weight:500">${it.itemName}</td>
+        <td style="font-weight:500">${esc(it.itemName)}</td>
         <td style="font-weight:600;color:var(--gold)">${it.total}</td>
-        <td><div style="display:flex;flex-wrap:wrap;gap:5px">${it.droppers.map(d => `<span class="badge badge-muted">${d.username}${d.qty > 1 ? ' ×' + d.qty : ''}</span>`).join('')}</div></td>
+        <td><div style="display:flex;flex-wrap:wrap;gap:5px">${it.droppers.map(d => `<span class="badge badge-muted">${esc(d.username)}${d.qty > 1 ? ' ×' + d.qty : ''}</span>`).join('')}</div></td>
       </tr>`).join('')}
       </tbody></table>`}
 </div>`;

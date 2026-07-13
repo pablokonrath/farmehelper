@@ -5,6 +5,7 @@ import { buildDayComparison } from '../features/day-compare.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
+import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
 // "1h 20min" / "45min" / "+12h" — usado na projeção "nesse ritmo, meta em ~X".
@@ -132,7 +133,7 @@ export function renderOverviewPage() {
     ${manualBatches.length ? `<table><thead><tr><th>Data</th><th>Item</th><th>Quantidade</th><th>Valor</th><th style="width:40px"></th></tr></thead><tbody>
     ${manualBatches.map(b => `<tr>
       <td>${formatDateBR(b.date)}</td>
-      <td>${b.name}</td>
+      <td>${esc(b.name)}</td>
       <td>${b.qty}×</td>
       <td>${getItemPrice(b.name) ? renderAlzValue(getItemPrice(b.name) * b.qty) : '<span style="color:var(--muted)">—</span>'}</td>
       <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteManualDropBatch('${b.batchId}')"><i class="ti ti-trash"></i></button></td>
@@ -192,7 +193,7 @@ ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti
     <div><label class="lbl">Item (opcional)</label>
       <select class="inp" onchange="setCompareItemFilter(this.value)">
         <option value=""${AppState.compareItemFilter ? '' : ' selected'}>Todos os itens</option>
-        ${compareItemSuggestions.map(it => `<option value="${it.name}"${it.name === AppState.compareItemFilter ? ' selected' : ''}>${it.name}</option>`).join('')}
+        ${compareItemSuggestions.map(it => `<option value="${esc(it.name)}"${it.name === AppState.compareItemFilter ? ' selected' : ''}>${esc(it.name)}</option>`).join('')}
       </select></div>
   </div>
   ${comparison.dates.length < 2 ? '<div class="empty">Carregue drops de pelo menos 2 dias diferentes para comparar.</div>' :
@@ -230,7 +231,7 @@ ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti
       ? '<span style="color:var(--muted)">=</span>'
       : `<span style="color:${row.delta > 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700" title="${formatNumber(Math.abs(row.delta))} Alz"><i class="ti ${row.delta > 0 ? 'ti-arrow-up' : 'ti-arrow-down'}"></i> ${formatAlzGamer(Math.abs(row.delta))}</span>`;
     return `<tr>
-      <td style="font-weight:500">${row.name}</td>
+      <td style="font-weight:500">${esc(row.name)}</td>
       <td style="${higherIsA ? 'font-weight:700' : 'color:var(--muted)'}">${row.qtyA || '—'}</td>
       <td style="${higherIsA ? 'font-weight:700' : ''}">${row.totalA ? renderAlzValue(row.totalA) : '<span style="color:var(--muted)">—</span>'}</td>
       <td style="${higherIsB ? 'font-weight:700' : 'color:var(--muted)'}">${row.qtyB || '—'}</td>
@@ -244,7 +245,7 @@ ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Top itens <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${items.length} itens</span></div></div>
   <table><thead><tr><th style="width:36px">#</th><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th></tr></thead><tbody>
   ${items.length ? items.slice(0, 25).map((it, i) => `<tr>
-    <td class="rank">${i + 1}</td><td>${it.name}</td>
+    <td class="rank">${i + 1}</td><td>${esc(it.name)}</td>
     <td>${it.qty.toLocaleString('pt-BR')}</td>
     <td>${it.price ? renderAlzValue(it.price) : '<span style="color:var(--muted)">—</span>'}</td>
     <td>${it.total ? renderAlzValue(it.total, true) : '<span style="color:var(--muted)">—</span>'}</td>
