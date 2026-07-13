@@ -324,6 +324,27 @@
             ></div>
             <div
               style="
+                font-size: 12px;
+                color: var(--muted);
+                text-align: center;
+                margin-top: 14px;
+              "
+            >
+              Ainda não tem conta?
+              <a
+                href="https://wa.me/5553991887418?text=Ol%C3%A1%21%20Quero%20criar%20minha%20conta%20no%20FarmHub"
+                target="_blank"
+                rel="noopener"
+                style="
+                  color: var(--acc);
+                  font-weight: 600;
+                  text-decoration: none;
+                "
+                >Solicite no WhatsApp</a
+              >
+            </div>
+            <div
+              style="
                 font-size: 10px;
                 color: var(--muted);
                 text-align: center;
@@ -336,6 +357,33 @@
           </div>
         </div>
       </div>
+      <!-- Botão flutuante: solicitar conta pelo WhatsApp (só aparece na tela de login) -->
+      <a
+        href="https://wa.me/5553991887418?text=Ol%C3%A1%21%20Quero%20criar%20minha%20conta%20no%20FarmHub"
+        target="_blank"
+        rel="noopener"
+        aria-label="Solicitar conta pelo WhatsApp"
+        style="
+          position: fixed;
+          right: 18px;
+          bottom: 18px;
+          z-index: 50;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          background: #25d366;
+          color: #04120a;
+          font-weight: 700;
+          font-size: 13px;
+          text-decoration: none;
+          padding: 12px 16px;
+          border-radius: 30px;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        "
+      >
+        <i class="ti ti-brand-whatsapp" style="font-size: 20px"></i>Solicitar
+        conta
+      </a>
     </div>
     <div class="wrap" id="appWrap" style="display: none">
       <button class="mmenu-btn" onclick="toggleSidebar()" aria-label="Menu">
