@@ -18,6 +18,7 @@ import { renderSessionsPage } from './pages/sessions-page.js';
 import { loadGuildPanelData } from './features/guild-panel.js';
 import { renderLeaderPage } from './pages/leader-page.js';
 import { renderQuickPage } from './pages/quick-page.js';
+import { renderTutorialPage } from './pages/tutorial-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -60,6 +61,7 @@ export function renderPage() {
   else if (AppState.currentPage === 'lider') main.innerHTML = renderLeaderPage();
   else if (AppState.currentPage === 'vendas') main.innerHTML = renderSalesPage();
   else if (AppState.currentPage === 'rapido') main.innerHTML = renderQuickPage();
+  else if (AppState.currentPage === 'tutorial') main.innerHTML = renderTutorialPage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();
