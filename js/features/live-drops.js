@@ -44,11 +44,12 @@ export async function loadLiveDrops() {
     if (!response.ok) return;
     const data = await response.json();
     const drops = Array.isArray(data.drops) ? data.drops : [];
+    AppState.liveActiveDg = data.activeDg || null;
     if (drops.length) {
       AppState.liveDrops = [...AppState.liveDrops, ...drops].slice(-MAX_LIVE_BUFFER);
       AppState.liveDropsCursor = data.cursor || AppState.liveDropsCursor;
-      if (AppState.currentPage === 'live') renderPage();
     }
+    if (AppState.currentPage === 'live') renderPage();
   } catch {
     // falha pontual de rede — tenta de novo no próximo tick
   }

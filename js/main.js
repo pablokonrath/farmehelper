@@ -263,7 +263,11 @@ if (!authenticated) {
   updateBalanceSidebar();
   initFarmGoalBaseline();
   initFileInputListener();
-  renderPage();
+  // No celular a Visão geral fica vazia (depende do log local, que só existe no PC) — abre direto
+  // no Ao vivo, que já funciona sem log. 720px tem que bater com o @media que esconde a Visão
+  // geral do menu nesse tamanho de tela (ver styles.css).
+  if (window.innerWidth <= 720) navigateTo('live');
+  else renderPage();
   resumeLiveFileConnection();
   startPresenceHeartbeat();
   startEventScheduleChecks();

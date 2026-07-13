@@ -137,6 +137,8 @@ export const AppState = {
   // aparelho da conta consome.
   liveDrops: [],
   liveDropsCursor: 0,
+  // Qual DG está sendo farmada agora ({dungeonName, startAt} ou null) — vem junto no mesmo poll.
+  liveActiveDg: null,
   rushCartDate: todayISODate(),
   rushTicketPrice: '',
   rushCardCashPrice: '',

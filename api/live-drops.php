@@ -80,7 +80,21 @@ if ($method === 'GET') {
     ];
   }
 
-  json_response(['drops' => $drops, 'cursor' => $cursor]);
+  // Qual DG está sendo farmada agora, se houver — já mantida em app_settings pelo próprio PC
+  // (ver dg-session.js/saveActiveDgSession), só reaproveita aqui no mesmo poll de 10s pra não
+  // precisar de uma requisição extra do celular.
+  $activeDg = null;
+  $sessStmt = $db->prepare("SELECT setting_value FROM app_settings WHERE user_id = :uid AND setting_key = 'activeDgSession'");
+  $sessStmt->execute(['uid' => $uid]);
+  $sessRow = $sessStmt->fetch();
+  if ($sessRow) {
+    $session = json_decode($sessRow['setting_value'], true);
+    if (is_array($session) && !empty($session['dungeonName'])) {
+      $activeDg = ['dungeonName' => $session['dungeonName'], 'startAt' => (int) ($session['startAt'] ?? 0)];
+    }
+  }
+
+  json_response(['drops' => $drops, 'cursor' => $cursor, 'activeDg' => $activeDg]);
 }
 
 json_response(['error' => 'method_not_allowed'], 405);

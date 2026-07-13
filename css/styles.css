@@ -161,6 +161,10 @@ tbody tr:hover{background:var(--surf2)}
   /* Conteúdo largo (tabelas) rola dentro do próprio card, sem estourar a página. */
   .main .card{overflow-x:auto}
   .pg-title{font-size:20px}
+  /* Essas páginas dependem do log local (só existe no PC com o arquivo conectado) — no celular
+     ficam vazias ("Nenhum dado carregado"), então não aparecem no menu. Ao vivo cobre o "ver o
+     farme rolando agora"; Sessões de farme continua (o histórico já vem do servidor). */
+  #nb-overview,#nb-relatorio,#nb-calculo,#nb-vendas{display:none}
 }
 @media (max-width:480px){
   .g2,.g3,.g4,.g6{grid-template-columns:1fr}
