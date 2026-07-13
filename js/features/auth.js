@@ -43,7 +43,8 @@ export async function submitLogin() {
       window.location.reload();
       return;
     }
-    showLoginError('Usuário ou senha incorretos.');
+    const data = await response.json().catch(() => ({}));
+    showLoginError(data.message || 'Usuário ou senha incorretos.');
   } catch {
     showLoginError('Erro de conexão com o servidor.');
   }

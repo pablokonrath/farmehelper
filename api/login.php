@@ -12,11 +12,29 @@ if (!is_string($username) || $username === '' || !is_string($password) || $passw
   json_response(['error' => 'invalid_credentials'], 401);
 }
 
-$stmt = get_db()->prepare('SELECT id, password_hash, is_admin, is_master_admin, guild FROM users WHERE username = :username');
+$db = get_db();
+$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+
+// Throttle anti-força-bruta por IP: 10+ falhas em 15 min bloqueia por um tempo (senha fraca deixa
+// de ser adivinhável por tentativa e erro). Resiliente à tabela login_attempts ainda não existir
+// (migração pendente) — nesse caso apenas não limita, sem quebrar o login.
+try {
+  $db->prepare('DELETE FROM login_attempts WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)')->execute();
+  $recent = $db->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip = :ip AND created_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');
+  $recent->execute(['ip' => $ip]);
+  if ((int) $recent->fetchColumn() >= 10) {
+    json_response(['error' => 'too_many_attempts', 'message' => 'Muitas tentativas de login. Espere alguns minutos e tente de novo.'], 429);
+  }
+} catch (PDOException $e) {
+  // sem throttle até a migração rodar
+}
+
+$stmt = $db->prepare('SELECT id, password_hash, is_admin, is_master_admin, guild FROM users WHERE username = :username');
 $stmt->execute(['username' => $username]);
 $user = $stmt->fetch();
 
 if (!$user || !password_verify($password, $user['password_hash'])) {
+  try { $db->prepare('INSERT INTO login_attempts (ip) VALUES (:ip)')->execute(['ip' => $ip]); } catch (PDOException $e) {}
   json_response(['error' => 'invalid_credentials'], 401);
 }
 

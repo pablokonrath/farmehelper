@@ -102,6 +102,15 @@ CREATE TABLE IF NOT EXISTS dg_sessions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Tentativas de login (só as que falharam) — throttle anti-força-bruta por IP (ver login.php).
+-- Linhas antigas são limpas no próprio login; não guarda senha, só IP + horário.
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  ip VARCHAR(45) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY ip_time (ip, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS manual_drops (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,

@@ -28,8 +28,8 @@ if ($method === 'POST') {
   // (a UI esconde o checkbox pra ele; aqui é a trava de verdade, caso mande isAdmin na marra).
   $isAdmin = !empty($body['isAdmin']) && current_user_is_master_admin();
 
-  if ($username === '' || !is_string($password) || strlen($password) < 4) {
-    json_response(['error' => 'invalid_input', 'message' => 'Usuário obrigatório e senha com pelo menos 4 caracteres.'], 400);
+  if ($username === '' || !is_string($password) || strlen($password) < 8) {
+    json_response(['error' => 'invalid_input', 'message' => 'Usuário obrigatório e senha com pelo menos 8 caracteres.'], 400);
   }
 
   $stmt = $db->prepare('SELECT id FROM users WHERE username = :username');
@@ -95,7 +95,7 @@ if ($method === 'PUT') {
     }
     if (array_key_exists('password', $body) && $body['password'] !== '') {
       $newPassword = (string) $body['password'];
-      if (strlen($newPassword) < 4) json_response(['error' => 'invalid_input', 'message' => 'Senha precisa de pelo menos 4 caracteres.'], 400);
+      if (strlen($newPassword) < 8) json_response(['error' => 'invalid_input', 'message' => 'Senha precisa de pelo menos 8 caracteres.'], 400);
       $fields[] = 'password_hash = :hash';
       $params['hash'] = password_hash($newPassword, PASSWORD_BCRYPT);
     }
