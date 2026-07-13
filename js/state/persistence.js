@@ -37,6 +37,10 @@ const get = path => apiFetch(path, { method: 'GET' });
 const pendingPutByPath = new Map();
 
 function put(path, body) {
+  // Rede de segurança: não grava nada antes do estado ter carregado do servidor. Se o load
+  // falhar, um save prematuro sobrescreveria os dados bons (ex: histórico de sessões de DG) com o
+  // default vazio do AppState.
+  if (!AppState.persistedStateLoaded) return Promise.resolve();
   const previous = pendingPutByPath.get(path) || Promise.resolve();
   const next = previous
     .catch(() => {})
@@ -86,6 +90,7 @@ export async function loadPersistedState() {
     await apiFetch('migrate.php', { method: 'POST', body: JSON.stringify(payload) });
     applyStateFromPayload(payload);
     await loadGlobalOnlyState();
+    AppState.persistedStateLoaded = true;
     localStorage.setItem(MIGRATION_FLAG_KEY, '1');
     return;
   }
@@ -122,6 +127,7 @@ export async function loadPersistedState() {
   AppState.alertHistory = alertHistory;
   AppState.wishlistItems = wishlistItems;
   await loadGlobalOnlyState();
+  AppState.persistedStateLoaded = true;
 }
 
 export function saveItemPrices() {

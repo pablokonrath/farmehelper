@@ -69,7 +69,9 @@ CREATE TABLE IF NOT EXISTS tracked_keywords (
 CREATE TABLE IF NOT EXISTS app_settings (
   user_id INT NOT NULL,
   setting_key VARCHAR(100) NOT NULL,
-  setting_value TEXT NOT NULL,
+  -- MEDIUMTEXT (16 MB), não TEXT (64 KB): configs que acumulam (dgSessions com itens, salesLog,
+  -- priceHistory) estouravam 64 KB e eram truncadas no save, corrompendo o JSON e zerando no load.
+  setting_value MEDIUMTEXT NOT NULL,
   PRIMARY KEY (user_id, setting_key),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

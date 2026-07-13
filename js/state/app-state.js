@@ -194,6 +194,10 @@ export const AppState = {
   // Modo guiado (assistente passo a passo). action: null|'venda'|'meta'|'sessao'; step: número do
   // passo ou 'done'/'done-start'/'done-end'; data: campos coletados no caminho; error: aviso inline.
   quickMode: { action: null, step: 0, data: {}, error: '' },
+  // Vira true só quando o estado do usuário terminou de carregar do servidor. Enquanto false,
+  // nenhum save é enviado — rede de segurança pra não sobrescrever dado bom com o default vazio
+  // caso o carregamento falhe.
+  persistedStateLoaded: false,
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
   knownItemNames: [],
