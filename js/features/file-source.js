@@ -71,6 +71,47 @@ async function reportIntegrityFlag(type, details) {
   }
 }
 
+// Detecção de integridade por HORÁRIO. O log é sempre cronológico (só avança no tempo), então um
+// drop novo com horário mais de REGRESSION_TOLERANCE_MS ANTES do drop mais recente já visto indica
+// que alguém inseriu/colou uma linha antiga (forja). A tolerância ignora qualquer micro-desordem de
+// segundos e evita falso positivo. Só vale enquanto o arquivo está sendo monitorado ao vivo — na
+// carga inicial e no recarregamento a gente só ajusta a referência, sem sinalizar (mesma lógica do
+// file_tamper, que também só cobre o período em que o app está observando).
+const REGRESSION_TOLERANCE_MS = 2 * 60 * 1000;
+let maxDropTimestampMs = 0;
+
+function setMaxDropTimestamp(drops) {
+  maxDropTimestampMs = 0;
+  for (const d of drops) {
+    const ts = d.timestamp?.getTime();
+    if (ts && ts > maxDropTimestampMs) maxDropTimestampMs = ts;
+  }
+}
+
+// Parte pura (testável): a partir do horário de referência (maxMs), varre os drops e devolve o
+// novo máximo e o pior drop que voltou atrás mais que a tolerância (ou null se nenhum).
+export function findTimestampRegression(drops, maxMs, toleranceMs = REGRESSION_TOLERANCE_MS) {
+  let worst = null;
+  for (const d of drops) {
+    const ts = d.timestamp?.getTime();
+    if (!ts) continue;
+    if (maxMs && ts < maxMs - toleranceMs && (!worst || ts < worst.ts)) {
+      worst = { ts, name: d.name, date: d.date, time: d.time, maxMs };
+    }
+    if (ts > maxMs) maxMs = ts;
+  }
+  return { maxMs, worst };
+}
+
+function checkTimestampRegression(drops) {
+  const { maxMs, worst } = findTimestampRegression(drops, maxDropTimestampMs);
+  maxDropTimestampMs = maxMs;
+  if (worst) {
+    const back = Math.max(1, Math.round((worst.maxMs - worst.ts) / 60000));
+    reportIntegrityFlag('time_regression', `Drop "${worst.name}" com horário ${worst.date} ${worst.time} — cerca de ${back} min ANTES do drop mais recente já registrado. O log só deveria avançar no tempo, então isso indica linha inserida/editada.`);
+  }
+}
+
 function handleWorkerMessage(event) {
   const { type, lines } = event.data;
 
@@ -96,6 +137,7 @@ function handleWorkerMessage(event) {
 
   if (type === 'full-reload') {
     AppState.drops = parsedDrops;
+    setMaxDropTimestamp(parsedDrops); // reinício/truncamento do jogo é legítimo — só recalibra
     updateBalanceSidebar();
     syncTrackedDropCounts();
     if (AppState.currentPage === 'overview') renderPage();
@@ -104,6 +146,7 @@ function handleWorkerMessage(event) {
 
   if (parsedDrops.length) {
     AppState.drops = [...AppState.drops, ...parsedDrops];
+    checkTimestampRegression(parsedDrops); // linha nova com horário voltando atrás = possível forja
     updateBalanceSidebar();
     syncTrackedDropCounts();
     recordDropActivity(parsedDrops);
@@ -122,6 +165,7 @@ async function startLiveFilePolling(fileHandle) {
 
   const file = await fileHandle.getFile();
   AppState.drops = parseLogLines(LOG_FILE_DECODER.decode(await file.arrayBuffer()));
+  setMaxDropTimestamp(AppState.drops); // referência inicial do horário mais recente (sem sinalizar)
   AppState.lastReadFileSize = file.size;
   AppState.pendingLineBuffer = '';
 

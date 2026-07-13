@@ -4,6 +4,7 @@ import { formatDateTimeBR } from '../utils/formatting.js';
 const FLAG_TYPE_BADGES = {
   drop_spike: '<span class="badge badge-warn">Pico de drops</span>',
   file_tamper: '<span class="badge" style="background:var(--err-bg);color:var(--err);border:1px solid var(--err-border)">Arquivo editado</span>',
+  time_regression: '<span class="badge" style="background:var(--err-bg);color:var(--err);border:1px solid var(--err-border)">Horário fora de ordem</span>',
 };
 
 const EVENT_TYPE_INFO = {
@@ -78,7 +79,7 @@ function renderIntegrityFlagsCard() {
   return `
 <div class="card">
   <div class="ctitle"><i class="ti ti-shield-exclamation"></i>Alertas de integridade</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Sinalização automática de possível dado forjado: o trecho já escrito do log mudou entre duas leituras (edição manual do arquivo). É heurística, não prova de trapaça — revise caso a caso.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Sinalização automática de possível dado forjado: o trecho já escrito do log mudou entre leituras (edição do arquivo), ou um drop apareceu com horário voltando atrás (o log só deveria avançar no tempo). É heurística, não prova de trapaça — revise caso a caso.</div>
   ${AppState.isIntegrityFlagsLoading ? '<div class="empty">Carregando...</div>' :
     !AppState.integrityFlags.length ? '<div class="empty" style="padding:14px 0">Nenhum alerta registrado.</div>' : `
   <table><thead><tr><th>Usuário</th><th style="width:120px">Tipo</th><th>Detalhe</th><th style="width:140px">Quando</th></tr></thead><tbody>
