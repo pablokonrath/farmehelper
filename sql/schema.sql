@@ -69,10 +69,36 @@ CREATE TABLE IF NOT EXISTS tracked_keywords (
 CREATE TABLE IF NOT EXISTS app_settings (
   user_id INT NOT NULL,
   setting_key VARCHAR(100) NOT NULL,
-  -- MEDIUMTEXT (16 MB), não TEXT (64 KB): configs que acumulam (dgSessions com itens, salesLog,
-  -- priceHistory) estouravam 64 KB e eram truncadas no save, corrompendo o JSON e zerando no load.
+  -- MEDIUMTEXT (16 MB), não TEXT (64 KB): configs que acumulam como JSON (salesLog, priceHistory)
+  -- estouravam 64 KB e eram truncadas no save, corrompendo o JSON e zerando no load. As sessões de
+  -- DG, que eram as piores, saíram daqui pra tabela dg_sessions (1 linha por sessão).
   setting_value MEDIUMTEXT NOT NULL,
   PRIMARY KEY (user_id, setting_key),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Sessões de farme por DG — UMA linha por sessão (antes era um blob JSON em app_settings que
+-- truncava em 64 KB e sumia). start_at (Date.now() do início) identifica a sessão no cliente.
+CREATE TABLE IF NOT EXISTS dg_sessions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  dungeon_id VARCHAR(64) NULL,
+  dungeon_name VARCHAR(255) NULL,
+  session_date VARCHAR(10) NULL,
+  start_at BIGINT NOT NULL,
+  end_at BIGINT NULL,
+  duration_ms BIGINT NULL,
+  active_duration_ms BIGINT NULL,
+  runs INT NOT NULL DEFAULT 0,
+  drop_count INT NOT NULL DEFAULT 0,
+  unique_items INT NOT NULL DEFAULT 0,
+  total_alz BIGINT NOT NULL DEFAULT 0,
+  alz_per_hour DOUBLE NULL,
+  best_item_name VARCHAR(255) NULL,
+  best_item_price BIGINT NULL,
+  items MEDIUMTEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY user_start (user_id, start_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

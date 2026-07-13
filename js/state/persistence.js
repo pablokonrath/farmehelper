@@ -96,7 +96,7 @@ export async function loadPersistedState() {
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, wishlistItems] = await Promise.all([
+  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, wishlistItems, dgSessionsRows] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('tracked-keywords.php'),
@@ -106,6 +106,7 @@ export async function loadPersistedState() {
     get('alert-settings.php'),
     get('alert-history.php'),
     get('wishlist-items.php'),
+    get('dg-sessions.php'),
   ]);
 
   AppState.itemPrices = itemPrices;
@@ -118,7 +119,10 @@ export async function loadPersistedState() {
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
   AppState.salesLog = appSettings.salesLog ?? [];
   AppState.priceHistory = appSettings.priceHistory ?? {};
-  AppState.dgSessions = appSettings.dgSessions ?? [];
+  // Sessões de DG vêm da tabela própria agora. Migração transparente: se a tabela ainda está vazia
+  // mas há sessões no blob antigo (app_settings.dgSessions), usa o blob e migra pra tabela no fim.
+  const legacyDgSessions = appSettings.dgSessions ?? [];
+  AppState.dgSessions = dgSessionsRows.length ? dgSessionsRows : legacyDgSessions;
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
@@ -128,6 +132,9 @@ export async function loadPersistedState() {
   AppState.wishlistItems = wishlistItems;
   await loadGlobalOnlyState();
   AppState.persistedStateLoaded = true;
+  // Migração única do blob antigo pra tabela: se caímos no fallback, grava agora (a partir daí lê
+  // sempre da tabela). persistedStateLoaded já é true, então o put() não é bloqueado.
+  if (!dgSessionsRows.length && legacyDgSessions.length) saveDgSessions();
 }
 
 export function saveItemPrices() {
@@ -176,7 +183,7 @@ export function savePriceHistory() {
 }
 
 export function saveDgSessions() {
-  return put('app-settings.php', { dgSessions: AppState.dgSessions });
+  return put('dg-sessions.php', AppState.dgSessions);
 }
 
 export function saveActiveDgSession() {
