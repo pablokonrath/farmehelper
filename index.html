@@ -36,48 +36,80 @@
         justify-content: center;
       "
     >
-      <div class="card" style="width: 320px">
-        <div
-          class="sb-logo"
-          style="justify-content: center; margin-bottom: 14px"
-        >
-          <i class="ti ti-sword"></i>DropList
+      <div class="login-wrap">
+        <div class="login-card">
+          <!-- ESQUERDA: apresentação -->
+          <div class="login-left">
+            <div class="sb-logo" style="font-size: 26px; margin-bottom: 2px"><i class="ti ti-sword"></i>DropList</div>
+            <div style="font-size: 11px; color: var(--gold); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px">Central de Farme · Cabal Neo</div>
+            <div style="font-size: 13px; color: var(--muted); margin-bottom: 20px">Acompanhe seu farme, planeje rushes e não perca nenhum item raro.</div>
+
+            <div style="display: flex; flex-direction: column; gap: 11px; margin-bottom: 18px">
+              <div style="display: flex; align-items: center; gap: 11px; font-size: 13px; color: var(--txt2)"><i class="ti ti-layout-dashboard" style="color: var(--acc); font-size: 17px; width: 20px; text-align: center"></i>Visão geral do farme em tempo real</div>
+              <div style="display: flex; align-items: center; gap: 11px; font-size: 13px; color: var(--txt2)"><i class="ti ti-swords" style="color: var(--acc); font-size: 17px; width: 20px; text-align: center"></i>Rush diário, metas e sessões de DG</div>
+              <div style="display: flex; align-items: center; gap: 11px; font-size: 13px; color: var(--txt2)"><i class="ti ti-bell" style="color: var(--acc); font-size: 17px; width: 20px; text-align: center"></i>Alertas de itens + vigilância de travamento</div>
+              <div style="display: flex; align-items: center; gap: 11px; font-size: 13px; color: var(--txt2)"><i class="ti ti-gift" style="color: var(--acc); font-size: 17px; width: 20px; text-align: center"></i>Ranking e lista de desejos da guild</div>
+              <div style="display: flex; align-items: center; gap: 11px; font-size: 13px; color: var(--txt2)"><i class="ti ti-cash" style="color: var(--acc); font-size: 17px; width: 20px; text-align: center"></i>Vendas e histórico de preço</div>
+            </div>
+
+            <!-- DESTAQUE TELEGRAM -->
+            <div style="display: flex; gap: 12px; align-items: flex-start; background: linear-gradient(180deg, rgba(34, 211, 238, 0.13), rgba(34, 211, 238, 0.03)); border: 1px solid rgba(34, 211, 238, 0.38); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px">
+              <i class="ti ti-brand-telegram" style="font-size: 28px; color: var(--acc); flex: none"></i>
+              <div>
+                <div style="font-weight: 700; font-size: 13px; color: var(--acc)">Avisos no Telegram</div>
+                <div style="font-size: 12px; color: var(--txt2); margin-top: 3px; line-height: 1.5">Receba TG/World Boss, drops rastreados e propostas de compra <strong>mesmo com o app fechado</strong>.</div>
+              </div>
+            </div>
+
+            <!-- CRÉDITOS -->
+            <div style="border-top: 1px solid var(--border); padding-top: 14px; font-size: 11px; color: var(--muted); line-height: 1.65">
+              <i class="ti ti-bulb" style="color: var(--gold)"></i> A ideia começou com a <strong style="color: var(--txt2)">Samy</strong> e o <strong style="color: var(--txt2)">Mago</strong>.<br />
+              Lapidado e mantido por <strong style="color: var(--gold)">AnnIKILADOR</strong> — feito pela e para a comunidade.
+            </div>
+          </div>
+
+          <!-- DIREITA: login -->
+          <div class="login-right">
+            <div style="font-weight: 700; font-size: 17px; margin-bottom: 3px">Entrar</div>
+            <div style="font-size: 12px; color: var(--muted); margin-bottom: 18px">Acesse com sua conta da guild.</div>
+            <input
+              class="inp"
+              id="loginUsername"
+              type="text"
+              placeholder="Usuário"
+              autocomplete="username"
+              onkeydown="if(event.key==='Enter')submitLogin()"
+              style="margin-bottom: 8px"
+            />
+            <input
+              class="inp"
+              id="loginPassword"
+              type="password"
+              placeholder="Senha"
+              autocomplete="current-password"
+              onkeydown="if(event.key==='Enter')submitLogin()"
+            />
+            <button
+              class="btn btn-p"
+              type="button"
+              style="width: 100%; justify-content: center; margin-top: 12px"
+              onclick="submitLogin()"
+            >
+              <i class="ti ti-login"></i>Entrar
+            </button>
+            <div
+              id="loginError"
+              style="
+                display: none;
+                color: var(--danger, #fb4570);
+                font-size: 12px;
+                margin-top: 8px;
+                text-align: center;
+              "
+            ></div>
+            <div style="font-size: 10px; color: var(--muted); text-align: center; margin-top: 18px; line-height: 1.5">Ferramenta não oficial · sem vínculo com a Neo / Cabal Neo</div>
+          </div>
         </div>
-        <input
-          class="inp"
-          id="loginUsername"
-          type="text"
-          placeholder="Usuário"
-          autocomplete="username"
-          onkeydown="if(event.key==='Enter')submitLogin()"
-          style="margin-bottom: 8px"
-        />
-        <input
-          class="inp"
-          id="loginPassword"
-          type="password"
-          placeholder="Senha"
-          autocomplete="current-password"
-          onkeydown="if(event.key==='Enter')submitLogin()"
-        />
-        <button
-          class="btn btn-p"
-          type="button"
-          style="width: 100%; justify-content: center; margin-top: 10px"
-          onclick="submitLogin()"
-        >
-          <i class="ti ti-login"></i>Entrar
-        </button>
-        <div
-          id="loginError"
-          style="
-            display: none;
-            color: var(--danger, #fb4570);
-            font-size: 12px;
-            margin-top: 8px;
-            text-align: center;
-          "
-        ></div>
       </div>
     </div>
     <div class="wrap" id="appWrap" style="display: none">

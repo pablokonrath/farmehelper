@@ -165,3 +165,14 @@ tbody tr:hover{background:var(--surf2)}
 @media (max-width:480px){
   .g2,.g3,.g4,.g6{grid-template-columns:1fr}
 }
+
+/* Tela de login dividida (apresentação + formulário). min-width:0 evita que o flex estoure a
+   viewport; no celular as duas partes viram 100% e empilham. */
+.login-wrap{width:100%;max-width:920px;min-width:0;margin:auto;padding:24px 16px}
+.login-card{display:flex;flex-wrap:wrap;border:1px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.4)}
+.login-left,.login-right{min-width:0;padding:30px 28px}
+.login-left{flex:1 1 360px;background:radial-gradient(640px 320px at 0% 0%,rgba(34,211,238,.13),transparent 60%),var(--surf2)}
+.login-right{flex:1 1 300px;background:var(--surf);display:flex;flex-direction:column;justify-content:center}
+@media (max-width:640px){
+  .login-left,.login-right{flex-basis:100%}
+}
