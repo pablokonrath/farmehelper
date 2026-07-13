@@ -6,6 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, logout } from './features/auth.js';
 import { startPresenceHeartbeat, toggleOnlinePopover } from './features/presence.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
+import { startLiveDropPolling } from './features/live-drops.js';
 import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, toggleSessionItems, setResetConfig } from './features/dg-session.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
@@ -268,6 +269,7 @@ if (!authenticated) {
   startEventScheduleChecks();
   startDropCounterTicker();
   startDgSessionTicker();
+  startLiveDropPolling();
 
   // Navegadores só liberam áudio depois de um gesto do usuário na página — destrava o
   // AudioContext do alerta sonoro no primeiro clique, em vez de esperar o primeiro alerta.

@@ -19,6 +19,8 @@ import { loadGuildPanelData } from './features/guild-panel.js';
 import { renderLeaderPage } from './pages/leader-page.js';
 import { renderQuickPage } from './pages/quick-page.js';
 import { renderTutorialPage } from './pages/tutorial-page.js';
+import { renderLivePage } from './pages/live-page.js';
+import { loadLiveDrops } from './features/live-drops.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -41,6 +43,8 @@ export function navigateTo(page) {
     }
   } else if (page === 'wishlist') { loadWishlistMatches(); loadWishlistOffers(); loadWishlistSentOffers(); }
   else if (page === 'lider') loadGuildPanelData();
+  // Renderiza já com o buffer que tiver e dispara uma busca imediata (não espera o tick de 10s).
+  else if (page === 'live') { renderPage(); loadLiveDrops(); }
   else renderPage();
 }
 
@@ -62,6 +66,7 @@ export function renderPage() {
   else if (AppState.currentPage === 'vendas') main.innerHTML = renderSalesPage();
   else if (AppState.currentPage === 'rapido') main.innerHTML = renderQuickPage();
   else if (AppState.currentPage === 'tutorial') main.innerHTML = renderTutorialPage();
+  else if (AppState.currentPage === 'live') main.innerHTML = renderLivePage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();

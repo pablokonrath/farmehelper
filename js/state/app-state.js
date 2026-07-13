@@ -132,6 +132,11 @@ export const AppState = {
   liveFilePollWorker: null,
   lastReadFileSize: 0,
   pendingLineBuffer: '',
+  // Espelho ao vivo (página "Ao vivo"): buffer de drops puxado do servidor e cursor (maior id já
+  // visto, só cresce, evita rebuscar). Ver live-drops.js. O PC alimenta o servidor; qualquer
+  // aparelho da conta consome.
+  liveDrops: [],
+  liveDropsCursor: 0,
   rushCartDate: todayISODate(),
   rushTicketPrice: '',
   rushCardCashPrice: '',

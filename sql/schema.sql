@@ -212,6 +212,23 @@ CREATE TABLE IF NOT EXISTS tracked_drop_counts_daily (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Espelho ao vivo do farme (página "Ao vivo"): o PC que lê o log empurra os drops NOVOS com
+-- valor cadastrado, e qualquer aparelho da mesma conta (ex: o celular) puxa por cursor (id) a
+-- cada poucos segundos. NÃO é histórico — é um buffer curto podado pra ~6h a cada envio. O id
+-- auto-incremento é o cursor (monotônico, sem depender de relógio); dropped_at guarda o horário
+-- do drop no log só pra exibir "há Xs".
+CREATE TABLE IF NOT EXISTS live_drops (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  item_name VARCHAR(255) NOT NULL,
+  quantity INT NOT NULL DEFAULT 1,
+  alz BIGINT NOT NULL DEFAULT 0,
+  dropped_at BIGINT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY user_id_id (user_id, id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Lista global (não por usuário) de itens que entram no ranking, controlada só pelo admin —
 -- separada da lista pessoal de "palavras rastreadas" de cada um (essa continua só pros
 -- alertas de cada pessoa, privada). featured = fica fixado no topo do Ranking com destaque

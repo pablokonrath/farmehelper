@@ -4,6 +4,7 @@ import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog } from './alerts.js';
 import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './leaderboard.js';
+import { pushLiveDrops } from './live-drops.js';
 import { checkWishlistMatches } from './wishlist.js';
 import { renderPage } from '../router.js';
 
@@ -149,6 +150,7 @@ function handleWorkerMessage(event) {
     checkTimestampRegression(parsedDrops); // linha nova com horário voltando atrás = possível forja
     updateBalanceSidebar();
     syncTrackedDropCounts();
+    pushLiveDrops(parsedDrops); // espelho ao vivo: empurra os drops com valor pro celular acompanhar
     recordDropActivity(parsedDrops);
     processNewDropsForAlerts(parsedDrops);
     checkWishlistMatches(parsedDrops);
