@@ -13,6 +13,18 @@ function relTime(ms) {
   return `há ${Math.floor(m / 60)}h`;
 }
 
+function dgTotal(drops) {
+  return drops.reduce((sum, d) => sum + d.alz * d.quantity, 0);
+}
+
+// "42.3kk Alz" colorido pela faixa de valor, mesmo estilo usado nos KPIs do resto do app —
+// usado no cabeçalho de cada seção pra mostrar o total farmado daquela DG sem precisar somar
+// as linhas da tabela na cabeça.
+function totalBadge(drops) {
+  const value = dgTotal(drops);
+  return `<span style="font-weight:700;color:${getAlzTierColor(value)}" title="${formatNumber(value)} Alz">${formatAlzGamer(value)}</span>`;
+}
+
 // Agrupa por item — sem isso, farmando rápido o feed vira uma linha por drop e passa de mil
 // linhas rapidinho. Uma linha por item, com a quantidade somada e o horário do drop mais recente
 // dele; ordenado pelo mais recente primeiro (o que acabou de cair sobe pro topo).
@@ -45,7 +57,7 @@ export function renderLivePage() {
   // "Ao vivo" mesmo = último drop caiu há menos de 3 min. Depois disso, ou o farme parou ou o PC
   // foi fechado (é ele quem lê o log e empurra) — não dá pra distinguir os dois daqui.
   const fresh = newestAt && (Date.now() - newestAt) < 3 * 60 * 1000;
-  const total = drops.reduce((sum, d) => sum + d.alz * d.quantity, 0);
+  const total = dgTotal(drops);
 
   const status = !drops.length
     ? '<span style="color:var(--muted)"><i class="ti ti-broadcast-off"></i> Aguardando drops…</span>'
@@ -75,7 +87,7 @@ export function renderLivePage() {
   const currentDgSection = currentDgName ? `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-crosshair" style="color:var(--gold)"></i>Farmando agora: ${esc(currentDgName)}</div>
-  <span style="color:var(--muted);font-size:12px">${relTime(activeDg.startAt)}</span></div>
+  <div style="display:flex;align-items:center;gap:10px">${totalBadge(currentDgDrops)}<span style="color:var(--muted);font-size:12px">${relTime(activeDg.startAt)}</span></div></div>
   ${renderItemTable(currentDgDrops, 'Nenhum drop dessa DG ainda.')}
 </div>` : '';
 
@@ -84,9 +96,10 @@ export function renderLivePage() {
   <div class="ctitle" style="margin-bottom:10px"><i class="ti ti-history"></i>Últimas DGs</div>
   <div style="display:flex;flex-direction:column;gap:14px">
     ${previousDgs.map(dg => `<div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
         <span style="font-weight:600">${esc(dg.dungeonName)}</span>
-        <span style="color:var(--muted);font-size:12px">última vez ${relTime(dg.lastAt)}</span>
+        ${totalBadge(dg.drops)}
+        <span style="color:var(--muted);font-size:12px;margin-left:auto">última vez ${relTime(dg.lastAt)}</span>
       </div>
       ${renderItemTable(dg.drops, 'Sem drops registrados.')}
     </div>`).join('<div style="border-top:1px solid var(--border)"></div>')}
@@ -95,7 +108,7 @@ export function renderLivePage() {
 
   const noDgSection = noDgDrops.length ? `
 <div class="card">
-  <div class="ctitle" style="margin-bottom:2px"><i class="ti ti-question-mark"></i>Sem DG marcada</div>
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-question-mark"></i>Sem DG marcada</div>${totalBadge(noDgDrops)}</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Caíram sem nenhuma DG marcada em Sessões de farme.</div>
   ${renderItemTable(noDgDrops, 'Nada por aqui.')}
 </div>` : '';
