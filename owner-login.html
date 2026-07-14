@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>FarmHub — Login (só pra exportar backup)</title>
+  </head>
+  <body style="font-family: sans-serif; max-width: 420px; margin: 60px auto; line-height: 1.5">
+    <h2>Login</h2>
+    <p style="color:#555;font-size:13px">
+      Página sem link em lugar nenhum — só pra você entrar e usar o
+      <a href="export-live-data.html">export-live-data.html</a>. Depois de exportar,
+      pode fechar a aba.
+    </p>
+    <form id="loginForm">
+      <div style="margin-bottom:10px">
+        <label>Usuário<br /><input type="text" id="username" autocomplete="username" style="width:100%;padding:6px" /></label>
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Senha<br /><input type="password" id="password" autocomplete="current-password" style="width:100%;padding:6px" /></label>
+      </div>
+      <button type="submit" style="padding:8px 16px">Entrar</button>
+    </form>
+    <div id="status" style="margin-top:12px;font-size:13px"></div>
+
+    <script type="module">
+      const form = document.getElementById('loginForm');
+      const status = document.getElementById('status');
+
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        status.textContent = 'Entrando...';
+        status.style.color = '';
+        try {
+          const response = await fetch('api/login.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: document.getElementById('username').value,
+              password: document.getElementById('password').value,
+            }),
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            status.style.color = '#c00';
+            status.textContent = data.message || 'Usuário ou senha inválidos.';
+            return;
+          }
+          status.style.color = '#080';
+          status.textContent = 'Login ok, indo pra exportação...';
+          window.location.href = 'export-live-data.html';
+        } catch (err) {
+          status.style.color = '#c00';
+          status.textContent = 'Erro de conexão: ' + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>
