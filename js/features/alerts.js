@@ -60,6 +60,34 @@ export function unlockAlertAudio() {
   getAudioContext()?.resume();
 }
 
+// Notificação do SO: prioriza o Service Worker (registration.showNotification), que continua
+// entregando com a aba em outra janela ou o navegador MINIMIZADO — diferente do Notification()
+// direto da página, que vários navegadores suprimem nesse cenário (principalmente em PWA
+// instalado), o que fazia o aviso de "farme parado" não aparecer fora da aba em foco mesmo com
+// a permissão concedida. Reaproveita o mesmo Service Worker já registrado pro OneSignal — não
+// precisa de nada novo no arquivo dele. Cai pro Notification() direto só se o SW não responder
+// rápido (timeout de 2s) ou não existir.
+async function notifyOS(title, options) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker?.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+    ]);
+    if (reg?.showNotification) {
+      await reg.showNotification(title, options);
+      return;
+    }
+  } catch {
+    // Service Worker indisponível/lento/erro — cai pro Notification() direto abaixo
+  }
+  try {
+    new Notification(title, options);
+  } catch {
+    // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
+  }
+}
+
 // alertType (opcional) escolhe o som customizado do tipo em vez do bipe padrão — usado só
 // pelo watchdog hoje (ver fireWatchdogAlert), alertas de item rastreado continuam no bipe.
 function showAlertToast(entry, alertType = null) {
@@ -93,13 +121,7 @@ function showAlertToast(entry, alertType = null) {
 
 function fireAlert(entry, alertType = null) {
   showAlertToast(entry, alertType);
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    try {
-      new Notification('Drop rastreado: ' + entry.itemName, { body: 'Palavra: ' + entry.keyword, tag: entry.id });
-    } catch {
-      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
-    }
-  }
+  notifyOS('Drop rastreado: ' + entry.itemName, { body: 'Palavra: ' + entry.keyword, tag: entry.id });
 }
 
 function showWishlistToast(match) {
@@ -135,13 +157,7 @@ function showWishlistToast(match) {
 // palavra rastreada, é "alguém dropou o que você queria").
 export function fireWishlistMatchAlert(match) {
   showWishlistToast(match);
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    try {
-      new Notification('Lista de desejos: ' + match.itemName, { body: `${match.dropperUsername} dropou!`, tag: 'wishlist-' + match.id });
-    } catch {
-      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
-    }
-  }
+  notifyOS('Lista de desejos: ' + match.itemName, { body: `${match.dropperUsername} dropou!`, tag: 'wishlist-' + match.id });
 }
 
 // O volume de TG/World Boss é global (o admin escolhe em AppState.alertSounds, mesmo card do
@@ -182,14 +198,8 @@ function showEventToast(eventType, time) {
 // Chamada por event-schedule.js quando um horário cadastrado (TG/World Boss) chega.
 export function fireEventAlert(eventType, time) {
   showEventToast(eventType, time);
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    const label = eventType === 'tg' ? 'TG' : 'World Boss';
-    try {
-      new Notification(`${label} às ${time}!`, { body: 'Hora de entrar.', tag: 'event-' + eventType + '-' + time });
-    } catch {
-      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
-    }
-  }
+  const label = eventType === 'tg' ? 'TG' : 'World Boss';
+  notifyOS(`${label} às ${time}!`, { body: 'Hora de entrar.', tag: 'event-' + eventType + '-' + time });
 }
 
 function registerAlert(keyword, drop) {
@@ -335,13 +345,7 @@ export function showGoalToast(title, body) {
     if (settings.soundEnabled) playAlertBeep(settings.volume);
     setTimeout(() => toastEl.remove(), Math.max(1, settings.popupDurationSeconds) * 1000);
   }
-  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-    try {
-      new Notification(title, { body, tag: 'farm-goal' });
-    } catch {
-      // navegador pode recusar Notification em alguns contextos — o toast já cobriu o aviso
-    }
-  }
+  notifyOS(title, { body, tag: 'farm-goal' });
 }
 
 // Toast curtinho de confirmação (ex: "Nick copiado") — só visual, sem som nem notificação do SO.
