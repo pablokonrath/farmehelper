@@ -6,7 +6,7 @@ import { renderAlertsPage } from './pages/alerts-page.js';
 import { renderReportPage } from './pages/report-page.js';
 import { renderAdminPage } from './pages/admin-page.js';
 import { renderLeaderboardPage } from './pages/leaderboard-page.js';
-import { renderDropChart, destroyDropChart, renderCompareChart, destroyCompareChart, renderPriceChart, destroyPriceChart } from './features/drop-chart.js';
+import { renderDropChart, destroyDropChart, renderPriceChart, destroyPriceChart } from './features/drop-chart.js';
 import { renderSalesPage } from './pages/sales-page.js';
 import { updateCartPreview } from './features/rush-cart.js';
 import { loadLeaderboardData } from './features/leaderboard.js';
@@ -21,6 +21,7 @@ import { renderQuickPage } from './pages/quick-page.js';
 import { renderTutorialPage } from './pages/tutorial-page.js';
 import { renderLivePage } from './pages/live-page.js';
 import { loadLiveDrops } from './features/live-drops.js';
+import { renderDropSourcePage } from './pages/drop-source-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -51,7 +52,6 @@ export function navigateTo(page) {
 export function renderPage() {
   const main = document.getElementById('main');
   destroyDropChart();
-  destroyCompareChart();
   destroyPriceChart();
 
   if (AppState.currentPage === 'overview') main.innerHTML = renderOverviewPage();
@@ -67,16 +67,14 @@ export function renderPage() {
   else if (AppState.currentPage === 'rapido') main.innerHTML = renderQuickPage();
   else if (AppState.currentPage === 'tutorial') main.innerHTML = renderTutorialPage();
   else if (AppState.currentPage === 'live') main.innerHTML = renderLivePage();
+  else if (AppState.currentPage === 'origem') main.innerHTML = renderDropSourcePage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();
 }
 
 function afterPageRender() {
-  if (AppState.currentPage === 'overview') {
-    renderDropChart();
-    renderCompareChart();
-  }
+  if (AppState.currentPage === 'overview') renderDropChart();
   if (AppState.currentPage === 'rush') updateCartPreview();
   if (AppState.currentPage === 'vendas') renderPriceChart();
 }

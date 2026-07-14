@@ -124,10 +124,8 @@ export const AppState = {
   currentPage: 'overview',
   dateFrom: '',
   dateTo: '',
-  searchQuery: '',
-  compareDayA: '',
-  compareDayB: '',
-  compareItemFilter: '',
+  // Busca da página "Onde dropa" — ver drop-source.js.
+  dropSourceQuery: '',
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,

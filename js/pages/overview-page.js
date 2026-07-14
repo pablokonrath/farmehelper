@@ -1,7 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
-import { buildDayComparison } from '../features/day-compare.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -63,11 +62,6 @@ function buildMetaCard() {
 </div>`;
 }
 
-export function setSearchQuery(value) {
-  AppState.searchQuery = value;
-  renderPage();
-}
-
 export function setDateFrom(value) {
   AppState.dateFrom = value;
   renderPage();
@@ -106,9 +100,6 @@ export function renderOverviewPage() {
   const totalsByDate = {};
   drops.forEach(d => { totalsByDate[d.date] = (totalsByDate[d.date] || 0) + getItemPrice(d.name); });
   const datesWithData = Object.keys(totalsByDate).sort();
-
-  const comparison = buildDayComparison();
-  const compareItemSuggestions = summarizeDropsByItem(getAllDrops()).slice(0, 40);
 
   const manualBatches = summarizeManualDropBatches();
   const manualSuggestions = Object.keys(AppState.itemPrices);
@@ -155,9 +146,6 @@ ${metaCard}
 ${manualDropsCard}
 <div class="card">
   <div class="row">
-    <div style="flex:1"><label class="lbl">Buscar item (ignora acentos e maiúsculas)</label>
-      <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px"></i>
-      <input class="inp" style="padding-left:30px" placeholder="ex: nucleo, joia, pocao..." value="${AppState.searchQuery}" oninput="setSearchQuery(this.value)"></div></div>
     <div style="width:130px"><label class="lbl">De</label>${renderDateInputBR({ value: AppState.dateFrom, onChange: 'setDateFrom' })}</div>
     <div style="width:130px"><label class="lbl">Até</label>${renderDateInputBR({ value: AppState.dateTo, onChange: 'setDateTo' })}</div>
   </div>
@@ -184,63 +172,6 @@ ${manualDropsCard}
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub">itens com valor cadastrado</div></div>
 </div>
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}
-<div class="card">
-  <div class="ctitle"><i class="ti ti-arrows-left-right"></i>Comparar dias</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Também respeita o filtro "Filtrar apenas itens rastreados" de Cálculo de farme — se estiver ativo, só itens rastreados entram na comparação.</div>
-  <div class="g3" style="margin-bottom:14px">
-    <div><label class="lbl">Dia A</label>${renderDateInputBR({ value: comparison.dayA, onChange: 'setCompareDayA' })}</div>
-    <div><label class="lbl">Dia B</label>${renderDateInputBR({ value: comparison.dayB, onChange: 'setCompareDayB' })}</div>
-    <div><label class="lbl">Item (opcional)</label>
-      <select class="inp" onchange="setCompareItemFilter(this.value)">
-        <option value=""${AppState.compareItemFilter ? '' : ' selected'}>Todos os itens</option>
-        ${compareItemSuggestions.map(it => `<option value="${esc(it.name)}"${it.name === AppState.compareItemFilter ? ' selected' : ''}>${esc(it.name)}</option>`).join('')}
-      </select></div>
-  </div>
-  ${comparison.dates.length < 2 ? '<div class="empty">Carregue drops de pelo menos 2 dias diferentes para comparar.</div>' :
-    !comparison.dayA || !comparison.dayB ? '<div class="empty">Escolha os dois dias que quer comparar acima.</div>' : `
-  <div class="g3" style="margin-bottom:14px">
-    <div class="kpi">
-      <div class="kpi-lbl">${formatDateBR(comparison.dayA)}</div>
-      <div class="kpi-val" style="color:${getAlzTierColor(comparison.totalA)}" title="${formatNumber(comparison.totalA)} Alz">${formatAlzGamer(comparison.totalA)}</div>
-      <div class="kpi-sub">${comparison.countA.toLocaleString('pt-BR')} drops</div>
-    </div>
-    <div class="kpi" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center">
-      <i class="ti ${comparison.deltaAlz >= 0 ? 'ti-trending-up' : 'ti-trending-down'}" style="font-size:20px;color:${comparison.deltaAlz >= 0 ? 'var(--ok)' : 'var(--err)'};margin-bottom:4px"></i>
-      <div style="font-weight:700;font-size:14px;color:${comparison.deltaAlz >= 0 ? 'var(--ok)' : 'var(--err)'}" title="${formatNumber(comparison.deltaAlz)} Alz">${comparison.deltaAlz >= 0 ? '+' : ''}${formatAlzGamer(comparison.deltaAlz)}</div>
-      <div class="kpi-sub">${comparison.deltaPercent >= 0 ? '+' : ''}${comparison.deltaPercent.toFixed(1)}% vs. Dia A</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-lbl">${formatDateBR(comparison.dayB)}</div>
-      <div class="kpi-val" style="color:${getAlzTierColor(comparison.totalB)}" title="${formatNumber(comparison.totalB)} Alz">${formatAlzGamer(comparison.totalB)}</div>
-      <div class="kpi-sub">${comparison.countB.toLocaleString('pt-BR')} drops</div>
-    </div>
-  </div>
-  <div class="chart-wrap" style="height:180px;margin-bottom:14px"><canvas id="cc"></canvas></div>
-  <div style="font-size:12px;font-weight:600;color:var(--txt2);margin-bottom:6px">Todos os itens — ${formatDateBR(comparison.dayA)} vs ${formatDateBR(comparison.dayB)}</div>
-  ${!comparison.itemRows.length ? '<div class="empty" style="padding:14px 0">Sem drops nos dois dias.</div>' : `
-  <table><thead><tr>
-    <th>Item</th>
-    <th>Qtd ${formatDateBR(comparison.dayA)}</th><th>Total ${formatDateBR(comparison.dayA)}</th>
-    <th>Qtd ${formatDateBR(comparison.dayB)}</th><th>Total ${formatDateBR(comparison.dayB)}</th>
-    <th>Diferença</th>
-  </tr></thead><tbody>
-  ${comparison.itemRows.map(row => {
-    const higherIsA = row.totalA > row.totalB;
-    const higherIsB = row.totalB > row.totalA;
-    const deltaCell = row.delta === 0
-      ? '<span style="color:var(--muted)">=</span>'
-      : `<span style="color:${row.delta > 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700" title="${formatNumber(Math.abs(row.delta))} Alz"><i class="ti ${row.delta > 0 ? 'ti-arrow-up' : 'ti-arrow-down'}"></i> ${formatAlzGamer(Math.abs(row.delta))}</span>`;
-    return `<tr>
-      <td style="font-weight:500">${esc(row.name)}</td>
-      <td style="${higherIsA ? 'font-weight:700' : 'color:var(--muted)'}">${row.qtyA || '—'}</td>
-      <td style="${higherIsA ? 'font-weight:700' : ''}">${row.totalA ? renderAlzValue(row.totalA) : '<span style="color:var(--muted)">—</span>'}</td>
-      <td style="${higherIsB ? 'font-weight:700' : 'color:var(--muted)'}">${row.qtyB || '—'}</td>
-      <td style="${higherIsB ? 'font-weight:700' : ''}">${row.totalB ? renderAlzValue(row.totalB) : '<span style="color:var(--muted)">—</span>'}</td>
-      <td>${deltaCell}</td>
-    </tr>`;
-  }).join('')}
-  </tbody></table>`}`}
-</div>
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Top itens <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${items.length} itens</span></div></div>
   <table><thead><tr><th style="width:36px">#</th><th>Item</th><th>Quantidade</th><th>Valor unitário</th><th>Total</th></tr></thead><tbody>

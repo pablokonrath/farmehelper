@@ -35,10 +35,10 @@ import {
 import { setRankingFilterItem, setRankingCompareUsername, setRankingPeriod } from './features/leaderboard.js';
 import { setGuildPanelPeriod, setGuildPanelGuild } from './features/guild-panel.js';
 
-import { setSearchQuery, setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
-import { setCompareDayA, setCompareDayB, setCompareItemFilter } from './features/day-compare.js';
+import { setDropSourceQuery } from './features/drop-source.js';
 import {
   setRushCartDate,
   setRushTicketPrice,
@@ -113,15 +113,12 @@ Object.assign(window, {
   copyNick,
   connectLiveFile,
   reconnectLiveFile,
-  setSearchQuery,
   setDateFrom,
   setDateTo,
   toggleManualDropsManager,
   addManualDrop,
   deleteManualDropBatch,
-  setCompareDayA,
-  setCompareDayB,
-  setCompareItemFilter,
+  setDropSourceQuery,
   toggleFilterByKeywords,
   addItemPrice,
   startEditingItemPrice,

@@ -30,15 +30,7 @@ export function getFilteredDrops() {
   let drops = getAllDrops();
   if (AppState.dateFrom) drops = drops.filter(d => d.date >= AppState.dateFrom);
   if (AppState.dateTo) drops = drops.filter(d => d.date <= AppState.dateTo);
-  if (AppState.searchQuery) {
-    const query = normalizeForSearch(AppState.searchQuery);
-    drops = drops.filter(d => normalizeForSearch(d.name).includes(query));
-  }
   return applyTrackedKeywordFilter(drops);
-}
-
-export function getAvailableDropDates() {
-  return [...new Set(getAllDrops().map(d => d.date))].sort();
 }
 
 export function summarizeDropsByItem(drops) {
