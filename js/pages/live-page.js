@@ -114,5 +114,5 @@ export function renderLivePage() {
 ${anySection
     ? `${currentDgSection}${previousDgsSection}${noDgSection}`
     : '<div class="empty" style="padding:40px">Nenhum drop ainda. Assim que cair algo com valor cadastrado no PC farmando, aparece aqui em poucos segundos.</div>'}
-<div style="font-size:11px;color:var(--muted);margin-top:10px"><i class="ti ti-info-circle"></i> Só entram itens com valor cadastrado em Cálculo de farme, e o feed guarda só as últimas horas — é um espelho ao vivo, não o histórico completo (esse fica no Relatório).</div>`;
+<div style="font-size:11px;color:var(--muted);margin-top:10px"><i class="ti ti-info-circle"></i> Só entra aqui o item que <strong>já tinha preço cadastrado no instante em que caiu</strong> — cadastrar o preço depois não traz retroativo pro Ao vivo (mas conta certinho em Sessões e Relatório, que recalculam no final). E o feed guarda só as últimas horas — é um espelho ao vivo, não o histórico completo.</div>`;
 }

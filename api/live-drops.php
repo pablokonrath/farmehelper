@@ -6,8 +6,11 @@
 //   marcada em Sessões de farme no momento do drop (null se não tinha nenhuma). Depois de inserir,
 //   poda o buffer desse usuário pra ~6h — não é histórico, é só o feed recente.
 // GET (consumidor): qualquer aparelho da mesma conta (ex: o celular) puxa o que entrou depois
-//   do cursor. ?since=<id> → devolve { drops: [...], cursor }, onde cursor é o maior id visto.
-//   since ausente/0 devolve o buffer recente (últimos ~60) pra a tela já abrir com conteúdo.
+//   do cursor, em ordem crescente (os mais antigos-depois-do-cursor primeiro, LIVE_DROPS_GET_LIMIT
+//   por vez) — garante que o cliente sempre alcança tudo, mesmo se ficar bastante tempo sem
+//   visitar a página com muita coisa caindo. ?since=<id> → devolve { drops: [...], cursor }, onde
+//   cursor é o maior id devolvido. since ausente/0 começa do início do buffer (~6h); se houver mais
+//   de LIVE_DROPS_GET_LIMIT linhas acumuladas, o cliente alcança o presente em alguns polls de 10s.
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_login();
@@ -60,15 +63,16 @@ if ($method === 'POST') {
 if ($method === 'GET') {
   $since = (int) ($_GET['since'] ?? 0);
 
+  // ASC (não DESC): pega os mais ANTIGOS depois do cursor primeiro. Com DESC, se mais de
+  // LIVE_DROPS_GET_LIMIT linhas priceadas caírem entre duas visitas à página, o meio do caminho
+  // sumia pra sempre (o cursor pulava direto pro topo, sem nunca buscar o que ficou pra trás).
+  // Com ASC, o cliente sempre alcança tudo — só demora mais um poll a cada LIMIT linhas de atraso.
   $stmt = $db->prepare(
     'SELECT id, item_name, quantity, alz, dropped_at, dungeon_name FROM live_drops
-     WHERE user_id = :uid AND id > :since ORDER BY id DESC LIMIT ' . LIVE_DROPS_GET_LIMIT
+     WHERE user_id = :uid AND id > :since ORDER BY id ASC LIMIT ' . LIVE_DROPS_GET_LIMIT
   );
   $stmt->execute(['uid' => $uid, 'since' => $since]);
   $rows = $stmt->fetchAll();
-
-  // Vêm do mais novo pro mais velho (pra o LIMIT pegar os recentes); devolve em ordem crescente.
-  $rows = array_reverse($rows);
   $cursor = $since;
   $drops = [];
   foreach ($rows as $r) {
