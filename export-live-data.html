@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>FarmHub — Exportar dados da conta</title>
+  </head>
+  <body style="font-family: sans-serif; max-width: 640px; margin: 40px auto; line-height: 1.5">
+    <h2>Exportar dados da sua conta no FarmHub</h2>
+    <p>
+      Ferramenta de backup: baixa um <code>.json</code> com tudo que está salvo
+      no servidor pra <strong>sua conta</strong> (preços, sessões de DG, vendas,
+      rush, alertas, etc). Use esse arquivo pra importar no FarmHub local.
+    </p>
+    <div id="authGate"></div>
+
+    <script type="module">
+      const API_BASE = 'api';
+      const authGate = document.getElementById('authGate');
+
+      // Cada endpoint é buscado e reportado individualmente — de propósito NÃO usa
+      // Promise.all() escondendo qual falhou: é ferramenta de backup único, se um pedaço
+      // falhar silenciosamente o dono nunca mais recupera esse dado depois.
+      const ENDPOINTS = [
+        ['itemPrices', 'item-prices.php'],
+        ['rushHistory', 'rush-history.php'],
+        ['trackedKeywords', 'tracked-keywords.php'],
+        ['appSettings', 'app-settings.php'],
+        ['dungeonList', 'dungeon-list.php'],
+        ['manualDrops', 'manual-drops.php'],
+        ['alertSettings', 'alert-settings.php'],
+        ['alertHistory', 'alert-history.php'],
+        ['dgSessions', 'dg-sessions.php'],
+        ['itemCategories', 'item-categories.php'],
+        ['itemCategoryAssignments', 'item-category-assignments.php'],
+        ['eventSchedule', 'event-schedule.php'],
+      ];
+
+      async function checkSession() {
+        try {
+          const response = await fetch(`${API_BASE}/session-check.php`, { credentials: 'same-origin' });
+          if (!response.ok) return false;
+          const data = await response.json();
+          return !!data.authenticated;
+        } catch {
+          return false;
+        }
+      }
+
+      function renderForm() {
+        authGate.innerHTML = `
+          <button id="exportBtn" style="padding:8px 16px">Buscar e exportar meus dados</button>
+          <ul id="statusList" style="margin-top:14px;font-size:13px;font-family:monospace;list-style:none;padding:0"></ul>
+          <div id="finalStatus" style="margin-top:12px;font-size:13px;font-weight:bold"></div>
+        `;
+        const statusList = document.getElementById('statusList');
+        const finalStatus = document.getElementById('finalStatus');
+        const exportBtn = document.getElementById('exportBtn');
+
+        exportBtn.addEventListener('click', async () => {
+          exportBtn.disabled = true;
+          statusList.innerHTML = '';
+          finalStatus.textContent = '';
+
+          const payload = {};
+          const failed = [];
+
+          for (const [key, path] of ENDPOINTS) {
+            const li = document.createElement('li');
+            li.textContent = `⏳ ${path}...`;
+            statusList.appendChild(li);
+            try {
+              const response = await fetch(`${API_BASE}/${path}`, { credentials: 'same-origin' });
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              payload[key] = await response.json();
+              li.textContent = `✅ ${path}`;
+            } catch (err) {
+              li.textContent = `❌ ${path} — ${err.message}`;
+              li.style.color = '#c00';
+              failed.push(path);
+            }
+          }
+
+          if (failed.length) {
+            finalStatus.style.color = '#c00';
+            finalStatus.textContent = `Falhou em ${failed.length} endpoint(s): ${failed.join(', ')}. NÃO baixe/use este backup — corrija o problema (ex: recarregue a página logado) e tente de novo.`;
+            exportBtn.disabled = false;
+            return;
+          }
+
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'farmhub-export-' + new Date().toISOString().slice(0, 10) + '.json';
+          link.click();
+          URL.revokeObjectURL(url);
+          finalStatus.style.color = '#080';
+          finalStatus.textContent = 'Tudo certo — arquivo baixado.';
+          exportBtn.disabled = false;
+        });
+      }
+
+      checkSession().then(authenticated => {
+        if (authenticated) {
+          renderForm();
+        } else {
+          authGate.innerHTML = 'Você precisa estar logado primeiro. <a href="index.html">Ir para o login</a>';
+        }
+      });
+    </script>
+  </body>
+</html>
