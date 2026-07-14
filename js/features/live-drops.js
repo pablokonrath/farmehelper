@@ -12,11 +12,15 @@ const MAX_LIVE_BUFFER = 200;         // teto do buffer na memória do consumidor
 // log local continua sendo a fonte de verdade). Não é chamado no full-reload (drops antigos do
 // jogo reiniciado não devem reaparecer no feed ao vivo), só nas linhas realmente novas.
 export async function pushLiveDrops(newDrops) {
+  // A DG marcada em Sessões de farme no momento do drop (null se farmando sem marcar nenhuma) —
+  // permite a página "Ao vivo" separar por DG. Mesmo valor pra todo o lote (o intervalo entre
+  // linhas do log é de segundos, não dá pra trocar de DG no meio de um lote na prática).
+  const dungeonName = AppState.activeDgSession?.dungeonName || null;
   const notable = [];
   for (const d of newDrops) {
     const alz = getItemPrice(d.name);
     if (alz > 0) {
-      notable.push({ name: d.name, quantity: 1, alz, droppedAt: d.timestamp?.getTime() || Date.now() });
+      notable.push({ name: d.name, quantity: 1, alz, droppedAt: d.timestamp?.getTime() || Date.now(), dungeonName });
     }
   }
   if (!notable.length) return; // nada com valor nesse lote — não gasta requisição

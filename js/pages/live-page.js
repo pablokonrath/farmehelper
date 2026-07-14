@@ -2,6 +2,8 @@ import { AppState } from '../state/app-state.js';
 import { formatAlzGamer, getAlzTierColor, renderAlzValue, formatNumber } from '../utils/formatting.js';
 import { esc } from '../utils/escape.js';
 
+const MAX_PREVIOUS_DGS = 2; // "até 2 pra trás" + a atual = até 3 DGs na tela
+
 // "há Xs / Xmin / Xh" a partir de um timestamp em ms.
 function relTime(ms) {
   const s = Math.max(0, Math.round((Date.now() - ms) / 1000));
@@ -26,6 +28,17 @@ function groupLiveDrops(drops) {
   return [...byName.values()].sort((a, b) => b.lastAt - a.lastAt);
 }
 
+function renderItemTable(drops, emptyText) {
+  const grouped = groupLiveDrops(drops);
+  if (!grouped.length) return `<div class="empty" style="padding:20px">${emptyText}</div>`;
+  const rows = grouped.map(g => `<tr>
+    <td style="font-weight:500">${esc(g.name)} <span style="color:var(--muted)">${g.qty}×</span></td>
+    <td style="font-weight:600">${renderAlzValue(g.alz)}</td>
+    <td class="mono" style="color:var(--muted);white-space:nowrap">${relTime(g.lastAt)}</td>
+  </tr>`).join('');
+  return `<table><thead><tr><th>Item</th><th>Valor total</th><th>Última vez</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
 export function renderLivePage() {
   const drops = AppState.liveDrops || [];
   const newestAt = drops.length ? drops[drops.length - 1].droppedAt : 0;
@@ -33,7 +46,6 @@ export function renderLivePage() {
   // foi fechado (é ele quem lê o log e empurra) — não dá pra distinguir os dois daqui.
   const fresh = newestAt && (Date.now() - newestAt) < 3 * 60 * 1000;
   const total = drops.reduce((sum, d) => sum + d.alz * d.quantity, 0);
-  const grouped = groupLiveDrops(drops);
 
   const status = !drops.length
     ? '<span style="color:var(--muted)"><i class="ti ti-broadcast-off"></i> Aguardando drops…</span>'
@@ -42,35 +54,65 @@ export function renderLivePage() {
       : '<span style="color:var(--warn)"><i class="ti ti-broadcast-off"></i> Sem drops recentes — farme parado ou PC fechado</span>';
 
   const activeDg = AppState.liveActiveDg;
-  const activeDgBanner = activeDg
-    ? `<div class="card" style="padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-        <i class="ti ti-crosshair" style="color:var(--gold)"></i>
-        <span>Farmando <strong>${esc(activeDg.dungeonName)}</strong></span>
-        <span style="color:var(--muted);margin-left:auto">${relTime(activeDg.startAt)}</span>
-      </div>`
-    : '';
+  const currentDgName = activeDg?.dungeonName || null;
 
-  const rows = grouped.map(g => `<tr>
-    <td style="font-weight:500">${esc(g.name)} <span style="color:var(--muted)">${g.qty}×</span></td>
-    <td style="font-weight:600">${renderAlzValue(g.alz)}</td>
-    <td class="mono" style="color:var(--muted);white-space:nowrap">${relTime(g.lastAt)}</td>
-  </tr>`).join('');
+  // Separa o buffer em 3 baldes: da DG atual, das DGs anteriores (agrupadas por nome, até 2 mais
+  // recentes) e sem DG nenhuma marcada — em vez de uma lista só misturando tudo que caiu nas
+  // últimas horas, o que confundia quando você trocava de DG no meio do farme.
+  const currentDgDrops = currentDgName ? drops.filter(d => d.dungeonName === currentDgName) : [];
+  const otherDrops = drops.filter(d => d.dungeonName && d.dungeonName !== currentDgName);
+  const noDgDrops = drops.filter(d => !d.dungeonName);
+
+  const otherByDg = new Map();
+  for (const d of otherDrops) {
+    const g = otherByDg.get(d.dungeonName) || { dungeonName: d.dungeonName, drops: [], lastAt: 0 };
+    g.drops.push(d);
+    if (d.droppedAt > g.lastAt) g.lastAt = d.droppedAt;
+    otherByDg.set(d.dungeonName, g);
+  }
+  const previousDgs = [...otherByDg.values()].sort((a, b) => b.lastAt - a.lastAt).slice(0, MAX_PREVIOUS_DGS);
+
+  const currentDgSection = currentDgName ? `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-crosshair" style="color:var(--gold)"></i>Farmando agora: ${esc(currentDgName)}</div>
+  <span style="color:var(--muted);font-size:12px">${relTime(activeDg.startAt)}</span></div>
+  ${renderItemTable(currentDgDrops, 'Nenhum drop dessa DG ainda.')}
+</div>` : '';
+
+  const previousDgsSection = previousDgs.length ? `
+<div class="card">
+  <div class="ctitle" style="margin-bottom:10px"><i class="ti ti-history"></i>Últimas DGs</div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+    ${previousDgs.map(dg => `<div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-weight:600">${esc(dg.dungeonName)}</span>
+        <span style="color:var(--muted);font-size:12px">última vez ${relTime(dg.lastAt)}</span>
+      </div>
+      ${renderItemTable(dg.drops, 'Sem drops registrados.')}
+    </div>`).join('<div style="border-top:1px solid var(--border)"></div>')}
+  </div>
+</div>` : '';
+
+  const noDgSection = noDgDrops.length ? `
+<div class="card">
+  <div class="ctitle" style="margin-bottom:2px"><i class="ti ti-question-mark"></i>Sem DG marcada</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Caíram sem nenhuma DG marcada em Sessões de farme.</div>
+  ${renderItemTable(noDgDrops, 'Nada por aqui.')}
+</div>` : '';
+
+  const anySection = !!(currentDgSection || previousDgsSection || noDgSection);
 
   return `
 <div class="pg-title">Ao vivo</div>
-<div class="pg-sub">Espelho do seu farme no PC — os drops com valor cadastrado aparecem aqui em poucos segundos, dá pra acompanhar do celular. O PC precisa estar com o FarmHub aberto e o arquivo conectado.</div>
+<div class="pg-sub">Espelho do seu farme no PC, separado por DG — a que está sendo feita agora, as até ${MAX_PREVIOUS_DGS} anteriores, e o que caiu sem DG marcada. Aparece aqui em poucos segundos. O PC precisa estar com o FarmHub aberto e o arquivo conectado.</div>
 
-${activeDgBanner}
 <div class="g3" style="margin-bottom:12px">
   <div class="kpi"><div class="kpi-lbl">Status</div><div class="kpi-val" style="font-size:15px;line-height:1.4">${status}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Valor recente</div><div class="kpi-val" style="color:${getAlzTierColor(total)}" title="${formatNumber(total)} Alz">${formatAlzGamer(total)}</div><div class="kpi-sub">${grouped.length} item(ns) distinto(s)</div></div>
+  <div class="kpi"><div class="kpi-lbl">Valor recente (total)</div><div class="kpi-val" style="color:${getAlzTierColor(total)}" title="${formatNumber(total)} Alz">${formatAlzGamer(total)}</div><div class="kpi-sub">${drops.length.toLocaleString('pt-BR')} drop(s) nas últimas horas</div></div>
 </div>
 
-<div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-broadcast"></i>Drops recentes (agrupados)</div></div>
-  ${!grouped.length
-    ? '<div class="empty" style="padding:40px">Nenhum drop ainda. Assim que cair algo com valor cadastrado no PC farmando, aparece aqui em poucos segundos.</div>'
-    : `<table><thead><tr><th>Item</th><th>Valor total</th><th>Última vez</th></tr></thead><tbody>${rows}</tbody></table>`}
-</div>
-<div style="font-size:11px;color:var(--muted);margin-top:10px"><i class="ti ti-info-circle"></i> Só entram itens com valor cadastrado em Cálculo de farme, agrupados por item, e o feed guarda só as últimas horas — é um espelho ao vivo, não o histórico completo (esse fica no Relatório).</div>`;
+${anySection
+    ? `${currentDgSection}${previousDgsSection}${noDgSection}`
+    : '<div class="empty" style="padding:40px">Nenhum drop ainda. Assim que cair algo com valor cadastrado no PC farmando, aparece aqui em poucos segundos.</div>'}
+<div style="font-size:11px;color:var(--muted);margin-top:10px"><i class="ti ti-info-circle"></i> Só entram itens com valor cadastrado em Cálculo de farme, e o feed guarda só as últimas horas — é um espelho ao vivo, não o histórico completo (esse fica no Relatório).</div>`;
 }

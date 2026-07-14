@@ -224,6 +224,9 @@ CREATE TABLE IF NOT EXISTS live_drops (
   quantity INT NOT NULL DEFAULT 1,
   alz BIGINT NOT NULL DEFAULT 0,
   dropped_at BIGINT NOT NULL,
+  -- Nome da DG marcada em Sessões de farme no momento em que o drop caiu (NULL se farmando sem
+  -- marcar nenhuma) — permite a página "Ao vivo" separar por DG (atual / últimas / sem DG).
+  dungeon_name VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY user_id_id (user_id, id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
