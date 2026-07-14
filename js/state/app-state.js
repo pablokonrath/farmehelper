@@ -221,6 +221,9 @@ export const AppState = {
   activeDgSession: null,
   // Histórico de sessões de DG já encerradas (também em app_settings, sem tabela nova).
   dgSessions: [],
+  // Qual dia o histórico de sessões (Sessões de farme) está mostrando — só UI, não persiste,
+  // sempre volta pra hoje ao recarregar. Ver setSessionsHistoryDate em sessions-page.js.
+  sessionsHistoryDate: todayISODate(),
   // Quais sessões do histórico estão com a lista de itens expandida (só UI, não persiste).
   expandedDgSessions: {},
   // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings). Valor de gema/ticket

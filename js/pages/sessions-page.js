@@ -1,36 +1,43 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday } from '../features/dg-session.js';
 import { getItemPrice } from '../features/drops.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
+import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
+import { renderPage } from '../router.js';
 
-// Progresso do rush de hoje: cruza o rush salvo do dia com as sessões de DG já feitas hoje. Uma
-// DG do rush é marcada "feita" quando existe uma sessão dela hoje (ou é a sessão ativa agora) —
-// automático, derivado dos dados que já existem, sem estado novo.
+// Qual dia o histórico de sessões está mostrando (default hoje, navegável pra dias anteriores).
+export function setSessionsHistoryDate(value) {
+  AppState.sessionsHistoryDate = value;
+  renderPage();
+}
+
+// Progresso do rush de hoje: cruza o rush salvo do dia com as runs de fato feitas hoje em cada DG
+// (computeRunsDoneToday soma sessões encerradas + a ativa) contra o planejado — fração real, não
+// um booleano "existe sessão" (isso marcava uma DG de 20 repetições como feita com só 1 run).
 function renderRushProgressCard() {
   const today = todayISODate();
   const rush = AppState.rushHistory[today];
   if (!rush || !rush.items || !rush.items.length) return '';
-  const doneNames = new Set();
-  if (AppState.activeDgSession) doneNames.add(AppState.activeDgSession.dungeonName);
-  AppState.dgSessions.forEach(s => { if (s.date === today) doneNames.add(s.dungeonName); });
-  const items = rush.items;
-  const doneCount = items.filter(it => doneNames.has(it.name)).length;
+  const rows = rush.items.map(it => {
+    const runsToday = computeRunsDoneToday(it.name);
+    const complete = it.repetitions > 0 && runsToday >= it.repetitions;
+    const partial = runsToday > 0 && !complete;
+    return { it, runsToday, complete, partial };
+  });
+  const doneCount = rows.filter(r => r.complete).length;
   return `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-checklist"></i>Progresso do rush de hoje</div>
-  <span class="badge ${doneCount >= items.length ? 'badge-ok' : 'badge-acc'}">${doneCount}/${items.length} feitas</span></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Marca sozinho quando você faz uma sessão de DG que está no rush de hoje — assim você vê o que ainda falta.</div>
+  <span class="badge ${doneCount >= rows.length ? 'badge-ok' : 'badge-acc'}">${doneCount}/${rows.length} feitas</span></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Conta as runs de verdade feitas hoje em cada DG (automático se você informou o tempo por run ao iniciar, ou o que preencher na mão) contra o planejado no rush.</div>
   <div style="display:flex;flex-direction:column;gap:6px">
-    ${items.map(it => {
-      const done = doneNames.has(it.name);
-      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px${done ? ';opacity:.65' : ''}">
-        <i class="ti ti-${done ? 'circle-check' : 'circle'}" style="font-size:18px;color:${done ? 'var(--ok)' : 'var(--muted)'}"></i>
-        <span style="flex:1${done ? ';text-decoration:line-through;color:var(--muted)' : ';font-weight:600'}">${it.repetitions}× ${esc(it.name)}</span>
-        <span class="badge ${done ? 'badge-ok' : 'badge-warn'}">${done ? 'Feita' : 'Falta'}</span>
-      </div>`;
-    }).join('')}
+    ${rows.map(({ it, runsToday, complete, partial }) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px${complete ? ';opacity:.65' : ''}">
+      <i class="ti ti-${complete ? 'circle-check' : partial ? 'circle-half-2' : 'circle'}" style="font-size:18px;color:${complete ? 'var(--ok)' : partial ? 'var(--warn)' : 'var(--muted)'}"></i>
+      <span style="flex:1${complete ? ';text-decoration:line-through;color:var(--muted)' : ';font-weight:600'}">${esc(it.name)}</span>
+      <span class="badge ${complete ? 'badge-ok' : partial ? 'badge-warn' : 'badge-muted'}">${runsToday}/${it.repetitions}</span>
+    </div>`).join('')}
   </div>
 </div>`;
 }
@@ -77,7 +84,9 @@ function sessionItemsRow(s) {
 export function renderSessionsPage() {
   const active = getActiveSessionSummary();
   const comparison = computeDgComparison();
-  const history = [...AppState.dgSessions].reverse().slice(0, 30);
+  const today = todayISODate();
+  const historyDate = AppState.sessionsHistoryDate || today;
+  const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
 
   const nowFarmingCard = `
 <div class="card">
@@ -90,8 +99,8 @@ export function renderSessionsPage() {
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div><label class="lbl" style="margin:0 0 2px">Runs feitas</label>
-            <input class="inp" style="width:80px" type="number" min="0" value="${AppState.activeDgSession.runs || 0}" onchange="setActiveSessionRuns(this.value)"></div>
+          <div><label class="lbl" style="margin:0 0 2px">Runs feitas${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet ? ' <span style="color:var(--acc);font-weight:400">(auto)</span>' : ''}</label>
+            <input class="inp" id="dgRunsInput" style="width:80px" type="number" min="0" value="${AppState.activeDgSession.runs || 0}" onchange="setActiveSessionRuns(this.value)"></div>
           <div><label class="lbl" style="margin:0 0 2px">&nbsp;</label>
             <button class="btn" style="background:var(--err-bg);color:var(--err);border:none" onclick="endDgSession()"><i class="ti ti-player-stop"></i>Encerrar</button></div>
         </div>
@@ -101,8 +110,11 @@ export function renderSessionsPage() {
           <select class="inp" id="dgSessionSelect">
             ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
           </select></div>
-        <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value)"><i class="ti ti-player-play"></i>Iniciar</button></div>
-      </div>`}
+        <div style="width:150px"><label class="lbl">Tempo por run (min)</label>
+          <input class="inp" id="dgSessionRunMinutes" type="number" min="0" step="0.5" placeholder="opcional"></div>
+        <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value, document.getElementById('dgSessionRunMinutes').value)"><i class="ti ti-player-play"></i>Iniciar</button></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.</div>`}
 </div>`;
 
   const comparisonCard = `
@@ -127,10 +139,15 @@ export function renderSessionsPage() {
 
   const historyCard = `
 <div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de sessões</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Informe as runs e clique na seta pra ver os itens.</div>
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de sessões</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      ${historyDate !== today ? `<button class="btn btn-d btn-xs" onclick="setSessionsHistoryDate('${today}')">Hoje</button>` : ''}
+      ${renderDateInputBR({ id: 'sessHistDate', value: historyDate, onChange: 'setSessionsHistoryDate' })}
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mostra só o dia selecionado. A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Informe as runs e clique na seta pra ver os itens.</div>
   ${!history.length
-    ? '<div class="empty">Nenhuma sessão de DG encerrada ainda.</div>'
+    ? `<div class="empty">Nenhuma sessão de DG encerrada em ${formatDateBR(historyDate)}.</div>`
     : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th></tr></thead><tbody>
       ${history.map(s => {
         const expanded = !!AppState.expandedDgSessions[s.startAt];

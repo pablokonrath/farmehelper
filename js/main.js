@@ -9,6 +9,7 @@ import { startDropCounterTicker } from './features/drop-counter.js';
 import { startLiveDropPolling } from './features/live-drops.js';
 import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, toggleSessionItems, setResetConfig } from './features/dg-session.js';
+import { setSessionsHistoryDate } from './pages/sessions-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { enablePushNotifications, disablePushNotifications } from './features/push.js';
@@ -224,6 +225,7 @@ Object.assign(window, {
   setSessionRuns,
   toggleSessionItems,
   setResetConfig,
+  setSessionsHistoryDate,
   setGuildPanelPeriod,
   setGuildPanelGuild,
   addSale,

@@ -25,7 +25,7 @@ function summarizeDrops(drops) {
   return { totalAlz, bestItem: best && best.price > 0 ? best : null };
 }
 
-export function startDgSession(dungeonId) {
+export function startDgSession(dungeonId, runMinutes) {
   if (!dungeonId) return;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dg) return;
@@ -34,17 +34,44 @@ export function startDgSession(dungeonId) {
   // que ligamos, pra desligar apenas o que ligamos ao encerrar. Fica no registro da sessão ativa
   // (persistido no app_settings), então sobrevive a um reload no meio da sessão.
   const autoWatchdog = !AppState.alertSettings.watchdogEnabled;
-  AppState.activeDgSession = { dungeonId: dg.id, dungeonName: dg.name, startAt: Date.now(), runs: 0, autoWatchdog };
+  // runMinutes é opcional: se informado, o ticker (startDgSessionTicker) deriva "Runs feitas"
+  // sozinho a partir do tempo ATIVO de farme ÷ tempo por run, em vez de depender do jogador
+  // lembrar de preencher na mão. runsManuallySet vira true assim que o jogador editar o campo
+  // direto (setActiveSessionRuns) — a partir daí o auto-cálculo para de sobrescrever a correção dele.
+  AppState.activeDgSession = {
+    dungeonId: dg.id,
+    dungeonName: dg.name,
+    startAt: Date.now(),
+    runs: 0,
+    runMinutes: Math.max(0, parseFloat(String(runMinutes).replace(',', '.')) || 0),
+    runsManuallySet: false,
+    autoWatchdog,
+  };
   saveActiveDgSession();
   if (autoWatchdog) setWatchdogEnabled(true); // já reseta os relógios do watchdog e persiste
   renderPage();
 }
 
-// Nº de runs da sessão em andamento (informado pelo jogador — o log não conta runs sozinho).
+// Nº de runs da sessão em andamento — informado pelo jogador na mão, ou derivado automaticamente
+// pelo ticker quando runMinutes está preenchido (ver startDgSessionTicker). Editar aqui manualmente
+// marca runsManuallySet=true, então o auto-cálculo não volta a sobrescrever pelo resto da sessão.
 export function setActiveSessionRuns(value) {
   if (!AppState.activeDgSession) return;
   AppState.activeDgSession.runs = Math.max(0, parseInt(value, 10) || 0);
+  AppState.activeDgSession.runsManuallySet = true;
   saveActiveDgSession();
+}
+
+// Runs de fato feitas HOJE numa DG — soma as sessões já encerradas + a sessão ativa (se for a
+// mesma DG). Usado pelo "Progresso do rush de hoje" pra não considerar uma DG planejada pra N
+// repetições como "feita" só porque existe alguma sessão dela, mesmo com poucas runs reais.
+export function computeRunsDoneToday(dungeonName) {
+  const today = todayISODate();
+  let runs = AppState.dgSessions
+    .filter(s => s.date === today && s.dungeonName === dungeonName)
+    .reduce((sum, s) => sum + (s.runs || 0), 0);
+  if (AppState.activeDgSession?.dungeonName === dungeonName) runs += AppState.activeDgSession.runs || 0;
+  return runs;
 }
 
 // Edita as runs de uma sessão já encerrada (identificada pelo startAt, único por sessão).
@@ -216,6 +243,22 @@ export function startDgSessionTicker() {
       if (pageBox) pageBox.textContent = '';
       return;
     }
+    // Contagem automática: se o jogador informou o tempo por run ao iniciar e não corrigiu
+    // "Runs feitas" na mão nesta sessão, deriva a run atual do tempo ATIVO farmado (sem contar
+    // pausas) ÷ tempo por run. Só persiste (e só toca o input, se a página Sessões estiver aberta
+    // e o campo não estiver focado) quando o número inteiro de fato muda — o floor() já naturalmente
+    // só varia a cada runMinutes minutos, sem precisar de throttle extra.
+    const session = AppState.activeDgSession;
+    if (session.runMinutes > 0 && !session.runsManuallySet) {
+      const computedRuns = Math.floor(summary.activeMs / (session.runMinutes * 60000));
+      if (computedRuns !== session.runs) {
+        session.runs = computedRuns;
+        saveActiveDgSession();
+        const runsInput = document.getElementById('dgRunsInput');
+        if (runsInput && document.activeElement !== runsInput) runsInput.value = computedRuns;
+      }
+    }
+
     const mins = Math.floor(summary.durationMs / 60000);
     const secs = Math.floor((summary.durationMs % 60000) / 1000);
     const clock = mins > 0 ? `${mins}min ${secs}s` : `${secs}s`;
