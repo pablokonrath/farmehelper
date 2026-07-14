@@ -26,14 +26,18 @@ export async function pushLiveDrops(newDrops) {
   if (!notable.length) return; // nada com valor nesse lote — não gasta requisição
 
   try {
-    await fetch(`${API_BASE}/live-drops.php`, {
+    const response = await fetch(`${API_BASE}/live-drops.php`, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ drops: notable }),
     });
-  } catch {
-    // sem conexão nesse instante — o próximo lote de drops tenta de novo; não é crítico
+    // Sem isso, um erro do servidor (ex: coluna faltando, sessão expirada) passava batido — o
+    // fetch "dava certo" do ponto de vista do cliente mesmo a gravação tendo falhado, e o item
+    // sumia do Ao vivo pra sempre sem nenhum rastro de por quê.
+    if (!response.ok) console.error('Falha ao enviar drops pro Ao vivo:', response.status, await response.text());
+  } catch (err) {
+    console.error('Erro de conexão ao enviar drops pro Ao vivo:', err);
   }
 }
 
