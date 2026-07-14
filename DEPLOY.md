@@ -468,6 +468,14 @@ Duas coisas:
   totalmente fechado não há como saber que um item caiu. Diferente do TG/World Boss, que são
   horários fixos e por isso o servidor consegue avisar sozinho.
 
+Dois comandos a mais no bot, sem migração nenhuma (reaproveitam tabelas que já existem):
+
+- **`/farm`** — quanto vale em Alz o que caiu hoje (só os itens rastreados com preço cadastrado
+  em Cálculo de farme), do maior valor pro menor, com o total no fim.
+- **`/sessao`** — qual DG está sendo farmada agora (se você marcou uma em Sessões de farme), há
+  quanto tempo, e as runs feitas hoje — inclusive a fração contra o planejado no rush do dia,
+  quando essa DG estiver no rush salvo de hoje.
+
 ## Aviso de lista de desejos no Telegram
 
 Se seu banco já rodou `sql/migrate_tracked_drop_telegram.sql`, rode agora
