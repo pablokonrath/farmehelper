@@ -10,12 +10,15 @@ export function renderDropSourcePage() {
 
   return `
 <div class="pg-title">Onde dropa</div>
-<div class="pg-sub">Digite o nome de um item e veja em quais DGs ele já caiu, com base no seu histórico de sessões de farme.</div>
+<div class="pg-sub">Digite o nome (completo ou parte dele) de um item e veja em quais DGs ele já caiu, com base no seu histórico de sessões de farme.</div>
 
 <div class="card">
   <label class="lbl">Item</label>
-  <div style="position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px"></i>
-  <input class="inp" style="padding-left:30px" placeholder="ex: nucleo, anel, joia..." value="${esc(query)}" oninput="setDropSourceQuery(this.value)" list="dsSugg"></div>
+  <div class="row" style="align-items:stretch">
+    <div style="flex:1;position:relative"><i class="ti ti-search" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px"></i>
+    <input class="inp" id="dsQuery" style="padding-left:30px" placeholder="ex: nucleo, anel, joia..." value="${esc(query)}" onkeydown="if(event.key==='Enter')searchDropSource()" list="dsSugg"></div>
+    <button class="btn btn-p" onclick="searchDropSource()"><i class="ti ti-search"></i>Buscar</button>
+  </div>
   <datalist id="dsSugg">${suggestions.map(name => `<option value="${esc(name)}">`).join('')}</datalist>
 </div>
 
@@ -24,7 +27,7 @@ export function renderDropSourcePage() {
   ${!AppState.dgSessions.length
     ? '<div class="empty">Você ainda não tem sessões de DG encerradas — marque um DG em Sessões de farme pra começar a construir esse histórico.</div>'
     : !query
-      ? '<div class="empty">Digite (ou escolha na lista) o nome de um item pra ver de quais DGs ele já caiu.</div>'
+      ? '<div class="empty">Digite o nome (completo ou parte) de um item e aperte Enter ou "Buscar" pra ver de quais DGs ele já caiu.</div>'
       : !results.length
         ? `<div class="empty">Nenhuma sessão registrou "${esc(query)}" até agora.</div>`
         : `<table><thead><tr><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th></tr></thead><tbody>

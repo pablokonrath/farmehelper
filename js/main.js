@@ -38,7 +38,7 @@ import { setGuildPanelPeriod, setGuildPanelGuild } from './features/guild-panel.
 import { setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
-import { setDropSourceQuery } from './features/drop-source.js';
+import { searchDropSource } from './features/drop-source.js';
 import {
   setRushCartDate,
   setRushTicketPrice,
@@ -118,7 +118,7 @@ Object.assign(window, {
   toggleManualDropsManager,
   addManualDrop,
   deleteManualDropBatch,
-  setDropSourceQuery,
+  searchDropSource,
   toggleFilterByKeywords,
   addItemPrice,
   startEditingItemPrice,

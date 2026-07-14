@@ -7,6 +7,13 @@ export function setDropSourceQuery(value) {
   renderPage();
 }
 
+// Busca só quando o jogador confirma (Enter ou botão "Buscar"), não a cada letra digitada —
+// com poucas letras o substring bate em item demais e a lista de DGs fica ruim de ler.
+export function searchDropSource() {
+  const input = document.getElementById('dsQuery');
+  if (input) setDropSourceQuery(input.value);
+}
+
 // Nomes de item já vistos em alguma sessão de DG encerrada — sugestão pro campo de busca, só com
 // itens que de fato têm chance de dar resultado (mesma ideia do "o que você já dropou" usado em
 // Vendas/Cálculo de farme).
