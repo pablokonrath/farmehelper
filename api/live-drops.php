@@ -23,7 +23,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 const LIVE_DROPS_RETENTION_HOURS = 6;
 // Teto de linhas por requisição, nos dois sentidos — evita payload/insert gigante por acidente.
 const LIVE_DROPS_MAX_PER_REQUEST = 100;
-const LIVE_DROPS_GET_LIMIT = 60;
+// Igual ao MAX_LIVE_BUFFER do cliente (live-drops.js) — assim uma sessão de farme inteira cabe
+// numa única busca, sem precisar de vários polls de 10s pra alcançar (ver ORDER BY ASC abaixo).
+const LIVE_DROPS_GET_LIMIT = 200;
 
 if ($method === 'POST') {
   $body = read_json_body();
