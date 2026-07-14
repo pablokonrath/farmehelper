@@ -2,7 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { formatAlzGamer, getAlzTierColor, renderAlzValue, formatNumber } from '../utils/formatting.js';
 import { esc } from '../utils/escape.js';
 
-const MAX_PREVIOUS_DGS = 2; // "até 2 pra trás" + a atual = até 3 DGs na tela
+const MAX_PREVIOUS_DGS = 3; // além da DG atual — até 3 DGs anteriores mostradas em "Últimas DGs"
 
 // "há Xs / Xmin / Xh" a partir de um timestamp em ms.
 function relTime(ms) {
