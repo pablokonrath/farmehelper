@@ -214,6 +214,11 @@ export function toggleRankingItemFeatured(word) {
   renderPage();
 }
 
+export function toggleCategoryManager() {
+  AppState.isCategoryManagerOpen = !AppState.isCategoryManagerOpen;
+  renderPage();
+}
+
 export function addItemCategory() {
   const input = document.getElementById('newItemCategory');
   const name = input?.value.trim();

@@ -181,6 +181,9 @@ export const AppState = {
   rankingPeriod: 'all',
   itemCategories: [],
   itemCategoryAssignments: {},
+  // Atalho no Relatório pra gerenciar categoria sem sair da página (mesma lista global do
+  // Admin) — colapsado por padrão.
+  isCategoryManagerOpen: false,
   adminActionLog: [],
   isAdminActionLogLoading: false,
   integrityFlags: [],
