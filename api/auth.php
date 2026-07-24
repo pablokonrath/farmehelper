@@ -23,9 +23,9 @@ function current_user_id(): int {
   return (int) $_SESSION['user_id'];
 }
 
-// O admin mestre conta como admin mesmo que is_admin esteja 0 — rede de segurança: se ele
-// algum dia desmarcar o próprio "Admin" sem querer, não fica trancado fora do painel Admin
-// (só quem já é admin mestre consegue mexer na própria conta, ver users.php).
+// O admin mestre conta como admin mesmo que is_admin esteja 0 — rede de segurança contra
+// ficar trancado fora das áreas gateadas por require_admin() (categorias, agenda de
+// eventos, sons, catálogo de DGs) por causa de um valor errado nessa coluna.
 function current_user_is_admin(): bool {
   return !empty($_SESSION['is_admin']) || !empty($_SESSION['is_master_admin']);
 }

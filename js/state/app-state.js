@@ -72,16 +72,12 @@ export const DEFAULT_ALERT_SETTINGS = {
   // Boss; o horário em si continua só do admin (ver event-schedule.js).
   tgNotificationsEnabled: true,
   worldbossNotificationsEnabled: true,
-  // Canais que entregam TG/World Boss com o navegador fechado (ver cron-check-events.php) —
-  // desligados por padrão, exigem ação explícita do usuário (ativar push / vincular Telegram).
-  pushEnabled: false,
+  // Canal que entrega TG/World Boss com o navegador fechado (ver cron-check-events.php) —
+  // desligado por padrão, exige vincular o Telegram.
   telegramChatId: null,
   // Envia o drop rastreado pro Telegram na hora que cai (só com o FarmHub aberto — quem detecta
   // o drop é a aba lendo o log, ver telegram-relay-drop.php). Opt-in, desligado por padrão.
   telegramDropRelayEnabled: false,
-  // Avisa no Telegram quando alguém dropa um item da minha lista de desejos — funciona até com o
-  // meu navegador fechado (quem dispara é o navegador de quem dropou). Opt-in, desligado.
-  telegramWishlistRelayEnabled: false,
   // Manda o alerta do watchdog (helper travado / item sumiu) pro Telegram — pra saber que travou
   // mesmo longe do PC. Opt-in, desligado. Só com o FarmHub aberto (quem detecta é a aba).
   telegramWatchdogRelayEnabled: false,
@@ -120,7 +116,6 @@ export const AppState = {
   rushHistory: {},
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
-  rankingItems: [],
   currentPage: 'overview',
   dateFrom: '',
   dateTo: '',
@@ -130,13 +125,6 @@ export const AppState = {
   liveFilePollWorker: null,
   lastReadFileSize: 0,
   pendingLineBuffer: '',
-  // Espelho ao vivo (página "Ao vivo"): buffer de drops puxado do servidor e cursor (maior id já
-  // visto, só cresce, evita rebuscar). Ver live-drops.js. O PC alimenta o servidor; qualquer
-  // aparelho da conta consome.
-  liveDrops: [],
-  liveDropsCursor: 0,
-  // Qual DG está sendo farmada agora ({dungeonName, startAt} ou null) — vem junto no mesmo poll.
-  liveActiveDg: null,
   rushCartDate: todayISODate(),
   rushTicketPrice: '',
   rushCardCashPrice: '',
@@ -166,39 +154,11 @@ export const AppState = {
   isMasterAdmin: false,
   currentUsername: '',
   currentUserId: null,
-  currentGuild: '',
-  guilds: [],
-  adminUsers: [],
-  isAdminUsersLoading: false,
-  leaderboardData: null,
-  isLeaderboardLoading: false,
-  guildPanelData: null,
-  isGuildPanelLoading: false,
-  guildPanelPeriod: 'today',
-  guildPanelGuild: '',
-  rankingFilterItem: '',
-  rankingCompareUsername: '',
-  rankingPeriod: 'all',
   itemCategories: [],
   itemCategoryAssignments: {},
   // Atalho no Relatório pra gerenciar categoria sem sair da página (mesma lista global do
   // Admin) — colapsado por padrão.
   isCategoryManagerOpen: false,
-  adminActionLog: [],
-  isAdminActionLogLoading: false,
-  integrityFlags: [],
-  isIntegrityFlagsLoading: false,
-  wishlistItems: [],
-  wishlistMatches: [],
-  isWishlistMatchesLoading: false,
-  // Propostas de compra: recebidas (sou o vendedor) + qual aviso do correio está com o campo de
-  // proposta aberto (só UI).
-  wishlistOffers: [],
-  isWishlistOffersLoading: false,
-  offeringMatchId: null,
-  // Propostas que EU enviei (sou o comprador), com o status da resposta do vendedor.
-  wishlistSentOffers: [],
-  isWishlistSentOffersLoading: false,
   // Modo guiado (assistente passo a passo). action: null|'venda'|'meta'|'sessao'; step: número do
   // passo ou 'done'/'done-start'/'done-end'; data: campos coletados no caminho; error: aviso inline.
   quickMode: { action: null, step: 0, data: {}, error: '' },

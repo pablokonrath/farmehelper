@@ -25,18 +25,10 @@ function read_json_body(): array {
   return is_array($data) ? $data : [];
 }
 
-// Compartilhada entre integrity-flags.php (relato do próprio usuário/worker) e drop-counts.php
-// (pico de contagem detectado no servidor) — mesmo formato de linha nos dois casos.
-function insert_integrity_flag(PDO $db, int $userId, string $username, string $type, string $details): void {
-  $stmt = $db->prepare('INSERT INTO integrity_flags (user_id, username, flag_type, details) VALUES (:uid, :username, :type, :details)');
-  $stmt->execute(['uid' => $userId, 'username' => $username, 'type' => $type, 'details' => $details]);
-}
-
 // Equivalente PHP de normalizeForSearch() em js/utils/parsing.js (NFD + remove marca de
-// acento + minúsculo) — usada em wishlist-check.php pra casar item desejado com item dropado
-// do mesmo jeito que o app já casa trackedKeywords/rankingItems no cliente. Depende da
-// extensão intl (Normalizer); sem ela, cai só pra minúsculo (funciona, só fica sensível a
-// acento nesse caso).
+// acento + minúsculo) — usada em telegram-webhook.php (/drop <busca>) pra casar a busca do
+// bot com o nome do item do mesmo jeito que o app já casa no cliente. Depende da extensão
+// intl (Normalizer); sem ela, cai só pra minúsculo (funciona, só fica sensível a acento).
 function normalize_for_search(string $text): string {
   if (class_exists('Normalizer')) {
     $decomposed = Normalizer::normalize($text, Normalizer::FORM_D);

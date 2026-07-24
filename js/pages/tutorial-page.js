@@ -1,5 +1,3 @@
-import { AppState } from '../state/app-state.js';
-
 // Seção expansível (nativa, via <details> — sem estado nem handler). `open` deixa a primeira
 // aberta pra mostrar o padrão de uso.
 function topic(icon, title, bodyHtml, open = false) {
@@ -18,15 +16,13 @@ function sectionTitle(text) {
 const li = items => `<ul style="margin:6px 0 0;padding-left:18px">${items.map(i => `<li style="margin-bottom:5px">${i}</li>`).join('')}</ul>`;
 
 export function renderTutorialPage() {
-  const isAdmin = AppState.isAdmin;
-
   return `
 <div class="pg-title"><i class="ti ti-help-circle" style="color:var(--acc)"></i>Tutorial</div>
 <div class="pg-sub">Como cada parte do sistema funciona. Clique num tópico pra abrir. A ideia é acompanhar seu farme, calcular custos e não perder nenhum item raro.</div>
 
 <div class="card">
   <div style="font-size:13px;color:var(--txt2);line-height:1.65">
-    <strong style="color:var(--acc)">Em 1 minuto:</strong> conecte seu arquivo de log do jogo (menu lateral), cadastre o preço dos seus itens em <strong>Cálculo de farme</strong>, e pronto — a <strong>Visão geral</strong> já mostra quanto você fez no dia. O resto (rush, alertas, vendas, desejos) é pra ir usando conforme a necessidade. Se travar, tem o <strong>⚡ Modo guiado</strong> que te leva passo a passo.
+    <strong style="color:var(--acc)">Em 1 minuto:</strong> conecte seu arquivo de log do jogo (menu lateral), cadastre o preço dos seus itens em <strong>Cálculo de farme</strong>, e pronto — a <strong>Visão geral</strong> já mostra quanto você fez no dia. O resto (rush, alertas, vendas) é pra ir usando conforme a necessidade. Se travar, tem o <strong>⚡ Modo guiado</strong> que te leva passo a passo.
   </div>
 </div>
 
@@ -53,7 +49,7 @@ ${sectionTitle('Farme, rush e sessões')}
 ${topic('ti-coins', 'Cálculo de farme (preços & itens rastreados)', `
   Aqui você diz <strong>quanto vale cada item</strong> (o preço é individual seu — cada um cadastra o seu). É isso que transforma "10 joias" em Alz na Visão geral.
   ${li([
-    '<strong>Itens rastreados:</strong> marque os itens que te interessam. Eles alimentam o Ranking e os alertas (o sininho liga o alerta sonoro/pop-up daquele item).',
+    '<strong>Itens rastreados:</strong> marque os itens que te interessam. Eles alimentam os alertas (o sininho liga o alerta sonoro/pop-up daquele item).',
     'Dá pra filtrar a Visão geral só pelos itens rastreados, se quiser focar no que importa.',
   ])}
 `)}
@@ -87,19 +83,6 @@ ${topic('ti-cash', 'Vendas', `
     '<strong>Histórico de preço:</strong> cada vez que você muda o preço de um item, vira um ponto no gráfico, pra ver a variação.',
   ])}
 `)}
-${topic('ti-gift', 'Lista de desejos (correio & propostas)', `
-  Marque os itens que você <strong>quer comprar</strong>. Quando alguém da guild dropar um deles, chega um aviso no seu <strong>Correio</strong>.
-  ${li([
-    'No correio, clique em <strong>Propor</strong> e mande um valor pra quem dropou.',
-    'Quem dropou vê a proposta e responde <strong>Aceita</strong> ou <strong>Recusa</strong>; você acompanha em "Minhas propostas enviadas".',
-    'Quando aceita, o sistema mostra o nick pra você chamar no jogo e orienta a fechar com segurança (troca no jogo ou pelo <strong>Seguro Neo com o GM</strong>).',
-    'Se você vincular o Telegram, os avisos de proposta chegam por lá também.',
-  ])}
-`)}
-${topic('ti-trophy', 'Ranking', `
-  Competição saudável: mostra quem mais dropou os itens do ranking (definidos pelo admin), entre os jogadores. É contagem de itens — o valor em Alz é privado de cada um.
-`)}
-
 ${sectionTitle('Alertas e avisos')}
 ${topic('ti-bell', 'Alertas de itens', `
   Configure som, pop-up e notificação do sistema pros itens que você rastreia (em Cálculo de farme, no sininho). Quando o item cai no seu farme, você é avisado na hora.
@@ -116,12 +99,12 @@ ${topic('ti-shield-bolt', 'Vigilância de inatividade (watchdog)', `
     'Pode receber o aviso de travamento também no Telegram.',
   ])}
 `)}
-${topic('ti-send', 'Fora do app: Push + Telegram', `
+${topic('ti-send', 'Fora do app: Telegram', `
   Pra receber avisos com o navegador <strong>fechado</strong>:
   ${li([
-    '<strong>Telegram:</strong> vincule sua conta (gera um código, você manda pro bot). Aí recebe avisos de TG/World Boss, drop rastreado, e proposta de desejo. Mande <strong>/drop</strong> pro bot pra ver o que você já dropou hoje.',
-    '<strong>Push (navegador):</strong> notificação do navegador mesmo fechado, pros eventos de TG/World Boss.',
-    'Importante: alertas do SEU próprio drop e o watchdog dependem do navegador aberto (é ele que lê o log). TG/World Boss e "desejo dropado" funcionam mesmo fechado.',
+    '<strong>Vincule sua conta:</strong> gera um código, você manda pro bot. Aí recebe avisos de TG/World Boss, drop rastreado e watchdog (helper travado).',
+    'Mande <strong>/drop</strong> pro bot pra ver o que você já dropou hoje, ou <strong>/farm</strong> pro resumo em Alz. <strong>/sessao</strong> mostra a sessão de DG ativa.',
+    'Importante: alertas do SEU próprio drop e o watchdog dependem do navegador aberto (é ele que lê o log) — só chegam no Telegram enquanto ele estiver aberto (mesmo minimizado). TG/World Boss chegam mesmo com o navegador fechado.',
   ])}
 `)}
 
@@ -130,7 +113,7 @@ ${topic('ti-bolt', 'Modo guiado', `
   Um assistente passo a passo pras coisas mais comuns, com botões grandes — bom pra quem tá com pressa ou não quer caçar nas páginas. Ele pergunta "o que você quer fazer?" e te leva:
   ${li([
     'Registrar uma venda · Definir a meta do dia · Iniciar/encerrar sessão de DG',
-    'Adicionar item ao desejo · Rastrear item p/ alerta · Montar o rush de hoje',
+    'Rastrear item p/ alerta · Montar o rush de hoje',
   ])}
 `)}
 ${topic('ti-device-mobile', 'Instalar no celular (app)', `
@@ -138,23 +121,9 @@ ${topic('ti-device-mobile', 'Instalar no celular (app)', `
   ${li([
     '<strong>Android (Chrome):</strong> abra o site, menu ⋮ → "Instalar app".',
     '<strong>iPhone (Safari):</strong> botão Compartilhar → "Adicionar à Tela de Início".',
-    'Depois de instalar, faça login com a mesma conta. Tudo que fica na sua conta (ranking, metas, sessões, vendas, desejos) aparece no celular. A Visão geral em tempo real continua sendo do PC (é lá que o log é lido).',
+    'Depois de instalar, faça login com a mesma conta. Tudo que fica na sua conta (preços, metas, sessões, vendas) aparece no celular. A Visão geral em tempo real continua sendo do PC (é lá que o log é lido).',
   ])}
 `)}
-${topic('ti-shield-check', 'Como o sistema cuida da integridade', `
-  Pra dar confiança aos dados, o sistema sinaliza (pro admin revisar) sinais de que o log pode ter sido editado à mão:
-  ${li([
-    '<strong>Arquivo editado:</strong> o trecho já escrito do log mudou entre duas leituras (um log real só cresce, nunca reescreve o passado).',
-    '<strong>Horário fora de ordem:</strong> apareceu um drop com horário voltando atrás (o log é sempre cronológico), indício de linha antiga colada.',
-    'É só sinalização pra revisão manual — não bloqueia nem acusa ninguém automaticamente.',
-  ])}
-`)}
-${isAdmin ? topic('ti-shield-lock', 'Perfis: admin mestre e líder de guild', `
-  ${li([
-    '<strong>Líder de guild:</strong> pode criar contas de jogador pra galera usar. As edições globais (guilds, ranking, categorias, catálogo de DGs, etc.) ficam com o admin mestre, pra evitar bagunça com várias pessoas mexendo ao mesmo tempo.',
-    '<strong>Admin mestre:</strong> controle total — cria/edita/exclui contas, gerencia as listas globais, vê o log de atividade e os alertas de integridade, e tem o Painel do líder pra acompanhar a guild.',
-  ])}
-`) : ''}
 
 <div class="card" style="margin-top:16px;text-align:center">
   <div style="font-size:13px;color:var(--muted)">Ficou com dúvida em algo que não está aqui? Fala com o <strong style="color:var(--gold)">AnnIKILADOR</strong> no jogo. 🎮</div>

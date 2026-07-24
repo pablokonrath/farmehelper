@@ -73,36 +73,6 @@ function send_telegram_message($chatId, string $text): void {
   }
 }
 
-function send_onesignal_push(array $externalIds, string $title, string $body): void {
-  if (!ONESIGNAL_APP_ID || !ONESIGNAL_REST_API_KEY || !$externalIds) return;
-  $ch = curl_init('https://onesignal.com/api/v1/notifications');
-  curl_setopt_array($ch, [
-    CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => json_encode([
-      'app_id' => ONESIGNAL_APP_ID,
-      'include_aliases' => ['external_id' => $externalIds],
-      'target_channel' => 'push',
-      'headings' => ['en' => $title],
-      'contents' => ['en' => $body],
-    ]),
-    CURLOPT_HTTPHEADER => [
-      'Content-Type: application/json',
-      'Authorization: Basic ' . ONESIGNAL_REST_API_KEY,
-    ],
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_TIMEOUT => 10,
-  ]);
-  $response = curl_exec($ch);
-  $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-  $curlError = curl_error($ch);
-  curl_close($ch);
-  if ($curlError || $status < 200 || $status >= 300) {
-    cron_log('FALHA push OneSignal pra ' . implode(',', $externalIds) . " (HTTP $status): " . ($curlError ?: $response));
-  } else {
-    cron_log('Push OneSignal enviado pra ' . implode(',', $externalIds) . '.');
-  }
-}
-
 foreach ($matchingEvents as $event) {
   $eventId = (int) $event['id'];
   $eventType = $event['event_type']; // 'tg' | 'worldboss'
@@ -117,7 +87,7 @@ foreach ($matchingEvents as $event) {
   }
 
   $prefColumn = $eventType === 'tg' ? 'tg_notifications_enabled' : 'worldboss_notifications_enabled';
-  $stmt = $db->prepare("SELECT user_id, push_enabled, telegram_chat_id FROM alert_settings WHERE $prefColumn = 1 AND (push_enabled = 1 OR telegram_chat_id IS NOT NULL)");
+  $stmt = $db->prepare("SELECT user_id, telegram_chat_id FROM alert_settings WHERE $prefColumn = 1 AND telegram_chat_id IS NOT NULL");
   $stmt->execute();
   $recipients = $stmt->fetchAll();
   cron_log("evento '$eventType' (id $eventId) -> " . count($recipients) . ' destinatário(s) elegível(is).');
@@ -126,12 +96,7 @@ foreach ($matchingEvents as $event) {
   $title = "$label às $currentTime!";
   $body = 'Hora de entrar.';
 
-  $pushExternalIds = [];
   foreach ($recipients as $r) {
-    // Mesmo prefixo "droplist_" usado no login() do cliente (push.js) — o OneSignal bloqueia
-    // external_id genérico demais (ex: "1") pra evitar colisão entre apps diferentes.
-    if ($r['push_enabled']) $pushExternalIds[] = 'droplist_' . $r['user_id'];
-    if ($r['telegram_chat_id']) send_telegram_message($r['telegram_chat_id'], "$title $body");
+    send_telegram_message($r['telegram_chat_id'], "$title $body");
   }
-  send_onesignal_push($pushExternalIds, $title, $body);
 }

@@ -96,8 +96,6 @@ tbody tr:hover{background:var(--surf2)}
 .badge-acc{background:var(--acc-bg);color:var(--acc);border:1px solid var(--acc-border)}
 .badge-warn{background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-border)}
 .badge-muted{background:var(--surf2);color:var(--muted);border:1px solid var(--border)}
-.online-popover{position:absolute;top:100%;left:16px;right:16px;margin-top:8px;background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.4);z-index:50;max-height:240px;overflow-y:auto}
-.online-popover-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:6px}
 .tag{display:inline-flex;align-items:center;gap:4px;background:var(--surf2);border:1px solid var(--border);border-radius:20px;padding:3px 9px 3px 10px;font-size:12px;color:var(--txt2)}
 .tag button{background:transparent;border:none;cursor:pointer;color:var(--muted);padding:0;font-size:11px;line-height:1}
 .notice{background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:8px;padding:9px 14px;color:var(--warn);font-size:12px;display:flex;align-items:flex-start;gap:8px;margin-bottom:12px}
@@ -161,10 +159,6 @@ tbody tr:hover{background:var(--surf2)}
   /* Conteúdo largo (tabelas) rola dentro do próprio card, sem estourar a página. */
   .main .card{overflow-x:auto}
   .pg-title{font-size:20px}
-  /* Essas páginas dependem do log local (só existe no PC com o arquivo conectado) — no celular
-     ficam vazias ("Nenhum dado carregado"), então não aparecem no menu. Ao vivo cobre o "ver o
-     farme rolando agora"; Sessões de farme continua (o histórico já vem do servidor). */
-  #nb-overview,#nb-relatorio,#nb-calculo,#nb-vendas{display:none}
 }
 @media (max-width:480px){
   .g2,.g3,.g4,.g6{grid-template-columns:1fr}

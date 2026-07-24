@@ -66,19 +66,15 @@ function applyStateFromPayload(payload) {
 }
 
 async function loadGlobalOnlyState() {
-  const [rankingItems, itemCategories, itemCategoryAssignments, guilds, eventSchedule, alertSounds, knownItemNames] = await Promise.all([
-    get('ranking-items.php'),
+  const [itemCategories, itemCategoryAssignments, eventSchedule, alertSounds, knownItemNames] = await Promise.all([
     get('item-categories.php'),
     get('item-category-assignments.php'),
-    get('guilds.php'),
     get('event-schedule.php'),
     get('alert-sounds.php'),
     get('known-item-names.php'),
   ]);
-  AppState.rankingItems = rankingItems;
   AppState.itemCategories = itemCategories;
   AppState.itemCategoryAssignments = itemCategoryAssignments;
-  AppState.guilds = guilds;
   AppState.eventSchedule = eventSchedule;
   AppState.alertSounds = alertSounds;
   AppState.knownItemNames = knownItemNames;
@@ -96,7 +92,7 @@ export async function loadPersistedState() {
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, wishlistItems, dgSessionsRows] = await Promise.all([
+  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('tracked-keywords.php'),
@@ -105,7 +101,6 @@ export async function loadPersistedState() {
     get('manual-drops.php'),
     get('alert-settings.php'),
     get('alert-history.php'),
-    get('wishlist-items.php'),
     get('dg-sessions.php'),
   ]);
 
@@ -129,7 +124,6 @@ export async function loadPersistedState() {
   AppState.manualDrops = hydrateManualDrops(manualDrops);
   AppState.alertSettings = alertSettings;
   AppState.alertHistory = alertHistory;
-  AppState.wishlistItems = wishlistItems;
   await loadGlobalOnlyState();
   AppState.persistedStateLoaded = true;
   // Migração única do blob antigo pra tabela: se caímos no fallback, grava agora (a partir daí lê
@@ -147,10 +141,6 @@ export function saveRushHistory() {
 
 export function saveTrackedKeywords() {
   return put('tracked-keywords.php', AppState.trackedKeywords);
-}
-
-export function saveWishlistItems() {
-  return put('wishlist-items.php', AppState.wishlistItems);
 }
 
 export function saveFilterKeywordsFlag() {
@@ -198,20 +188,12 @@ export function saveDungeonList() {
   return put('dungeon-list.php', AppState.dungeonList);
 }
 
-export function saveRankingItems() {
-  return put('ranking-items.php', AppState.rankingItems);
-}
-
 export function saveItemCategories() {
   return put('item-categories.php', AppState.itemCategories);
 }
 
 export function saveItemCategoryAssignments() {
   return put('item-category-assignments.php', AppState.itemCategoryAssignments);
-}
-
-export function saveGuilds() {
-  return put('guilds.php', AppState.guilds);
 }
 
 export function saveManualDrops() {

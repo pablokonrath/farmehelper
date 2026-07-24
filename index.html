@@ -124,24 +124,6 @@
         <div class="sb-head">
           <div class="sb-logo"><i class="ti ti-sword"></i>FarmHub</div>
           <div class="sb-sub">Central de Farme</div>
-          <div
-            id="onlineCount"
-            class="badge badge-ok"
-            style="
-              display: none;
-              margin-top: 8px;
-              align-items: center;
-              gap: 6px;
-              cursor: pointer;
-            "
-            onclick="toggleOnlinePopover()"
-          >
-            <i class="ti ti-users"></i><span id="onlineCountVal">0</span> online
-          </div>
-          <div id="onlinePopover" class="online-popover" style="display: none">
-            <div class="online-popover-title">Jogadores online</div>
-            <div id="onlinePopoverList"></div>
-          </div>
         </div>
         <div class="sb-sec">
           <div class="sec-lbl">Menu</div>
@@ -154,9 +136,6 @@
             id="nb-overview"
           >
             <i class="ti ti-layout-dashboard"></i>Visão geral
-          </button>
-          <button class="nav-btn" onclick="navigateTo('live')" id="nb-live">
-            <i class="ti ti-broadcast" style="color: var(--acc)"></i>Ao vivo
           </button>
           <button
             class="nav-btn"
@@ -197,40 +176,10 @@
           </button>
           <button
             class="nav-btn"
-            onclick="navigateTo('ranking')"
-            id="nb-ranking"
-          >
-            <i class="ti ti-trophy"></i>Ranking
-          </button>
-          <button
-            class="nav-btn"
-            onclick="navigateTo('wishlist')"
-            id="nb-wishlist"
-          >
-            <i class="ti ti-gift"></i>Lista de desejos
-          </button>
-          <button
-            class="nav-btn"
             onclick="navigateTo('tutorial')"
             id="nb-tutorial"
           >
             <i class="ti ti-help-circle"></i>Tutorial
-          </button>
-          <button
-            class="nav-btn"
-            onclick="navigateTo('lider')"
-            id="nb-lider"
-            style="display: none"
-          >
-            <i class="ti ti-shield-star"></i>Painel do líder
-          </button>
-          <button
-            class="nav-btn"
-            onclick="navigateTo('admin')"
-            id="nb-admin"
-            style="display: none"
-          >
-            <i class="ti ti-shield-lock"></i>Admin
           </button>
         </div>
         <div class="sb-ds">

@@ -2,7 +2,6 @@ import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { recordSale } from './sales.js';
 import { setDailyGoal } from './farm-goal.js';
 import { startDgSession, endDgSession, getActiveSessionSummary } from './dg-session.js';
-import { addWishlistItemByName } from './wishlist.js';
 import { addTrackedKeywordByName } from './keywords.js';
 import { buildCartItem, saveRushForDay, calculateRushCartCost } from './rush-cart.js';
 import { saveRushParams } from '../state/persistence.js';
@@ -94,13 +93,6 @@ export function quickNext() {
         startDgSession(id);
         qm.step = 'done-start';
       }
-    }
-  } else if (qm.action === 'desejo') {
-    if (qm.step === 1) {
-      const item = val('qm-wish');
-      if (!item) return fail('Digite o item que você quer.');
-      if (!addWishlistItemByName(item)) return fail('Esse item já está na sua lista.');
-      qm.data.itemName = item; qm.step = 'done';
     }
   } else if (qm.action === 'rastrear') {
     if (qm.step === 1) {

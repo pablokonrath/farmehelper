@@ -154,21 +154,18 @@ export function renderAlertsPage() {
   ${toggleRow('Notificação de World Boss', 'Mesma coisa, só pro World Boss.', s.worldbossNotificationsEnabled, 'setWorldbossNotificationsEnabled(this.checked)')}
 </div>`;
 
-  // 4) Fora do app: push + Telegram
+  // 4) Fora do app: Telegram
   const outsideCard = `
 <div class="card">
-  <div class="ctitle"><i class="ti ti-device-mobile"></i>Fora do app (push + Telegram)</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Receba avisos com o FarmHub fechado. TG/World Boss e “desejo dropado” chegam mesmo offline; alertas do seu próprio drop só com o app aberto.</div>
-  ${toggleRow('Notificação push do navegador', 'Chega mesmo com o navegador fechado, direto no dispositivo.', s.pushEnabled, "this.checked ? enablePushNotifications() : disablePushNotifications()", { extra: ';' + div })}
-  <div style="padding-top:12px">
-    <div style="font-weight:600;font-size:13px;margin-bottom:6px">Telegram</div>
+  <div class="ctitle"><i class="ti ti-brand-telegram"></i>Fora do app (Telegram)</div>
+  <div class="pg-sub" style="margin:-4px 0 10px">Receba avisos com o FarmHub fechado. TG/World Boss chega mesmo offline; alertas do seu próprio drop só com o app aberto (mesmo minimizado).</div>
+  <div style="font-weight:600;font-size:13px;margin-bottom:6px">Telegram</div>
     ${linked
       ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>
           <button class="btn btn-d btn-xs" onclick="unlinkTelegram()"><i class="ti ti-unlink"></i>Desvincular</button>
         </div>
         ${toggleRow('Enviar drops rastreados pro Telegram', 'Quando um item rastreado cair, chega no Telegram. Só com o FarmHub aberto (mesmo minimizado).', s.telegramDropRelayEnabled, 'setTelegramDropRelayEnabled(this.checked)', { extra: ';padding-top:14px' })}
-        ${toggleRow('Avisar quando dropar meu desejo', 'Quando alguém dropar um item da sua lista de desejos, chega no Telegram com quem dropou — funciona até com o FarmHub fechado.', s.telegramWishlistRelayEnabled, 'setTelegramWishlistRelayEnabled(this.checked)', { extra: ';padding-top:12px' })}
         <div style="font-size:11px;color:var(--muted);margin-top:10px">No Telegram, mande <strong>/drop</strong> pra ver os drops rastreados de hoje, ou <strong>/drop nome</strong> pra o total de um item.</div>`
       : `<button class="btn btn-d btn-xs" onclick="generateTelegramLinkCode()"><i class="ti ti-brand-telegram"></i>Gerar código de vínculo</button>
         ${AppState.telegramLinkCode ? `
@@ -176,7 +173,6 @@ export function renderAlertsPage() {
           Abra o Telegram e clique no link abaixo (ou mande <strong>/start ${AppState.telegramLinkCode}</strong> pro bot):
           <div style="margin-top:6px"><a href="${AppState.telegramBotLink}" target="_blank" rel="noopener" style="color:var(--acc)">${AppState.telegramBotLink}</a></div>
         </div>` : ''}`}
-  </div>
 </div>`;
 
   // 5) Histórico
@@ -202,7 +198,7 @@ export function renderAlertsPage() {
 
   return `
 <div class="pg-title"><i class="ti ti-bell" style="color:var(--acc)"></i>Alertas</div>
-<div class="pg-sub">Notificação em tempo real dos seus itens rastreados, vigilância do helper e eventos da guild.</div>
+<div class="pg-sub">Notificação em tempo real dos seus itens rastreados, vigilância do helper e eventos de TG/World Boss.</div>
 ${permissionBanner}
 ${coreCard}
 ${watchdogCard}
