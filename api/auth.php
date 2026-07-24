@@ -2,10 +2,16 @@
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/helpers.php';
 
-// httponly evita acesso via JS (protege contra XSS roubando o cookie de sessão);
-// samesite=Lax é suficiente já que front e back ficam no mesmo domínio.
+// Sessão de 90 dias — uso é individual (só sua conta existe), então não faz sentido pedir
+// login de novo toda vez que fecha o navegador. httponly evita acesso via JS (protege contra
+// XSS roubando o cookie); samesite=Lax é suficiente já que front e back ficam no mesmo domínio.
+const SESSION_LIFETIME_SECONDS = 60 * 60 * 24 * 90;
+// session.gc_maxlifetime é o que decide quando o PHP apaga o arquivo de sessão no servidor —
+// sem isso, o cookie duraria 90 dias no navegador mas a sessão em si podia expirar bem antes
+// (o padrão do PHP costuma ser ~24min de inatividade).
+ini_set('session.gc_maxlifetime', (string) SESSION_LIFETIME_SECONDS);
 session_set_cookie_params([
-  'lifetime' => 0,
+  'lifetime' => SESSION_LIFETIME_SECONDS,
   'path' => '/',
   'httponly' => true,
   'samesite' => 'Lax',
