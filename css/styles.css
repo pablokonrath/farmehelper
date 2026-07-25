@@ -123,13 +123,6 @@ tbody tr:hover{background:var(--surf2)}
 .sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .empty{text-align:center;padding:28px;color:var(--muted);font-size:13px}
 .hint{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
-.ai-msg{border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;background:var(--surf2)}
-.ai-msg.u{background:var(--acc-bg);border-color:var(--acc-border)}
-.ai-sender{font-size:10px;font-weight:700;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
-.ai-msg.u .ai-sender{color:var(--acc)}
-.ai-msg:not(.u) .ai-sender{color:var(--ok)}
-.qbtn{background:var(--surf2);color:var(--acc);border:1px solid var(--acc-border);border-radius:var(--r);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;font-weight:500}
-.qbtn:hover{background:var(--acc-bg);box-shadow:0 0 10px rgba(179,49,44,.2)}
 .alert-toast{display:flex;align-items:flex-start;gap:8px;background:var(--surf);border:1px solid var(--acc-border);border-radius:var(--r);padding:10px 12px;box-shadow:0 4px 24px rgba(0,0,0,.5),0 0 16px rgba(179,49,44,.16);animation:alert-toast-in .18s ease-out}
 @keyframes alert-toast-in{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
 /* Legenda cores Alz */
