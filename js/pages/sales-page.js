@@ -79,7 +79,7 @@ export function renderSalesPage() {
 </div>`;
 
   return `
-<div class="pg-title">Vendas</div>
+<div class="pg-title"><i class="ti ti-coin" style="color:var(--acc)"></i>Vendas</div>
 <div class="pg-sub">Registre suas vendas reais e compare com o preço estimado, veja o valor parado em estoque e a variação de preço de cada item.</div>
 ${kpis}
 ${form}

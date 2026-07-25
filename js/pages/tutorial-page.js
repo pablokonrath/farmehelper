@@ -17,7 +17,7 @@ const li = items => `<ul style="margin:6px 0 0;padding-left:18px">${items.map(i 
 
 export function renderTutorialPage() {
   return `
-<div class="pg-title"><i class="ti ti-help-circle" style="color:var(--acc)"></i>Tutorial</div>
+<div class="pg-title"><i class="ti ti-book-2" style="color:var(--acc)"></i>Tutorial</div>
 <div class="pg-sub">Como cada parte do sistema funciona. Clique num tópico pra abrir. A ideia é acompanhar seu farme, calcular custos e não perder nenhum item raro.</div>
 
 <div class="card">

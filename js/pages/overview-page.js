@@ -140,7 +140,7 @@ export function renderOverviewPage() {
   }
 
   return `
-<div class="pg-title">Visão geral</div>
+<div class="pg-title"><i class="ti ti-map" style="color:var(--acc)"></i>Visão geral</div>
 <div class="pg-sub">Métricas consolidadas do seu farme com base nos filtros aplicados.</div>
 ${metaCard}
 ${manualDropsCard}

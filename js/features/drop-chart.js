@@ -27,12 +27,12 @@ export function renderPriceChart() {
       datasets: [{
         label: 'Preço (Alz)',
         data: hist.map(h => h.price),
-        borderColor: '#ffb020',
-        backgroundColor: 'rgba(255,176,32,0.15)',
+        borderColor: '#d9a441',
+        backgroundColor: 'rgba(217,164,65,0.15)',
         fill: true,
         tension: 0.25,
         pointRadius: 3,
-        pointBackgroundColor: '#ffb020',
+        pointBackgroundColor: '#d9a441',
       }],
     },
     options: {
@@ -43,8 +43,8 @@ export function renderPriceChart() {
         tooltip: { callbacks: { label: c => formatAlzGamer(c.parsed.y) } },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#9aa5c9', font: { size: 11, family: "'Chakra Petch', monospace" } } },
-        y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9aa5c9', font: { size: 11, family: "'Chakra Petch', monospace" }, callback: v => formatAlzGamer(v) } },
+        x: { grid: { display: false }, ticks: { color: '#c2ac82', font: { size: 11, family: "'Chakra Petch', monospace" } } },
+        y: { grid: { color: 'rgba(240,228,200,0.06)' }, ticks: { color: '#c2ac82', font: { size: 11, family: "'Chakra Petch', monospace" }, callback: v => formatAlzGamer(v) } },
       },
     },
   });
@@ -91,8 +91,8 @@ export function renderDropChart() {
         tooltip: { callbacks: { label: c => formatAlzGamer(c.parsed.y) } },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: '#9aa5c9', font: { size: 11, family: "'Chakra Petch', monospace" } } },
-        y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#9aa5c9', font: { size: 11, family: "'Chakra Petch', monospace" }, callback: v => formatAlzGamer(v) } },
+        x: { grid: { display: false }, ticks: { color: '#c2ac82', font: { size: 11, family: "'Chakra Petch', monospace" } } },
+        y: { grid: { color: 'rgba(240,228,200,0.06)' }, ticks: { color: '#c2ac82', font: { size: 11, family: "'Chakra Petch', monospace" }, callback: v => formatAlzGamer(v) } },
       },
     },
   });

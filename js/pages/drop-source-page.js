@@ -9,7 +9,7 @@ export function renderDropSourcePage() {
   const results = findDropSources(query);
 
   return `
-<div class="pg-title">Onde dropa</div>
+<div class="pg-title"><i class="ti ti-compass" style="color:var(--acc)"></i>Onde dropa</div>
 <div class="pg-sub">Digite o nome (completo ou parte dele) de um item e veja em quais DGs ele já caiu, com base no seu histórico de sessões de farme.</div>
 
 <div class="card">

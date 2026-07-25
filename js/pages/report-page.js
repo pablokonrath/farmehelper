@@ -6,7 +6,8 @@ import { esc, escAttr } from '../utils/escape.js';
 const NO_CATEGORY_LABEL = 'Sem categoria';
 
 // Atalho pro admin mestre gerenciar categorias sem sair do Relatório — mesma lista global e
-// mesmas funções do Admin → Categorias de item, só que colapsável e ao lado do que ela organiza.
+// mesmas funções de antes (a página Admin em si foi removida), só colapsável e ao lado do que
+// ela organiza.
 function renderCategoryManagerCard() {
   if (!AppState.isMasterAdmin) return '';
   return `
@@ -66,8 +67,8 @@ export function renderReportPage() {
   });
 
   return `
-<div class="pg-title">Relatório</div>
-<div class="pg-sub">Drops agrupados por categoria (configurada em Admin → Categorias de item), com base nos filtros da visão geral.</div>
+<div class="pg-title"><i class="ti ti-notebook" style="color:var(--acc)"></i>Relatório</div>
+<div class="pg-sub">Drops agrupados por categoria (gerencie logo abaixo), com base nos filtros da visão geral.</div>
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
   <span style="font-size:13px;color:var(--txt2)">${drops.length.toLocaleString('pt-BR')} drops</span>
   <button class="btn btn-d btn-xs" onclick="exportDropsToCSV()" style="margin-left:auto"><i class="ti ti-download"></i>Exportar CSV</button>

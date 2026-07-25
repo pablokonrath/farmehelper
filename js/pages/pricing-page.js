@@ -16,15 +16,15 @@ export function toggleFilterByKeywords(checked) {
 export function renderPricingPage() {
   const allItems = summarizeDropsByItem(getAllDrops());
   const itemsWithoutPrice = allItems.filter(i => !i.price);
-  // Sugestão combina os itens que o próprio usuário já dropou com o catálogo de nomes
-  // conhecidos da guild inteira (known-item-names.php) — dá pra autocompletar o nome certo de
-  // um item que outro jogador já cadastrou, mesmo sem nunca ter dropado ele ainda.
+  // Sugestão combina os itens que o próprio usuário já dropou com o catálogo de nomes já
+  // precificados antes (known-item-names.php) — autocompleta o nome certo de um item que já
+  // foi cadastrado alguma vez, mesmo sem ter dropado de novo agora.
   const suggestionNames = [...new Set([...allItems.map(i => i.name), ...AppState.knownItemNames])].slice(0, 60);
 
   return `
-<div class="pg-title">Cálculo de farme</div>
-<div class="pg-sub">Cadastre o valor unitário dos itens em Alz — usado pra calcular o valor total do seu farme. O nome do item é compartilhado com a guild (facilita achar o nome certo), mas o preço é só seu: cada um vende pelo valor que quiser.</div>
-<div class="card"><div class="ctitle"><i class="ti ti-plus"></i>Adicionar / atualizar item</div>
+<div class="pg-title"><i class="ti ti-coins" style="color:var(--acc)"></i>Cálculo de farme</div>
+<div class="pg-sub">Cadastre o valor unitário dos itens em Alz — usado pra calcular o valor total do seu farme.</div>
+<div class="card card-featured"><div class="ctitle"><i class="ti ti-plus"></i>Adicionar / atualizar item</div>
 <div class="row" style="margin-bottom:10px">
   <div style="flex:1"><label class="lbl">Nome do item</label>
     <input class="inp" id="cN" placeholder="ex: Nucleo de Aprimoramento" list="sugg">

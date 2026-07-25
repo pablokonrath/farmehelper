@@ -196,7 +196,7 @@ export function renderSessionsPage() {
 </div>`;
 
   return `
-<div class="pg-title">Sessões de farme</div>
+<div class="pg-title"><i class="ti ti-shield" style="color:var(--acc)"></i>Sessões de farme</div>
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
 ${renderRushProgressCard()}

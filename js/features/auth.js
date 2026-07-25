@@ -11,7 +11,6 @@ export async function checkSession() {
     AppState.isMasterAdmin = !!data.isMasterAdmin;
     AppState.currentUsername = data.username || '';
     AppState.currentUserId = data.userId || null;
-    AppState.currentGuild = data.guild || '';
     return !!data.authenticated;
   } catch {
     return false;

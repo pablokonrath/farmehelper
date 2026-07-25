@@ -14,8 +14,8 @@ function toggleRow(title, desc, checked, onchange, { disabled = false, extra = '
 }
 
 // Atalho pro admin mestre editar a agenda de eventos e os sons sem sair da página de Alertas —
-// mesma lista/funções globais do Admin (ver admin-page.js), só reposicionadas aqui do lado do
-// que elas configuram.
+// mesma lista/funções globais de antes (a página Admin em si foi removida), só reposicionadas
+// aqui do lado do que elas configuram.
 const EVENT_TYPE_INFO = {
   tg: { title: 'TG (Chifre Viking)', icon: 'ti-sword' },
   worldboss: { title: 'World Boss (Tambor)', icon: 'ti-skull' },
@@ -104,7 +104,7 @@ export function renderAlertsPage() {
 
   // 1) Alertas de itens rastreados (o núcleo)
   const coreCard = `
-<div class="card">
+<div class="card card-featured">
   <div class="ctitle"><i class="ti ti-bell"></i>Alertas de itens rastreados</div>
   <div class="pg-sub" style="margin:-4px 0 10px">Som + pop-up + notificação do sistema quando cai um item rastreado, mesmo com a aba em segundo plano.</div>
   ${toggleRow('Ativar alertas', 'Interruptor geral — desligado, nada dispara.', s.enabled, 'setAlertsEnabled(this.checked)', { extra: ';' + div })}
