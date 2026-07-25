@@ -312,6 +312,38 @@ export function showGoalToast(title, body) {
   notifyOS(title, { body, tag: 'farm-goal' });
 }
 
+const LIVE_RECONNECT_TOAST_ID = 'liveReconnectToast';
+
+// Aviso de que a conexão ao vivo com o arquivo de drops precisa de um clique pra reconectar
+// (permissão do navegador expirou/foi reiniciado). A barra lateral já mostra isso, mas de forma
+// discreta — este toast não some sozinho e também dispara notificação do SO, pra não passar
+// despercebido com a aba minimizada ou em segundo plano.
+export function showReconnectWarningToast() {
+  if (!document.getElementById(LIVE_RECONNECT_TOAST_ID)) {
+    const container = document.getElementById('alertToastContainer');
+    if (container) {
+      const toastEl = document.createElement('div');
+      toastEl.id = LIVE_RECONNECT_TOAST_ID;
+      toastEl.className = 'alert-toast';
+      toastEl.innerHTML = `
+        <i class="ti ti-plug-connected-x" style="color:var(--warn);flex-shrink:0;margin-top:1px"></i>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px">Conexão ao vivo pausada</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">O navegador precisa da sua permissão de novo pra continuar lendo os drops automaticamente.</div>
+          <button class="btn btn-p btn-xs" style="margin-top:6px" onclick="reconnectLiveFile()">Reconectar</button>
+        </div>
+        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+      container.appendChild(toastEl);
+    }
+  }
+  notifyOS('Conexão ao vivo pausada', { body: 'Abra o FarmHub e clique em reconectar pra continuar lendo os drops automaticamente.', tag: LIVE_RECONNECT_TOAST_ID });
+}
+
+// Some com o aviso acima assim que a conexão volta (por reconexão manual ou nova seleção de arquivo).
+export function dismissReconnectWarningToast() {
+  document.getElementById(LIVE_RECONNECT_TOAST_ID)?.remove();
+}
+
 // Toast curtinho de confirmação (ex: "Nick copiado") — só visual, sem som nem notificação do SO.
 export function showInfoToast(text) {
   const container = document.getElementById('alertToastContainer');

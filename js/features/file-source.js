@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { parseDropLogLine } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
-import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog } from './alerts.js';
+import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog, showReconnectWarningToast, dismissReconnectWarningToast } from './alerts.js';
 import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './tracked-drop-sync.js';
 import { renderPage } from '../router.js';
@@ -90,6 +90,7 @@ function handleWorkerMessage(event) {
 // sofrem o throttling que os navegadores aplicam a setInterval de abas em segundo plano, então
 // os alertas continuam chegando mesmo com o FarmHub minimizado ou em outra aba (ver live-poll-worker.js).
 async function startLiveFilePolling(fileHandle) {
+  dismissReconnectWarningToast();
   AppState.liveFileHandle = fileHandle;
 
   const file = await fileHandle.getFile();
@@ -181,6 +182,7 @@ export async function resumeLiveFileConnection() {
         '<span style="color:var(--warn)"><i class="ti ti-plug-connected-x"></i> Conexão ao vivo pausada</span> — ' +
         '<button onclick="reconnectLiveFile()" style="background:none;border:none;color:var(--acc);text-decoration:underline;cursor:pointer;font-size:11px;padding:0">reconectar</button>'
       );
+      showReconnectWarningToast();
     }
   } catch {
     // sem handle salvo, ou IndexedDB indisponível — segue sem conexão ao vivo, como antes
