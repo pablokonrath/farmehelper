@@ -145,15 +145,19 @@ export function renderSessionsPage() {
       ${renderDateInputBR({ id: 'sessHistDate', value: historyDate, onChange: 'setSessionsHistoryDate' })}
     </div>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mostra só o dia selecionado. A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Informe as runs e clique na seta pra ver os itens.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mostra só o dia selecionado. A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens.</div>
   ${!history.length
     ? `<div class="empty">Nenhuma sessão de DG encerrada em ${formatDateBR(historyDate)}.</div>`
     : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th></tr></thead><tbody>
       ${history.map(s => {
         const expanded = !!AppState.expandedDgSessions[s.startAt];
+        const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
         return `<tr>
         <td>${formatDateBR(s.date)}</td>
-        <td style="font-weight:500">${esc(s.dungeonName)}</td>
+        <td><select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
+          ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
+          ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === s.dungeonId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
+        </select></td>
         <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
         <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
         <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>

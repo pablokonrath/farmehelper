@@ -83,6 +83,19 @@ export function setSessionRuns(startAt, value) {
   renderPage();
 }
 
+// Corrige a DG de uma sessão já encerrada (ex: marcou "Parte do Mapa" mas rushou "Templo
+// Esquecido" por engano) — os drops em si não mudam, já foram atribuídos pela janela de horário
+// [startAt, endAt] no momento do encerramento; só a etiqueta de qual DG eles pertencem é trocada.
+export function setSessionDungeon(startAt, dungeonId) {
+  const s = AppState.dgSessions.find(x => x.startAt === startAt);
+  const dg = AppState.dungeonList.find(d => d.id === dungeonId);
+  if (!s || !dg) return;
+  s.dungeonId = dg.id;
+  s.dungeonName = dg.name;
+  saveDgSessions();
+  renderPage();
+}
+
 // Mostra/esconde a lista completa de itens de uma sessão no histórico (estado só de UI, não
 // persiste). Guardado por startAt.
 export function toggleSessionItems(startAt) {

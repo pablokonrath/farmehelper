@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getItemPrice, getItemCategory, summarizeDropsByItem } from '../features/drops.js';
-import { renderAlzValue, formatDateBR } from '../utils/formatting.js';
+import { renderAlzValue } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 
 const NO_CATEGORY_LABEL = 'Sem categoria';
@@ -40,16 +40,6 @@ function renderCategoryManagerCard() {
 </div>`;
 }
 
-// Uma linha por (dia, item) em vez de uma linha por drop individual — sem isso, 200 drops do
-// mesmo item no mesmo dia viravam 200 linhas repetidas, deixando o relatório enorme.
-function summarizeByDateAndItem(drops) {
-  const dates = [...new Set(drops.map(d => d.date))].sort().reverse();
-  return dates.flatMap(date => {
-    const dropsOnDate = drops.filter(d => d.date === date);
-    return summarizeDropsByItem(dropsOnDate).map(item => ({ date, ...item }));
-  });
-}
-
 export function renderReportPage() {
   const drops = getFilteredDrops();
 
@@ -78,13 +68,12 @@ ${!categories.length ? '<div class="empty" style="padding:60px">Nenhum dado carr
 categories.map(category => {
   const categoryDrops = dropsByCategory[category];
   const totalInCategory = categoryDrops.reduce((sum, d) => sum + getItemPrice(d.name), 0);
-  const rows = summarizeByDateAndItem(categoryDrops);
+  const rows = summarizeDropsByItem(categoryDrops);
   return `<div class="card"><div class="sh" style="margin-bottom:8px">
 <div style="font-weight:600">${esc(category)} <span style="color:var(--muted);font-size:12px;font-weight:400">${categoryDrops.length} drops</span></div>
 ${totalInCategory ? renderAlzValue(totalInCategory, true) : ''}
-</div><table><thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
+</div><table><thead><tr><th>Item</th><th>Qtd total</th><th>Valor total</th></tr></thead><tbody>
 ${rows.map(r => `<tr>
-  <td class="mono" style="color:var(--muted)">${formatDateBR(r.date)}</td>
   <td style="font-size:12px">${esc(r.name)}</td>
   <td>${r.qty}×</td>
   <td>${r.total ? renderAlzValue(r.total) : '<span style="color:var(--muted)">—</span>'}</td>
