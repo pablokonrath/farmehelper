@@ -131,7 +131,7 @@ export function renderAlertsPage() {
   // só os limites e o aviso de travamento no Telegram.
   const watchdogRelayHint = !linked
     ? 'Vincule o Telegram (na seção “Fora do app”) primeiro.'
-    : 'Se o helper travar, chega no Telegram e repete até você voltar a dropar.';
+    : 'Se o helper travar, ou a conexão ao vivo precisar reconectar, chega no Telegram.';
   const watchdogCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-shield-bolt"></i>Vigilância de inatividade (watchdog)</div>
@@ -142,7 +142,7 @@ export function renderAlertsPage() {
     <div style="grid-column:span 2"><label class="lbl">Alertar sem dropar um item rastreado por (minutos)</label><input class="inp" type="number" min="1" value="${s.itemSilenceThresholdMinutes}" onchange="setItemSilenceThresholdMinutes(this.value)">
     <div class="hint">Item específico (ex: joia) pode demorar mais — use um limite mais alto que o de cima.</div></div>
   </div>
-  ${toggleRow('Avisar travamento no Telegram', watchdogRelayHint, s.telegramWatchdogRelayEnabled, 'setTelegramWatchdogRelayEnabled(this.checked)', { disabled: !linked, extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' + (!linked ? ';opacity:.55' : '') })}
+  ${toggleRow('Avisar travamento/desconexão no Telegram', watchdogRelayHint, s.telegramWatchdogRelayEnabled, 'setTelegramWatchdogRelayEnabled(this.checked)', { disabled: !linked, extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' + (!linked ? ';opacity:.55' : '') })}
 </div>`;
 
   // 3) Eventos programados (TG / World Boss)

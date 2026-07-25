@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { parseDropLogLine } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
 import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog, showReconnectWarningToast, dismissReconnectWarningToast } from './alerts.js';
+import { relayWatchdogToTelegram } from './telegram.js';
 import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './tracked-drop-sync.js';
 import { renderPage } from '../router.js';
@@ -183,6 +184,10 @@ export async function resumeLiveFileConnection() {
         '<button onclick="reconnectLiveFile()" style="background:none;border:none;color:var(--acc);text-decoration:underline;cursor:pointer;font-size:11px;padding:0">reconectar</button>'
       );
       showReconnectWarningToast();
+      // Mesmo relay do watchdog (helper travado) — usa o mesmo toggle "Avisar por Telegram" já
+      // existente em Alertas, pra saber que precisa reconectar mesmo longe do PC. Só funciona se
+      // esta aba estiver aberta: quem detecta a permissão perdida é o próprio JS do navegador.
+      relayWatchdogToTelegram('Conexão ao vivo do FarmHub pausada — abra o app e clique em reconectar pra continuar rastreando os drops.');
     }
   } catch {
     // sem handle salvo, ou IndexedDB indisponível — segue sem conexão ao vivo, como antes

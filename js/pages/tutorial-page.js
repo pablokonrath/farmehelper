@@ -102,9 +102,9 @@ ${topic('ti-shield-bolt', 'Vigilância de inatividade (watchdog)', `
 ${topic('ti-send', 'Fora do app: Telegram', `
   Pra receber avisos com o navegador <strong>fechado</strong>:
   ${li([
-    '<strong>Vincule sua conta:</strong> gera um código, você manda pro bot. Aí recebe avisos de TG/World Boss, drop rastreado e watchdog (helper travado).',
+    '<strong>Vincule sua conta:</strong> gera um código, você manda pro bot. Aí recebe avisos de TG/World Boss, drop rastreado e watchdog (helper travado ou conexão ao vivo perdida).',
     'Mande <strong>/drop</strong> pro bot pra ver o que você já dropou hoje, ou <strong>/farm</strong> pro resumo em Alz. <strong>/sessao</strong> mostra a sessão de DG ativa.',
-    'Importante: alertas do SEU próprio drop e o watchdog dependem do navegador aberto (é ele que lê o log) — só chegam no Telegram enquanto ele estiver aberto (mesmo minimizado). TG/World Boss chegam mesmo com o navegador fechado.',
+    'Importante: alertas do SEU próprio drop e o watchdog (incluindo o aviso de reconexão) dependem do navegador aberto (é ele que detecta) — só chegam no Telegram enquanto ele estiver aberto (mesmo minimizado). TG/World Boss chegam mesmo com o navegador fechado.',
   ])}
 `)}
 
