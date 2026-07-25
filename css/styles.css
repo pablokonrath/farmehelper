@@ -10,6 +10,10 @@
   --r:8px;
   --font-ui:'Chakra Petch','Rajdhani',system-ui,-apple-system,sans-serif;
   --font-display:'Rajdhani','Chakra Petch',system-ui,sans-serif;
+  /* Textura de grão (couro/pergaminho envelhecido) via SVG procedural — sem imagem externa,
+     só ruído preto translúcido por cima do fundo escuro já existente. Reaproveitada em .sb e
+     .card-featured pra dar a "pegada medieval" sem brigar com o brilho ciano/dourado do tema. */
+  --texture-grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{
@@ -24,7 +28,7 @@ html,body{
 }
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
 .wrap{display:flex;align-items:flex-start;min-height:720px}
-.sb{width:212px;flex-shrink:0;background:linear-gradient(180deg,#0d1220,#0a0e18);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;max-height:100vh;overflow-y:auto;box-shadow:1px 0 24px rgba(0,0,0,.35)}
+.sb{width:212px;flex-shrink:0;background:var(--texture-grain),linear-gradient(180deg,#0d1220,#0a0e18);background-size:180px 180px,auto;border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;max-height:100vh;overflow-y:auto;box-shadow:1px 0 24px rgba(0,0,0,.35)}
 .sb-head{padding:16px;border-bottom:1px solid var(--border);position:relative}
 .sb-head::after{content:'';position:absolute;bottom:-1px;left:16px;right:16px;height:1px;background:linear-gradient(90deg,transparent,var(--acc),transparent);opacity:.6}
 .sb-logo{font-family:var(--font-display);font-size:19px;font-weight:700;letter-spacing:.5px;color:var(--acc);display:flex;align-items:center;gap:7px;text-shadow:0 0 16px rgba(34,211,238,.55)}
@@ -139,7 +143,7 @@ tbody tr:hover{background:var(--surf2)}
 .guild-total{font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
 .guild-total b{color:var(--txt);font-family:var(--font-display)}
 .your-rank{margin-top:10px;padding:8px 12px;border-radius:var(--r);background:var(--acc-bg);border:1px solid var(--acc-border);font-size:12px;color:var(--acc);text-align:center}
-.card-featured{border-color:var(--gold-border);box-shadow:0 0 24px rgba(255,176,32,.14),0 8px 24px rgba(0,0,0,.25)}
+.card-featured{border-color:var(--gold-border);box-shadow:0 0 24px rgba(255,176,32,.14),0 8px 24px rgba(0,0,0,.25);background-image:var(--texture-grain),linear-gradient(160deg,rgba(255,176,32,.05),transparent 55%);background-size:180px 180px,auto}
 .card-featured::before,.card-featured::after{border-color:var(--gold)}
 
 /* Botão de menu (hambúrguer) e overlay — só aparecem no celular (ver media query abaixo). */

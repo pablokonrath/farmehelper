@@ -89,7 +89,7 @@ export function renderSessionsPage() {
   const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
 
   const nowFarmingCard = `
-<div class="card">
+<div class="card card-featured">
   <div class="ctitle"><i class="ti ti-crosshair" style="color:var(--gold)"></i>Farmando agora</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não quiser marcar, é só farmar normal.</div>
   ${active

@@ -37,7 +37,7 @@ function buildMetaCard() {
   }
 
   return `
-<div class="card">
+<div class="card card-featured">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-target" style="color:var(--gold)"></i>Meta de farme — hoje</div>
     <div style="display:flex;align-items:center;gap:8px">
       <span class="lbl" style="margin:0">Meta (Alz)</span>
