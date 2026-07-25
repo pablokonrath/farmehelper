@@ -3,7 +3,7 @@ import { loadPersistedState } from './state/persistence.js';
 import { updateBalanceSidebar } from './features/drops.js';
 import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
-import { checkSession, submitLogin, logout } from './features/auth.js';
+import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, toggleSessionItems, setResetConfig } from './features/dg-session.js';
@@ -151,6 +151,8 @@ Object.assign(window, {
   setAlertSoundVolume,
   testAlertSound,
   submitLogin,
+  submitRegister,
+  setAuthMode,
   logout,
   toggleCategoryManager,
   addItemCategory,

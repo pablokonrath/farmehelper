@@ -35,6 +35,7 @@
     <h2 class="sr-only">FarmHub Dashboard — Central de Farme</h2>
     <div
       id="loginScreen"
+      class="auth-screen"
       style="
         display: none;
         min-height: 100vh;
@@ -42,75 +43,367 @@
         justify-content: center;
       "
     >
-      <div class="login-wrap" style="max-width: 480px">
-        <div
-          class="card"
-          style="text-align: center; padding: 40px 32px"
-        >
-          <div
-            class="sb-logo"
-            style="
-              font-size: 26px;
-              margin-bottom: 18px;
-              justify-content: center;
-            "
-          >
-            <i class="ti ti-sword"></i>FarmHub
+      <svg
+        class="auth-landscape"
+        aria-hidden="true"
+        viewBox="0 0 1600 900"
+        preserveAspectRatio="xMidYMax slice"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="authSky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#0a0704" />
+            <stop offset="45%" stop-color="#1c130c" />
+            <stop offset="78%" stop-color="#3a1e14" />
+            <stop offset="100%" stop-color="#5c2a1c" />
+          </linearGradient>
+          <radialGradient id="authMoonGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#f2d488" stop-opacity="0.95" />
+            <stop offset="18%" stop-color="#d9a441" stop-opacity="0.55" />
+            <stop offset="55%" stop-color="#d9a441" stop-opacity="0.12" />
+            <stop offset="100%" stop-color="#d9a441" stop-opacity="0" />
+          </radialGradient>
+        </defs>
+        <rect width="1600" height="900" fill="url(#authSky)" />
+        <circle cx="1180" cy="330" r="260" fill="url(#authMoonGlow)" />
+        <circle cx="1180" cy="330" r="58" fill="#f5e3ab" />
+        <g fill="#f2d488">
+          <circle cx="80" cy="70" r="1.6" opacity=".8" />
+          <circle cx="150" cy="140" r="1.1" opacity=".6" />
+          <circle cx="230" cy="60" r="1.8" opacity=".9" />
+          <circle cx="310" cy="180" r="1.2" opacity=".55" />
+          <circle cx="60" cy="230" r="1.3" opacity=".65" />
+          <circle cx="400" cy="90" r="1.5" opacity=".75" />
+          <circle cx="480" cy="200" r="1.1" opacity=".5" />
+          <circle cx="540" cy="50" r="1.7" opacity=".85" />
+          <circle cx="620" cy="150" r="1.2" opacity=".6" />
+          <circle cx="700" cy="80" r="1.4" opacity=".7" />
+          <circle cx="180" cy="290" r="1.1" opacity=".45" />
+          <circle cx="30" cy="120" r="1.4" opacity=".7" />
+          <circle cx="760" cy="200" r="1.6" opacity=".8" />
+          <circle cx="850" cy="60" r="1.2" opacity=".55" />
+          <circle cx="900" cy="150" r="1.5" opacity=".72" />
+          <circle cx="960" cy="40" r="1.1" opacity=".5" />
+          <circle cx="1020" cy="120" r="1.7" opacity=".85" />
+          <circle cx="1400" cy="80" r="1.4" opacity=".68" />
+          <circle cx="1470" cy="180" r="1.2" opacity=".55" />
+          <circle cx="1540" cy="60" r="1.6" opacity=".78" />
+          <circle cx="1350" cy="220" r="1.1" opacity=".5" />
+          <circle cx="1250" cy="130" r="1.3" opacity=".6" />
+          <circle cx="380" cy="260" r="1.0" opacity=".4" />
+          <circle cx="1080" cy="230" r="1.0" opacity=".42" />
+        </g>
+        <path
+          d="M0,600 L70,510 L130,555 L175,470 L260,530 L330,410 L395,500 L470,445 L520,520 L610,395 L680,485 L740,430 L820,520 L900,375 L965,470 L1040,415 L1100,505 L1180,420 L1260,480 L1340,400 L1420,460 L1500,430 L1600,470 L1600,900 L0,900 Z"
+          fill="#2a2016"
+          opacity=".65"
+        />
+        <path
+          d="M0,700 L60,610 L140,660 L210,570 L280,650 L350,590 L440,680 L520,600 L580,660 L670,555 L740,630 L810,580 L880,670 L960,590 L1030,650 L1110,570 L1190,640 L1270,600 L1350,540 L1430,620 L1510,580 L1600,630 L1600,900 L0,900 Z"
+          fill="#1f1811"
+          opacity=".82"
+        />
+        <g fill="#171009" opacity=".92">
+          <rect x="600" y="522" width="13" height="48" />
+          <rect x="620" y="498" width="17" height="72" />
+          <rect x="644" y="514" width="13" height="56" />
+          <polygon points="620,498 628.5,478 637,498" />
+          <rect x="614" y="490" width="6" height="9" />
+          <rect x="637" y="506" width="6" height="9" />
+          <rect x="606" y="514" width="5" height="7" />
+          <rect x="650" y="506" width="5" height="7" />
+        </g>
+        <path
+          d="M0,820 L90,730 L150,780 L230,690 L310,760 L380,660 L460,750 L540,670 L600,730 L690,610 L760,700 L830,640 L910,740 L990,650 L1050,720 L1130,630 L1210,710 L1290,650 L1370,590 L1450,680 L1530,630 L1600,700 L1600,900 L0,900 Z"
+          fill="#14100b"
+        />
+      </svg>
+      <div class="login-wrap">
+        <div class="login-card">
+          <!-- ESQUERDA: apresentação -->
+          <div class="login-left">
+            <div class="sb-logo" style="font-size: 26px; margin-bottom: 2px">
+              <i class="ti ti-sword"></i>FarmHub
+            </div>
+            <div
+              style="
+                font-size: 11px;
+                color: var(--gold);
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
+                margin-bottom: 4px;
+              "
+            >
+              Central de Farme · Cabal Neo
+            </div>
+            <div
+              style="font-size: 13px; color: var(--muted); margin-bottom: 20px"
+            >
+              Feito por um jogador, de graça, pra comunidade. Acompanhe seu
+              farme, planeje rushes e não perca nenhum item raro.
+            </div>
+
+            <div
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 11px;
+                margin-bottom: 18px;
+              "
+            >
+              <div class="auth-feature">
+                <i class="ti ti-layout-dashboard"></i>Visão geral do farme em
+                tempo real
+              </div>
+              <div class="auth-feature">
+                <i class="ti ti-swords"></i>Rush diário, metas e sessões de DG
+              </div>
+              <div class="auth-feature">
+                <i class="ti ti-bell"></i>Alertas de itens + vigilância de
+                travamento
+              </div>
+              <div class="auth-feature">
+                <i class="ti ti-cash"></i>Vendas, preços e relatório de drops
+              </div>
+              <div class="auth-feature">
+                <i class="ti ti-bolt"></i>Modo guiado — assistente passo a
+                passo
+              </div>
+            </div>
+
+            <!-- DESTAQUE TELEGRAM -->
+            <div
+              style="
+                display: flex;
+                gap: 12px;
+                align-items: flex-start;
+                background: linear-gradient(
+                  180deg,
+                  rgba(179, 49, 44, 0.16),
+                  rgba(179, 49, 44, 0.03)
+                );
+                border: 1px solid var(--acc-border);
+                border-radius: 12px;
+                padding: 14px 16px;
+                margin-bottom: 12px;
+              "
+            >
+              <i
+                class="ti ti-brand-telegram"
+                style="font-size: 28px; color: var(--acc); flex: none"
+              ></i>
+              <div>
+                <div
+                  style="font-weight: 700; font-size: 13px; color: var(--txt)"
+                >
+                  Avisos no Telegram
+                </div>
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--txt2);
+                    margin-top: 3px;
+                    line-height: 1.5;
+                  "
+                >
+                  Receba TG/World Boss, drops rastreados e o aviso se o helper
+                  travar — <strong>mesmo com o app fechado</strong>.
+                </div>
+              </div>
+            </div>
+
+            <!-- TRANSPARÊNCIA / CÓDIGO ABERTO -->
+            <div class="auth-trust">
+              <i
+                class="ti ti-shield-check"
+                style="font-size: 26px; color: var(--gold); flex: none"
+              ></i>
+              <div>
+                <div
+                  style="font-weight: 700; font-size: 13px; color: var(--gold)"
+                >
+                  Código aberto, sem letra miúda
+                </div>
+                <div
+                  style="
+                    font-size: 12px;
+                    color: var(--txt2);
+                    margin-top: 3px;
+                    line-height: 1.55;
+                  "
+                >
+                  O código fonte inteiro está disponível pra qualquer um
+                  conferir — não é roubo de dado nem nada escondido, só uma
+                  ferramenta de farme feita por um jogador pra comunidade.
+                  <a
+                    href="https://github.com/pablokonrath/farmehelper"
+                    target="_blank"
+                    rel="noopener"
+                    style="color: var(--gold); font-weight: 600"
+                    >Ver código no GitHub</a
+                  >
+                </div>
+              </div>
+            </div>
+
+            <div
+              style="
+                border-top: 1px solid var(--border);
+                padding-top: 14px;
+                margin-top: 14px;
+                font-size: 10px;
+                color: var(--muted);
+                line-height: 1.5;
+              "
+            >
+              Ferramenta não oficial, feita por um jogador · sem vínculo com a
+              Neo / Cabal Neo
+            </div>
           </div>
-          <div
-            style="
-              font-size: 15px;
-              color: var(--txt2);
-              line-height: 1.6;
-              margin-bottom: 22px;
-            "
-          >
-            A divulgação pública do FarmHub foi encerrada a pedido da equipe
-            do Cabal Neo. O projeto continua existindo, agora como um
-            programa local que cada jogador roda na própria máquina, sem
-            depender deste site.
-          </div>
-          <div
-            style="
-              font-size: 13px;
-              color: var(--muted);
-              line-height: 1.6;
-              margin-bottom: 26px;
-            "
-          >
-            Se você já usava e quer continuar, ou tem alguma dúvida, chama no
-            WhatsApp.
-          </div>
-          <a
-            href="https://wa.me/5553991887418?text=Ol%C3%A1%21%20Vi%20o%20aviso%20no%20FarmHub%2C%20queria%20saber%20mais"
-            target="_blank"
-            rel="noopener"
-            style="
-              display: inline-flex;
-              align-items: center;
-              gap: 9px;
-              background: #25d366;
-              color: #04120a;
-              font-weight: 700;
-              font-size: 13px;
-              text-decoration: none;
-              padding: 12px 20px;
-              border-radius: 30px;
-            "
-          >
-            <i class="ti ti-brand-whatsapp" style="font-size: 18px"></i>Falar
-            no WhatsApp
-          </a>
-          <div
-            style="
-              font-size: 10px;
-              color: var(--muted);
-              margin-top: 26px;
-              line-height: 1.5;
-            "
-          >
-            Ferramenta não oficial, feita por um jogador · sem vínculo com a
-            Neo / Cabal Neo
+
+          <!-- DIREITA: login / cadastro -->
+          <div class="login-right">
+            <div class="auth-tabs">
+              <button
+                class="auth-tab on"
+                id="authTabLogin"
+                type="button"
+                onclick="setAuthMode('login')"
+              >
+                Entrar
+              </button>
+              <button
+                class="auth-tab"
+                id="authTabRegister"
+                type="button"
+                onclick="setAuthMode('register')"
+              >
+                Cadastrar
+              </button>
+            </div>
+
+            <!-- Entrar -->
+            <div id="authPaneLogin">
+              <div
+                style="font-size: 12px; color: var(--muted); margin-bottom: 16px"
+              >
+                Acesse sua conta com seu usuário e senha.
+              </div>
+              <input
+                class="inp"
+                id="loginUsername"
+                type="text"
+                placeholder="Usuário"
+                autocomplete="username"
+                onkeydown="if (event.key === 'Enter') submitLogin();"
+                style="margin-bottom: 8px"
+              />
+              <input
+                class="inp"
+                id="loginPassword"
+                type="password"
+                placeholder="Senha"
+                autocomplete="current-password"
+                onkeydown="if (event.key === 'Enter') submitLogin();"
+              />
+              <button
+                class="btn btn-p"
+                type="button"
+                style="width: 100%; justify-content: center; margin-top: 12px"
+                onclick="submitLogin()"
+              >
+                <i class="ti ti-login"></i>Entrar
+              </button>
+              <div
+                id="loginError"
+                style="
+                  display: none;
+                  color: var(--err);
+                  font-size: 12px;
+                  margin-top: 8px;
+                  text-align: center;
+                "
+              ></div>
+            </div>
+
+            <!-- Cadastrar -->
+            <div id="authPaneRegister" style="display: none">
+              <div
+                style="font-size: 12px; color: var(--muted); margin-bottom: 16px"
+              >
+                Crie sua conta — é só sua, ninguém mais vê seus dados.
+              </div>
+              <input
+                class="inp"
+                id="registerUsername"
+                type="text"
+                placeholder="Escolha um usuário"
+                autocomplete="username"
+                style="margin-bottom: 8px"
+              />
+              <input
+                class="inp"
+                id="registerPassword"
+                type="password"
+                placeholder="Escolha uma senha (mín. 8 caracteres)"
+                autocomplete="new-password"
+                style="margin-bottom: 8px"
+              />
+              <input
+                class="inp"
+                id="registerPasswordConfirm"
+                type="password"
+                placeholder="Repita a senha"
+                autocomplete="new-password"
+                onkeydown="if (event.key === 'Enter') submitRegister();"
+              />
+              <div class="auth-honeypot" aria-hidden="true">
+                <label for="registerWebsite">Deixe em branco</label>
+                <input
+                  type="text"
+                  id="registerWebsite"
+                  name="website"
+                  tabindex="-1"
+                  autocomplete="off"
+                />
+              </div>
+              <button
+                class="btn btn-p"
+                type="button"
+                style="width: 100%; justify-content: center; margin-top: 12px"
+                onclick="submitRegister()"
+              >
+                <i class="ti ti-user-plus"></i>Criar conta
+              </button>
+              <div
+                id="registerError"
+                style="
+                  display: none;
+                  color: var(--err);
+                  font-size: 12px;
+                  margin-top: 8px;
+                  text-align: center;
+                "
+              ></div>
+            </div>
+
+            <div
+              style="
+                font-size: 11px;
+                color: var(--muted);
+                text-align: center;
+                margin-top: 18px;
+              "
+            >
+              Dúvidas?
+              <a
+                href="https://wa.me/5553991887418?text=Ol%C3%A1%21%20Tenho%20uma%20d%C3%BAvida%20sobre%20o%20FarmHub"
+                target="_blank"
+                rel="noopener"
+                style="color: var(--acc); font-weight: 600"
+                >Chama no WhatsApp</a
+              >
+            </div>
           </div>
         </div>
       </div>
