@@ -26,6 +26,7 @@ export function renderPage() {
   const main = document.getElementById('main');
   destroyDropChart();
   destroyPriceChart();
+  document.getElementById('pageWatermark')?.setAttribute('data-page', AppState.currentPage);
 
   if (AppState.currentPage === 'overview') main.innerHTML = renderOverviewPage();
   else if (AppState.currentPage === 'calculo') main.innerHTML = renderPricingPage();
