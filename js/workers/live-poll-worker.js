@@ -10,6 +10,7 @@ let fileHandle = null;
 let lastReadFileSize = 0;
 let pendingLineBuffer = '';
 let pollTimer = null;
+let isPolling = false;
 
 async function pollOnce() {
   if (!fileHandle) return;
@@ -17,6 +18,13 @@ async function pollOnce() {
   // reavaliar "quanto tempo faz que não cai nada" (alerta de inatividade, ver checkDropWatchdog
   // em alerts.js), já que sem isso o worker só manda mensagem quando o arquivo cresce.
   postMessage({ type: 'heartbeat' });
+
+  // Se a leitura do tick anterior ainda não terminou (disco lento, antivírus escaneando etc.),
+  // pula esta rodada em vez de deixar duas leituras rodarem em paralelo — sem essa trava, duas
+  // leituras sobrepostas podiam pisar uma no offset (lastReadFileSize) da outra e perder linhas
+  // novas gravadas nesse meio-tempo, sem erro nenhum aparecer.
+  if (isPolling) return;
+  isPolling = true;
   try {
     const latestFile = await fileHandle.getFile();
 
@@ -46,6 +54,8 @@ async function pollOnce() {
     if (lines.length) postMessage({ type: 'new-lines', lines });
   } catch {
     // falha pontual de leitura (arquivo bloqueado por um instante etc.) — tenta de novo no próximo tick
+  } finally {
+    isPolling = false;
   }
 }
 
