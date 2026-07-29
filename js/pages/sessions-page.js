@@ -57,6 +57,13 @@ function timeHM(ms) {
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
 }
 
+// Ícone da DG, se existir um arquivo icons/dungeons/<id>.png (o dono sobe manualmente, DG por
+// DG — ver DEPLOY.md). Sem arquivo pra essa DG, cai num ícone genérico de espada via onerror,
+// sem precisar checar existência no servidor antes.
+function dgIcon(dungeonId, size = 26) {
+  return `<img src="icons/dungeons/${dungeonId}.png" alt="" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<i class=&quot;ti ti-sword&quot; style=&quot;font-size:${Math.round(size * 0.75)}px;color:var(--muted);width:${size}px;text-align:center;flex-shrink:0&quot;></i>'">`;
+}
+
 // Linha extra (escondida por padrão) com todos os itens que caíram na sessão, ordenados por valor.
 function sessionItemsRow(s) {
   const expectedNames = getExpectedItemNamesForDungeon(s.dungeonId);
@@ -97,13 +104,16 @@ export function renderSessionsPage() {
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não quiser marcar, é só farmar normal.</div>
   ${active
     ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
-        <div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${dgIcon(AppState.activeDgSession.dungeonId, 34)}
+          <div>
           <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}</div>
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
             return expected.length ? `<div style="font-size:11px;color:var(--gold);margin-top:6px"><i class="ti ti-star"></i> Esperados aqui: ${expected.map(esc).join(', ')}</div>` : '';
           })()}
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div><label class="lbl" style="margin:0 0 2px">Runs feitas${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet ? ' <span style="color:var(--acc);font-weight:400">(auto)</span>' : ''}</label>
@@ -161,10 +171,10 @@ export function renderSessionsPage() {
         const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
         return `<tr>
         <td>${formatDateBR(s.date)}</td>
-        <td><select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
+        <td><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
           ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
           ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === s.dungeonId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
-        </select></td>
+        </select></div></td>
         <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
         <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
         <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>

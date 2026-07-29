@@ -585,6 +585,22 @@ busca da mesma página, que é estatística, baseada no histórico de sessões).
 destaque em **Sessões de farme**: itens que caem numa sessão e já eram esperados naquela DG
 ganham uma estrela dourada, tanto no histórico quanto na sessão "Farmando agora".
 
+## Ícone por DG
+
+Em **Sessões de farme** (card "Farmando agora" e a coluna DG do histórico), cada DG pode mostrar
+um ícone próprio. Não tem cadastro nenhum pelo app — é só colocar o arquivo, por convenção de
+nome, dentro de `icons/dungeons/`:
+
+```
+icons/dungeons/d1.png    ← id da DG (ver js/state/app-state.js, DEFAULT_DUNGEONS, ou o
+icons/dungeons/d35.png     valor salvo em dungeonList) + .png
+```
+
+DG sem arquivo cai automaticamente num ícone genérico de espada — não precisa cadastrar todas de
+uma vez, dá pra ir subindo aos poucos. Sobe os arquivos direto pelo Gerenciador de Arquivos da
+Hostinger (ou versiona no git, se o deploy automático estiver configurado) — não precisa mexer
+em nenhum código pra um ícone novo aparecer.
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira
