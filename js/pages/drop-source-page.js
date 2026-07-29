@@ -1,7 +1,44 @@
 import { AppState } from '../state/app-state.js';
 import { findDropSources, getKnownSessionItemNames } from '../features/drop-source.js';
 import { formatDateBR } from '../utils/formatting.js';
-import { esc } from '../utils/escape.js';
+import { esc, escAttr } from '../utils/escape.js';
+
+// Cadastro manual (curado) de quais DGs cada item pode dropar — diferente da busca acima, que é
+// estatística. Alimenta o destaque de "item esperado" em Sessões de farme. Só admin mestre edita
+// (mesmo padrão de Relatório → Gerenciar categorias).
+function renderItemDungeonSourcesCard() {
+  if (!AppState.isMasterAdmin) return '';
+  const entries = Object.entries(AppState.itemDungeonSources).sort((a, b) => a[0].localeCompare(b[0]));
+  return `
+<div class="card">
+  <div class="ctitle" style="margin-bottom:4px"><i class="ti ti-list-check"></i>Itens × DGs (cadastro manual)</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre quais DGs cada item pode dropar — diferente da busca acima (que é baseada no seu histórico), isto é curado por você e serve pra destacar os itens esperados em Sessões de farme.</div>
+  <div class="row" style="margin-bottom:14px">
+    <div style="flex:1"><input class="inp" id="newItemDungeonSource" placeholder="Nome do item" list="dsSugg" onkeydown="if(event.key==='Enter')addItemDungeonSourceItem()"></div>
+    <button class="btn btn-p" onclick="addItemDungeonSourceItem()"><i class="ti ti-plus"></i>Adicionar</button>
+  </div>
+  ${!entries.length ? '<div class="empty" style="padding:14px 0">Nenhum item cadastrado ainda.</div>' : `
+  <div style="display:flex;flex-direction:column;gap:10px">
+  ${entries.map(([itemName, dungeonIds]) => `
+    <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="flex:1;font-weight:600;font-size:13px">${esc(itemName)}</span>
+        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeItemDungeonSourceItem('${escAttr(itemName)}')" title="Remover item"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+        ${dungeonIds.map(id => {
+          const dg = AppState.dungeonList.find(d => d.id === id);
+          return `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(dg ? dg.name : id)}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="toggleItemDungeonSourceDg('${escAttr(itemName)}', '${escAttr(id)}')"><i class="ti ti-x"></i></button></span>`;
+        }).join('')}
+        <select class="inp inp-sm" style="width:170px" onchange="if(this.value){toggleItemDungeonSourceDg('${escAttr(itemName)}', this.value);this.value=''}">
+          <option value="">+ Adicionar DG...</option>
+          ${AppState.dungeonList.filter(d => !dungeonIds.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
+        </select>
+      </div>
+    </div>`).join('')}
+  </div>`}
+</div>`;
+}
 
 export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
@@ -38,5 +75,6 @@ export function renderDropSourcePage() {
             <td>${formatDateBR(r.lastDate)}</td>
           </tr>`).join('')}
           </tbody></table>`}
-</div>`;
+</div>
+${renderItemDungeonSourcesCard()}`;
 }

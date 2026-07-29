@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday } from '../features/dg-session.js';
 import { getItemPrice } from '../features/drops.js';
+import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -58,8 +59,9 @@ function timeHM(ms) {
 
 // Linha extra (escondida por padrão) com todos os itens que caíram na sessão, ordenados por valor.
 function sessionItemsRow(s) {
+  const expectedNames = getExpectedItemNamesForDungeon(s.dungeonId);
   const rows = Object.entries(s.items || {})
-    .map(([name, qty]) => ({ name, qty, value: getItemPrice(name) * qty }))
+    .map(([name, qty]) => ({ name, qty, value: getItemPrice(name) * qty, expected: expectedNames.has(name) }))
     .sort((a, b) => b.value - a.value);
   const alzPerRun = s.runs > 0 ? s.totalAlz / s.runs : null;
   const activeMs = s.activeDurationMs ?? s.durationMs;
@@ -71,9 +73,10 @@ function sessionItemsRow(s) {
       <span>Tempo ativo: <strong style="color:var(--txt)">${formatDuration(activeMs)}</strong> · relógio total: ${formatDuration(s.durationMs)}</span>
     </div>
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
+    ${expectedNames.size ? '<div style="font-size:11px;color:var(--gold);margin-bottom:8px"><i class="ti ti-star"></i> Itens marcados com estrela eram esperados nesta DG (cadastro em Onde dropa).</div>' : ''}
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
-    ${rows.map(r => `<tr>
-      <td>${esc(r.name)}</td>
+    ${rows.map(r => `<tr${r.expected ? ' style="background:var(--gold-bg)"' : ''}>
+      <td>${r.expected ? '<i class="ti ti-star" style="color:var(--gold);margin-right:5px" title="Esperado nesta DG"></i>' : ''}${esc(r.name)}</td>
       <td>${r.qty}×</td>
       <td>${r.value ? renderAlzValue(r.value) : '<span style="color:var(--muted)">—</span>'}</td>
     </tr>`).join('')}
@@ -97,6 +100,10 @@ export function renderSessionsPage() {
         <div>
           <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}</div>
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+          ${(() => {
+            const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
+            return expected.length ? `<div style="font-size:11px;color:var(--gold);margin-top:6px"><i class="ti ti-star"></i> Esperados aqui: ${expected.map(esc).join(', ')}</div>` : '';
+          })()}
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div><label class="lbl" style="margin:0 0 2px">Runs feitas${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet ? ' <span style="color:var(--acc);font-weight:400">(auto)</span>' : ''}</label>

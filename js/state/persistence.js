@@ -66,15 +66,17 @@ function applyStateFromPayload(payload) {
 }
 
 async function loadGlobalOnlyState() {
-  const [itemCategories, itemCategoryAssignments, eventSchedule, alertSounds, knownItemNames] = await Promise.all([
+  const [itemCategories, itemCategoryAssignments, itemDungeonSources, eventSchedule, alertSounds, knownItemNames] = await Promise.all([
     get('item-categories.php'),
     get('item-category-assignments.php'),
+    get('item-dungeon-sources.php'),
     get('event-schedule.php'),
     get('alert-sounds.php'),
     get('known-item-names.php'),
   ]);
   AppState.itemCategories = itemCategories;
   AppState.itemCategoryAssignments = itemCategoryAssignments;
+  AppState.itemDungeonSources = itemDungeonSources;
   AppState.eventSchedule = eventSchedule;
   AppState.alertSounds = alertSounds;
   AppState.knownItemNames = knownItemNames;
@@ -194,6 +196,10 @@ export function saveItemCategories() {
 
 export function saveItemCategoryAssignments() {
   return put('item-category-assignments.php', AppState.itemCategoryAssignments);
+}
+
+export function saveItemDungeonSources() {
+  return put('item-dungeon-sources.php', AppState.itemDungeonSources);
 }
 
 export function saveManualDrops() {

@@ -573,6 +573,18 @@ uso pontual e não devem ficar publicadas permanentemente. Quando precisar:
    `import-data.html` no ar permite que qualquer sessão logada sobrescreva os dados do
    banco por ele).
 
+## Itens esperados por DG (cadastro manual)
+
+Se seu banco já rodou `sql/migrate_wishlist.sql` (ou qualquer migração mais recente), rode agora
+`sql/migrate_item_dungeon_sources.sql` no phpMyAdmin (aba SQL) — cria a tabela
+`item_dungeon_sources`. Instalação nova do zero não precisa — já vem no `sql/schema.sql`.
+
+Novo card **"Itens × DGs (cadastro manual)"** na página **Onde dropa**, visível só pro admin
+mestre: cadastre um item e marque em quais DGs ele pode cair (curado por você — diferente da
+busca da mesma página, que é estatística, baseada no histórico de sessões). Isso alimenta um
+destaque em **Sessões de farme**: itens que caem numa sessão e já eram esperados naquela DG
+ganham uma estrela dourada, tanto no histórico quanto na sessão "Farmando agora".
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira

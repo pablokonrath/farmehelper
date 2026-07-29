@@ -257,6 +257,16 @@ CREATE TABLE IF NOT EXISTS item_category_assignments (
   category_name VARCHAR(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Cadastro manual "em quais DGs este item pode cair" — diferente de Onde Dropa (que é
+-- estatístico, baseado no histórico de sessões de cada jogador), este é curado e global (item
+-- pode cair em várias DGs, por isso não é PRIMARY KEY só de item_name). Usado pra destacar em
+-- Sessões de farme os itens "esperados" daquela DG.
+CREATE TABLE IF NOT EXISTS item_dungeon_sources (
+  item_name VARCHAR(255) NOT NULL,
+  dungeon_id VARCHAR(50) NOT NULL,
+  PRIMARY KEY (item_name, dungeon_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Sinalizações heurísticas de possível dado forjado: 'file_tamper' (o trecho já lido do
 -- arquivo de log mudou entre duas leituras — provável edição manual) ou 'drop_spike' (uma
 -- sincronização aumentou a contagem de um item muito mais do que o normal pra um poll de 5s).

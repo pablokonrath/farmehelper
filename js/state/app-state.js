@@ -153,6 +153,10 @@ export const AppState = {
   currentUserId: null,
   itemCategories: [],
   itemCategoryAssignments: {},
+  // Cadastro manual "em quais DGs este item pode cair" (item → [dungeonId, ...]), curado —
+  // diferente de dgSessions/Onde Dropa, que é estatístico. Usado pra destacar em Sessões de
+  // farme os itens esperados da DG.
+  itemDungeonSources: {},
   // Atalho no Relatório pra gerenciar categoria sem sair da página (mesma lista global do
   // Admin) — colapsado por padrão.
   isCategoryManagerOpen: false,
