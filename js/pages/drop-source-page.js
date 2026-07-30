@@ -53,10 +53,11 @@ export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
   const suggestions = getKnownSessionItemNames();
   const results = findDropSources(query);
+  const targetQty = Number(AppState.dropSourceTargetQty) || 0;
 
   return `
 <div class="pg-title"><i class="ti ti-compass" style="color:var(--acc)"></i>Onde dropa</div>
-<div class="pg-sub">Digite o nome (completo ou parte dele) de um item e veja em quais DGs ele já caiu — com base no seu histórico de sessões de farme, incluindo uma taxa estimada de drop por run.</div>
+<div class="pg-sub">Digite o nome (completo ou parte dele) de um item e veja em quais DGs ele já caiu — com base no seu histórico de sessões de farme, ordenado pela DG que mais dropa por run.</div>
 
 <div class="card">
   <label class="lbl">Item</label>
@@ -66,6 +67,10 @@ export function renderDropSourcePage() {
     <button class="btn btn-p" onclick="searchDropSource()"><i class="ti ti-search"></i>Buscar</button>
   </div>
   <datalist id="dsSugg">${suggestions.map(name => `<option value="${esc(name)}">`).join('')}</datalist>
+  <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+    <label class="lbl">Quero calcular pra quantas unidades? <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+    <input class="inp" id="dsTargetQty" style="width:160px" type="number" min="0" placeholder="ex: 1000" value="${targetQty || ''}" onchange="setDropSourceTargetQty(this.value)">
+  </div>
 </div>
 
 <div class="card">
@@ -76,7 +81,7 @@ export function renderDropSourcePage() {
       ? '<div class="empty">Digite o nome (completo ou parte) de um item e aperte Enter ou "Buscar" pra ver de quais DGs ele já caiu.</div>'
       : !results.length
         ? `<div class="empty">Nenhuma sessão registrou "${esc(query)}" até agora.</div>`
-        : `<table><thead><tr><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th><th>Taxa por run</th></tr></thead><tbody>
+        : `<table><thead><tr><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th><th>Taxa por run</th><th>Média/run</th>${targetQty > 0 ? `<th>Runs p/ ${targetQty.toLocaleString('pt-BR')}×</th>` : ''}</tr></thead><tbody>
           ${results.map(r => `<tr>
             <td style="font-weight:500">${esc(r.dungeonName)}</td>
             <td>${r.sessions}</td>
@@ -86,6 +91,8 @@ export function renderDropSourcePage() {
               ? '<span style="color:var(--muted)" title="Nenhuma sessão desta DG tem \'Runs feitas\' preenchido">— sem runs</span>'
               : `≈${formatDropRate(r.dropRate)} <span style="color:var(--muted);font-size:11px">(${r.qty}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>${r.lowConfidence ? ' <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Amostra pequena — poucos runs registrados, taxa pouco confiável ainda"></i>' : ''}`}
             </td>
+            <td style="color:var(--gold)">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : `≈1 a cada ${Math.round(1 / r.dropRate).toLocaleString('pt-BR')} runs`}</td>
+            ${targetQty > 0 ? `<td style="font-weight:600">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : `≈${Math.ceil(targetQty / r.dropRate).toLocaleString('pt-BR')} runs`}</td>` : ''}
           </tr>`).join('')}
           </tbody></table>`}
 </div>

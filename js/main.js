@@ -23,7 +23,7 @@ import {
 import { setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
-import { searchDropSource } from './features/drop-source.js';
+import { searchDropSource, setDropSourceTargetQty } from './features/drop-source.js';
 import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg } from './features/item-dungeon-sources.js';
 import {
   setRushCartDate,
@@ -93,6 +93,7 @@ Object.assign(window, {
   addManualDrop,
   deleteManualDropBatch,
   searchDropSource,
+  setDropSourceTargetQty,
   addItemDungeonSourceItem,
   removeItemDungeonSourceItem,
   toggleItemDungeonSourceDg,

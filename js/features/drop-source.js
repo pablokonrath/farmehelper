@@ -7,6 +7,13 @@ export function setDropSourceQuery(value) {
   renderPage();
 }
 
+// Calculadora "quantos runs eu preciso" — puramente client-side, não persiste (mesmo espírito
+// de dropSourceQuery).
+export function setDropSourceTargetQty(value) {
+  AppState.dropSourceTargetQty = value;
+  renderPage();
+}
+
 // Busca só quando o jogador confirma (Enter ou botão "Buscar"), não a cada letra digitada —
 // com poucas letras o substring bate em item demais e a lista de DGs fica ruim de ler.
 export function searchDropSource() {
@@ -54,5 +61,13 @@ export function findDropSources(query) {
     agg.dropRate = totalRuns > 0 ? agg.qty / totalRuns : null;
     agg.lowConfidence = totalRuns > 0 && totalRuns < MIN_RUNS_FOR_CONFIDENT_RATE;
   });
-  return Object.values(byDg).sort((a, b) => b.qty - a.qty);
+  // Ordena pela TAXA (por run), não pela quantidade bruta — uma DG muito farmada pode acumular
+  // mais unidades sem ser de fato a que mais dropa por run. DG sem taxa calculável (sem "Runs
+  // feitas" preenchido) fica por último, já que não dá pra comparar.
+  return Object.values(byDg).sort((a, b) => {
+    if (a.dropRate == null && b.dropRate == null) return b.qty - a.qty;
+    if (a.dropRate == null) return 1;
+    if (b.dropRate == null) return -1;
+    return b.dropRate - a.dropRate;
+  });
 }

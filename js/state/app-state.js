@@ -121,6 +121,7 @@ export const AppState = {
   dateTo: '',
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
+  dropSourceTargetQty: '',
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,
