@@ -40,6 +40,15 @@ function renderItemDungeonSourcesCard() {
 </div>`;
 }
 
+// Mais casas decimais quanto menor a taxa — item raro costuma ficar abaixo de 1%, e "0%"
+// arredondado não diz nada útil.
+function formatDropRate(rate) {
+  const pct = rate * 100;
+  if (pct >= 10) return pct.toFixed(0) + '%';
+  if (pct >= 1) return pct.toFixed(1) + '%';
+  return pct.toFixed(2) + '%';
+}
+
 export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
   const suggestions = getKnownSessionItemNames();
@@ -47,7 +56,7 @@ export function renderDropSourcePage() {
 
   return `
 <div class="pg-title"><i class="ti ti-compass" style="color:var(--acc)"></i>Onde dropa</div>
-<div class="pg-sub">Digite o nome (completo ou parte dele) de um item e veja em quais DGs ele já caiu, com base no seu histórico de sessões de farme.</div>
+<div class="pg-sub">Digite o nome (completo ou parte dele) de um item e veja em quais DGs ele já caiu — com base no seu histórico de sessões de farme, incluindo uma taxa estimada de drop por run.</div>
 
 <div class="card">
   <label class="lbl">Item</label>
@@ -67,12 +76,16 @@ export function renderDropSourcePage() {
       ? '<div class="empty">Digite o nome (completo ou parte) de um item e aperte Enter ou "Buscar" pra ver de quais DGs ele já caiu.</div>'
       : !results.length
         ? `<div class="empty">Nenhuma sessão registrou "${esc(query)}" até agora.</div>`
-        : `<table><thead><tr><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th></tr></thead><tbody>
+        : `<table><thead><tr><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th><th>Taxa por run</th></tr></thead><tbody>
           ${results.map(r => `<tr>
             <td style="font-weight:500">${esc(r.dungeonName)}</td>
             <td>${r.sessions}</td>
             <td>${r.qty.toLocaleString('pt-BR')}×</td>
             <td>${formatDateBR(r.lastDate)}</td>
+            <td>${r.dropRate == null
+              ? '<span style="color:var(--muted)" title="Nenhuma sessão desta DG tem \'Runs feitas\' preenchido">— sem runs</span>'
+              : `≈${formatDropRate(r.dropRate)} <span style="color:var(--muted);font-size:11px">(${r.qty}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>${r.lowConfidence ? ' <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Amostra pequena — poucos runs registrados, taxa pouco confiável ainda"></i>' : ''}`}
+            </td>
           </tr>`).join('')}
           </tbody></table>`}
 </div>
