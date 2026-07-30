@@ -75,6 +75,7 @@ export function buildCartItem(dungeonId, repetitions, reset = null) {
   if (!dungeon) return null;
   const usedReset = !!(reset && reset.used);
   return {
+    dungeonId: dungeon.id,
     name: dungeon.name,
     alzCost: dungeon.alzCost,
     ticketsPerRun: dungeon.ticketsPerRun || 0,
@@ -98,6 +99,7 @@ export function addDungeonToCart() {
   const resetGemUnitPrice = usedReset ? parseAlzInput(document.getElementById('dgGemPrice')?.value) : 0;
 
   AppState.rushCart.push({
+    dungeonId: dungeon.id,
     name: dungeon.name,
     alzCost: dungeon.alzCost,
     ticketsPerRun: dungeon.ticketsPerRun || 0,

@@ -601,6 +601,24 @@ uma vez, dá pra ir subindo aos poucos. Sobe os arquivos direto pelo Gerenciador
 Hostinger (ou versiona no git, se o deploy automático estiver configurado) — não precisa mexer
 em nenhum código pra um ícone novo aparecer.
 
+## Rotas de DGs + comparativo de lucro
+
+Se seu banco já rodou `sql/migrate_item_dungeon_sources.sql` (ou qualquer migração mais
+recente), rode agora `sql/migrate_rush_routes.sql` no phpMyAdmin (aba SQL) — cria a tabela
+`rush_routes`. Instalação nova do zero não precisa — já vem no `sql/schema.sql`.
+
+Duas coisas novas, pessoais por conta (nada compartilhado):
+
+- **Rotas** (card "Minhas rotas" em DGs de rush diário): monte o carrinho normalmente e clique
+  "Salvar como rota" pra guardar aquele conjunto de DGs + repetições como um molde reutilizável,
+  sem data fixa (diferente de "Salvar rush do dia", que fica preso àquele dia). Aplicar uma rota
+  carrega ela no carrinho com os preços de HOJE — a rota nunca guarda preço, só a composição.
+- **Comparativo de lucro** (card "Qual rota rende mais" em Sessões de farme, logo abaixo de "Qual
+  DG rende mais"): pra cada rota, soma o Alz/run histórico de cada DG × repetições (retorno
+  esperado) e subtrai o custo de rodar nos preços atuais — mostra o lucro líquido, ranqueado da
+  melhor pra pior. DG da rota sem sessão farmada ainda não entra no retorno (sinalizado com um
+  aviso), pra não estimar lucro de algo sem dado nenhum.
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira

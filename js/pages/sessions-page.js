@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday } from '../features/dg-session.js';
 import { getItemPrice } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
+import { computeRouteComparison } from '../features/rush-routes.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -94,6 +95,7 @@ function sessionItemsRow(s) {
 export function renderSessionsPage() {
   const active = getActiveSessionSummary();
   const comparison = computeDgComparison();
+  const routeComparison = computeRouteComparison();
   const today = todayISODate();
   const historyDate = AppState.sessionsHistoryDate || today;
   const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
@@ -152,6 +154,22 @@ export function renderSessionsPage() {
         <td style="color:var(--muted)">${c.alzPerHour != null ? formatAlzGamer(c.alzPerHour) + '/h' : '—'}</td>
       </tr>`).join('')}
       </tbody></table>`}
+</div>`;
+
+  const routeComparisonCard = !routeComparison.length ? '' : `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais</div></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje. Crie e edite rotas em DGs de rush diário.</div>
+  <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th></tr></thead><tbody>
+  ${routeComparison.map((r, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    <td style="font-weight:500">${esc(r.name)}${r.missingDataCount ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${r.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no retorno esperado"></i>` : ''}</td>
+    <td>${r.dgCount}</td>
+    <td style="color:${getAlzTierColor(r.expectedAlz)}" title="${formatNumber(r.expectedAlz)} Alz">${formatAlzGamer(r.expectedAlz)}</td>
+    <td style="color:var(--muted)" title="${formatNumber(r.cost)} Alz">${formatAlzGamer(r.cost)}</td>
+    <td style="color:${r.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700" title="${formatNumber(r.profit)} Alz">${r.profit >= 0 ? '+' : ''}${formatAlzGamer(r.profit)}</td>
+  </tr>`).join('')}
+  </tbody></table>
 </div>`;
 
   const historyCard = `
@@ -222,6 +240,7 @@ export function renderSessionsPage() {
 ${nowFarmingCard}
 ${renderRushProgressCard()}
 ${comparisonCard}
+${routeComparisonCard}
 ${resetCard}
 ${historyCard}`;
 }

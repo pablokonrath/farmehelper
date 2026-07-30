@@ -192,6 +192,10 @@ export function renderRushPage() {
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}</div>
   <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>${AppState.rushHistory[AppState.rushCartDate] ? 'Atualizar rush do dia' : 'Salvar rush do dia'}</button></div>
+  ${AppState.rushCart.length ? `<div class="row" style="margin-bottom:12px">
+    <div style="flex:1"><input class="inp" id="newRushRouteName" placeholder="Nome da rota (ex: Iniciante, Foco Alz...)" onkeydown="if(event.key==='Enter')createRushRouteFromCart()"></div>
+    <button class="btn btn-d" onclick="createRushRouteFromCart()" title="Salva as DGs e repetições atuais como um molde reutilizável, sem data fixa"><i class="ti ti-route"></i>Salvar como rota</button>
+  </div>` : ''}
   ${AppState.rushHistory[AppState.rushCartDate] ? `<div style="font-size:12px;color:var(--acc);background:var(--acc-bg,rgba(34,211,238,.08));border:1px solid var(--acc-border,rgba(34,211,238,.3));border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-info-circle"></i> Este dia (${formatDateBR(AppState.rushCartDate)}) já tem um rush salvo. Ao salvar, ele é <strong>atualizado</strong> com o carrinho atual — não cria outro nem duplica.</div>` : ''}
   ${!AppState.rushCart.length ? '<div class="empty">Nenhuma DG adicionada. Escolha uma DG acima e clique em Adicionar.</div>' : `
   <table><thead><tr><th>DG</th><th>Tipo</th><th>Reps</th><th>Reset</th><th>Custo (breakdown)</th><th style="width:40px"></th></tr></thead><tbody>
@@ -243,6 +247,24 @@ export function renderRushPage() {
       <button class="btn btn-d btn-xs" onclick="editSavedRush('${date}')" title="Editar (adicionar/remover DGs)"><i class="ti ti-edit"></i></button>
       <button class="btn btn-d btn-xs" onclick="duplicateSavedRush('${date}')" title="Duplicar pra hoje"><i class="ti ti-copy"></i></button>
       <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushForDay('${date}')"><i class="ti ti-trash"></i></button>
+    </div></td>
+  </tr>`).join('')}
+  </tbody></table>`}
+</div>
+
+<!-- ROTAS -->
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Minhas rotas</div></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Molde reutilizável de DGs + repetições, sem data fixa — monte o carrinho acima e clique "Salvar como rota" pra criar uma. Aplicar carrega no carrinho com os preços de hoje. Compare o lucro de cada rota em Sessões de farme.</div>
+  ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
+  <table><thead><tr><th>Rota</th><th>DGs</th><th style="width:120px">Ações</th></tr></thead><tbody>
+  ${AppState.rushRoutes.map(route => `<tr>
+    <td style="font-weight:500">${esc(route.name)}</td>
+    <td>${route.items.length} DG${route.items.length > 1 ? 's' : ''}</td>
+    <td><div style="display:flex;gap:4px">
+      <button class="btn btn-d btn-xs" onclick="applyRushRoute('${route.id}')" title="Carregar no carrinho de hoje"><i class="ti ti-player-play"></i></button>
+      <button class="btn btn-d btn-xs" onclick="renameRushRoute('${route.id}')" title="Renomear"><i class="ti ti-edit"></i></button>
+      <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushRoute('${route.id}')" title="Excluir"><i class="ti ti-trash"></i></button>
     </div></td>
   </tr>`).join('')}
   </tbody></table>`}

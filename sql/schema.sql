@@ -56,6 +56,18 @@ CREATE TABLE IF NOT EXISTS rush_history (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Rota de DGs reutilizável (molde de rush, sem data fixa) — diferente de rush_history, que é
+-- um rush salvo PRESO a um dia específico. Aplicar a rota carrega os itens no carrinho com os
+-- preços atuais.
+CREATE TABLE IF NOT EXISTS rush_routes (
+  user_id INT NOT NULL,
+  route_id VARCHAR(50) NOT NULL,
+  name VARCHAR(100) NOT NULL,
+  items JSON NOT NULL,
+  PRIMARY KEY (user_id, route_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS tracked_keywords (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,

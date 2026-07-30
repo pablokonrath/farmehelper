@@ -114,6 +114,9 @@ export const AppState = {
   priceHistory: {},
   priceHistoryItem: '',
   rushHistory: {},
+  // Rotas de DGs reutilizáveis (molde de rush, sem data fixa) — [{id, name, items: [{dungeonId,
+  // repetitions}]}]. Ver rush-routes.js.
+  rushRoutes: [],
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
   currentPage: 'overview',

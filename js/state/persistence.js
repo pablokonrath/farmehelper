@@ -94,9 +94,10 @@ export async function loadPersistedState() {
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows] = await Promise.all([
+  const [itemPrices, rushHistory, rushRoutes, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
+    get('rush-routes.php'),
     get('tracked-keywords.php'),
     get('app-settings.php'),
     get('dungeon-list.php'),
@@ -108,6 +109,7 @@ export async function loadPersistedState() {
 
   AppState.itemPrices = itemPrices;
   AppState.rushHistory = rushHistory;
+  AppState.rushRoutes = rushRoutes;
   AppState.trackedKeywords = trackedKeywords.length ? trackedKeywords : AppState.trackedKeywords;
   AppState.filterByTrackedKeywords = appSettings.filterByTrackedKeywords ?? false;
   AppState.rushCreditCraftCosts = { ...DEFAULT_CREDIT_CRAFT_COSTS, ...(appSettings.rushCreditCraftCosts || {}) };
@@ -139,6 +141,10 @@ export function saveItemPrices() {
 
 export function saveRushHistory() {
   return put('rush-history.php', AppState.rushHistory);
+}
+
+export function saveRushRoutes() {
+  return put('rush-routes.php', AppState.rushRoutes);
 }
 
 export function saveTrackedKeywords() {
