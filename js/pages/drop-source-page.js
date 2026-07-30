@@ -49,13 +49,21 @@ function formatDropRate(rate) {
   return pct.toFixed(2) + '%';
 }
 
-// Abaixo de 1 por run, "1 a cada N runs" é mais intuitivo (item raro). A partir de 1, o item
-// dropa mais de uma vez por run em média, e "1 a cada 0 runs" não faz sentido nenhum — mostra
-// a média direto.
+// Abaixo de 1 por run, "1 a cada N runs" é mais intuitivo (item raro). A partir de 1, um run
+// nunca dropa uma fração de item — mostra a faixa inteira mais próxima (chão/teto da média) em
+// vez de um número quebrado tipo "1,60 por run", que não corresponde a nenhum resultado real
+// possível.
 function formatAvgPerRun(rate) {
-  if (rate >= 1) return `≈${rate >= 10 ? rate.toFixed(0) : rate.toFixed(2)} por run`;
-  return `≈1 a cada ${Math.round(1 / rate).toLocaleString('pt-BR')} runs`;
+  if (rate < 1) return `≈1 a cada ${Math.round(1 / rate).toLocaleString('pt-BR')} runs`;
+  const low = Math.floor(rate);
+  const high = Math.ceil(rate);
+  return low === high ? `≈${low} por run` : `≈${low} a ${high} por run`;
 }
+
+// Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
+// só pra dar uma noção de prazo, não considera reset (ver "Vale a pena resetar?" em Sessões de
+// farme pra essa conta à parte).
+const DAILY_RUN_LIMIT = 20;
 
 export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
@@ -100,7 +108,12 @@ export function renderDropSourcePage() {
               : `≈${formatDropRate(r.dropRate)} <span style="color:var(--muted);font-size:11px">(${r.qtyWithRuns}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>${r.lowConfidence ? ' <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Amostra pequena — poucos runs registrados, taxa pouco confiável ainda"></i>' : ''}${r.rateExcludesSomeDrops ? ` <i class="ti ti-info-circle" style="color:var(--muted)" title="A quantidade total (${r.qty}) inclui sessões sem 'Runs feitas' preenchido — a taxa usa só as ${r.qtyWithRuns} que têm runs pra comparar certo"></i>` : ''}`}
             </td>
             <td style="color:var(--gold)">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : formatAvgPerRun(r.dropRate)}</td>
-            ${targetQty > 0 ? `<td style="font-weight:600">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : `≈${Math.ceil(targetQty / r.dropRate).toLocaleString('pt-BR')} runs`}</td>` : ''}
+            ${targetQty > 0 ? `<td style="font-weight:600">${(() => {
+              if (r.dropRate == null) return '<span style="color:var(--muted)">—</span>';
+              const runsNeeded = Math.ceil(targetQty / r.dropRate);
+              const days = Math.ceil(runsNeeded / DAILY_RUN_LIMIT);
+              return `≈${runsNeeded.toLocaleString('pt-BR')} runs <span style="color:var(--muted);font-size:11px;font-weight:400">(≈${days.toLocaleString('pt-BR')} dia${days > 1 ? 's' : ''} a ${DAILY_RUN_LIMIT}/dia)</span>`;
+            })()}</td>` : ''}
           </tr>`).join('')}
           </tbody></table>`}
 </div>
