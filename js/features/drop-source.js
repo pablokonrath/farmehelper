@@ -50,16 +50,27 @@ export function findDropSources(query) {
       if (s.date > agg.lastDate) agg.lastDate = s.date;
     });
   });
-  // Taxa de drop = quantidade caída ÷ TOTAL de runs farmadas naquela DG (todas as sessões, não só
-  // as que o item caiu) — base certa é run, não dia/tempo, já que o ritmo de farme varia muito
-  // dia a dia. Sessão sem "Runs feitas" preenchido não entra no total (ver aviso no card).
+  // Taxa de drop = quantidade caída ÷ runs farmadas — mas só usando sessões com "Runs feitas"
+  // preenchido, dos DOIS lados da conta. Contar o drop de uma sessão sem contar as runs dela
+  // (por não ter sido preenchido) infla a taxa artificialmente — foi um bug real: uma sessão
+  // com drop e runs=0 somava no numerador sem nada no denominador.
   Object.values(byDg).forEach(agg => {
-    const totalRuns = AppState.dgSessions
-      .filter(s => s.dungeonName === agg.dungeonName)
-      .reduce((sum, s) => sum + (s.runs || 0), 0);
+    const dgSessionsWithRuns = AppState.dgSessions.filter(s => s.dungeonName === agg.dungeonName && (s.runs || 0) > 0);
+    const totalRuns = dgSessionsWithRuns.reduce((sum, s) => sum + s.runs, 0);
+    const qtyWithRuns = dgSessionsWithRuns.reduce((sum, s) => {
+      let matched = 0;
+      Object.entries(s.items || {}).forEach(([name, qty]) => {
+        if (normalizeForSearch(name).includes(normalizedQuery)) matched += qty;
+      });
+      return sum + matched;
+    }, 0);
     agg.totalRuns = totalRuns;
-    agg.dropRate = totalRuns > 0 ? agg.qty / totalRuns : null;
+    agg.qtyWithRuns = qtyWithRuns;
+    agg.dropRate = totalRuns > 0 ? qtyWithRuns / totalRuns : null;
     agg.lowConfidence = totalRuns > 0 && totalRuns < MIN_RUNS_FOR_CONFIDENT_RATE;
+    // Sinaliza quando a taxa é baseada em menos drops do que aparece na coluna "Quantidade" —
+    // significa que parte do histórico ficou de fora da conta por falta de runs preenchidos.
+    agg.rateExcludesSomeDrops = qtyWithRuns < agg.qty;
   });
   // Ordena pela TAXA (por run), não pela quantidade bruta — uma DG muito farmada pode acumular
   // mais unidades sem ser de fato a que mais dropa por run. DG sem taxa calculável (sem "Runs

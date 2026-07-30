@@ -49,6 +49,14 @@ function formatDropRate(rate) {
   return pct.toFixed(2) + '%';
 }
 
+// Abaixo de 1 por run, "1 a cada N runs" é mais intuitivo (item raro). A partir de 1, o item
+// dropa mais de uma vez por run em média, e "1 a cada 0 runs" não faz sentido nenhum — mostra
+// a média direto.
+function formatAvgPerRun(rate) {
+  if (rate >= 1) return `≈${rate >= 10 ? rate.toFixed(0) : rate.toFixed(2)} por run`;
+  return `≈1 a cada ${Math.round(1 / rate).toLocaleString('pt-BR')} runs`;
+}
+
 export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
   const suggestions = getKnownSessionItemNames();
@@ -89,9 +97,9 @@ export function renderDropSourcePage() {
             <td>${formatDateBR(r.lastDate)}</td>
             <td>${r.dropRate == null
               ? '<span style="color:var(--muted)" title="Nenhuma sessão desta DG tem \'Runs feitas\' preenchido">— sem runs</span>'
-              : `≈${formatDropRate(r.dropRate)} <span style="color:var(--muted);font-size:11px">(${r.qty}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>${r.lowConfidence ? ' <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Amostra pequena — poucos runs registrados, taxa pouco confiável ainda"></i>' : ''}`}
+              : `≈${formatDropRate(r.dropRate)} <span style="color:var(--muted);font-size:11px">(${r.qtyWithRuns}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>${r.lowConfidence ? ' <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Amostra pequena — poucos runs registrados, taxa pouco confiável ainda"></i>' : ''}${r.rateExcludesSomeDrops ? ` <i class="ti ti-info-circle" style="color:var(--muted)" title="A quantidade total (${r.qty}) inclui sessões sem 'Runs feitas' preenchido — a taxa usa só as ${r.qtyWithRuns} que têm runs pra comparar certo"></i>` : ''}`}
             </td>
-            <td style="color:var(--gold)">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : `≈1 a cada ${Math.round(1 / r.dropRate).toLocaleString('pt-BR')} runs`}</td>
+            <td style="color:var(--gold)">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : formatAvgPerRun(r.dropRate)}</td>
             ${targetQty > 0 ? `<td style="font-weight:600">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : `≈${Math.ceil(targetQty / r.dropRate).toLocaleString('pt-BR')} runs`}</td>` : ''}
           </tr>`).join('')}
           </tbody></table>`}
