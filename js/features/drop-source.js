@@ -44,7 +44,7 @@ export function findDropSources(query) {
   AppState.dgSessions.forEach(s => {
     Object.entries(s.items || {}).forEach(([name, qty]) => {
       if (!normalizeForSearch(name).includes(normalizedQuery)) return;
-      const agg = byDg[s.dungeonName] || (byDg[s.dungeonName] = { dungeonName: s.dungeonName, sessions: 0, qty: 0, lastDate: '' });
+      const agg = byDg[s.dungeonName] || (byDg[s.dungeonName] = { dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, qty: 0, lastDate: '' });
       agg.sessions++;
       agg.qty += qty;
       if (s.date > agg.lastDate) agg.lastDate = s.date;
@@ -81,4 +81,24 @@ export function findDropSources(query) {
     if (b.dropRate == null) return -1;
     return b.dropRate - a.dropRate;
   });
+}
+
+// Rendimento esperado do item buscado, por ROTA salva (não por DG isolada) — soma repetições ×
+// taxa de drop de cada DG da rota. Complementa findDropSources: aquela responde "qual DG dropa
+// mais", esta responde "qual das minhas rotas me dá mais desse item".
+export function computeRouteItemYield(query) {
+  if (!query || !AppState.rushRoutes.length) return [];
+  const rateByDgId = {};
+  findDropSources(query).forEach(r => { if (r.dungeonId) rateByDgId[r.dungeonId] = r.dropRate; });
+
+  return AppState.rushRoutes.map(route => {
+    let expectedQty = 0;
+    let missingDataCount = 0;
+    route.items.forEach(it => {
+      const rate = rateByDgId[it.dungeonId];
+      if (rate != null) expectedQty += rate * it.repetitions;
+      else missingDataCount++;
+    });
+    return { id: route.id, name: route.name, dgCount: route.items.length, missingDataCount, expectedQty };
+  }).sort((a, b) => b.expectedQty - a.expectedQty);
 }

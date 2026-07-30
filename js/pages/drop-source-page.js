@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { findDropSources, getKnownSessionItemNames } from '../features/drop-source.js';
+import { findDropSources, getKnownSessionItemNames, computeRouteItemYield } from '../features/drop-source.js';
 import { DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { formatDateBR } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
@@ -65,6 +65,7 @@ export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
   const suggestions = getKnownSessionItemNames();
   const results = findDropSources(query);
+  const routeYield = query ? computeRouteItemYield(query) : [];
   const targetQty = Number(AppState.dropSourceTargetQty) || 0;
 
   return `
@@ -113,5 +114,19 @@ export function renderDropSourcePage() {
           </tr>`).join('')}
           </tbody></table>`}
 </div>
+${!routeYield.length ? '' : `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais deste item</div></div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Soma a taxa de drop de cada DG da rota (tabela acima) × as repetições dela. Crie e edite rotas em DGs de rush diário.</div>
+  <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Rendimento esperado</th>${targetQty > 0 ? '<th>Execuções p/ meta</th>' : ''}</tr></thead><tbody>
+  ${routeYield.map((r, i) => `<tr>
+    <td class="rank">${i + 1}</td>
+    <td style="font-weight:500">${esc(r.name)}${r.missingDataCount ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${r.missingDataCount} DG(s) desta rota sem taxa calculável pra este item — não entram no rendimento"></i>` : ''}</td>
+    <td>${r.dgCount}</td>
+    <td style="color:var(--gold);font-weight:700">${r.expectedQty > 0 ? `≈${r.expectedQty.toFixed(r.expectedQty >= 10 ? 0 : 2)}×/execução` : '<span style="color:var(--muted);font-weight:400">sem dado</span>'}</td>
+    ${targetQty > 0 ? `<td>${r.expectedQty > 0 ? `≈${Math.ceil(targetQty / r.expectedQty).toLocaleString('pt-BR')}×` : '<span style="color:var(--muted)">—</span>'}</td>` : ''}
+  </tr>`).join('')}
+  </tbody></table>
+</div>`}
 ${renderItemDungeonSourcesCard()}`;
 }
