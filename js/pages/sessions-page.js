@@ -80,10 +80,10 @@ function sessionItemsRow(s) {
       <span>Tempo ativo: <strong style="color:var(--txt)">${formatDuration(activeMs)}</strong> · relógio total: ${formatDuration(s.durationMs)}</span>
     </div>
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
-    ${expectedNames.size ? '<div style="font-size:11px;color:var(--gold);margin-bottom:8px"><i class="ti ti-star"></i> Itens marcados com estrela eram esperados nesta DG (cadastro em Onde dropa).</div>' : ''}
+    ${expectedNames.size ? '<div style="font-size:11px;color:var(--gold);margin-bottom:8px"><i class="ti ti-star"></i> Itens com estrela são raridades desta DG (cadastro em Onde dropa).</div>' : ''}
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
     ${rows.map(r => `<tr${r.expected ? ' style="background:var(--gold-bg)"' : ''}>
-      <td>${r.expected ? '<i class="ti ti-star" style="color:var(--gold);margin-right:5px" title="Esperado nesta DG"></i>' : ''}${esc(r.name)}</td>
+      <td>${r.expected ? '<i class="ti ti-star" style="color:var(--gold);margin-right:5px" title="Raridade desta DG"></i>' : ''}${esc(r.name)}</td>
       <td>${r.qty}×</td>
       <td>${r.value ? renderAlzValue(r.value) : '<span style="color:var(--muted)">—</span>'}</td>
     </tr>`).join('')}
@@ -111,7 +111,7 @@ export function renderSessionsPage() {
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
-            return expected.length ? `<div style="font-size:11px;color:var(--gold);margin-top:6px"><i class="ti ti-star"></i> Esperados aqui: ${expected.map(esc).join(', ')}</div>` : '';
+            return expected.length ? `<div style="font-size:11px;color:var(--gold);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';
           })()}
           </div>
         </div>
