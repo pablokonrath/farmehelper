@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveRushRoutes } from '../state/persistence.js';
 import { buildCartItem, calculateRushCartCost } from './rush-cart.js';
-import { computeDgComparison } from './dg-session.js';
+import { computeDgComparison, DAILY_RUN_LIMIT } from './dg-session.js';
 import { renderPage } from '../router.js';
 
 // Salva o carrinho atual como uma rota nomeada, reutilizável (sem data fixa) — reaproveita a
@@ -80,10 +80,16 @@ export function computeRouteComparison() {
     let missingDataCount = 0;
     const cartItems = [];
 
+    let estimatedTimeMs = 0;
+    let hasTimeData = true;
+
     route.items.forEach(it => {
       const stat = dgStatsById[it.dungeonId];
       if (stat && stat.alzPerRun != null) expectedAlz += stat.alzPerRun * it.repetitions;
       else missingDataCount++;
+
+      if (stat && stat.msPerRun != null) estimatedTimeMs += stat.msPerRun * it.repetitions;
+      else hasTimeData = false;
 
       const cartItem = buildCartItem(it.dungeonId, it.repetitions);
       if (cartItem) cartItems.push(cartItem);
@@ -98,6 +104,77 @@ export function computeRouteComparison() {
       expectedAlz,
       cost,
       profit: expectedAlz - cost,
+      // Só confiável se TODA DG da rota tem tempo/run conhecido — uma estimativa parcial
+      // subestimaria o tempo real (ver suggestRouteForTime, que depende disso pra não sugerir
+      // uma rota "rápida" que na verdade só parece rápida por faltar dado de uma DG).
+      estimatedTimeMs: hasTimeData ? estimatedTimeMs : null,
+      hasTimeData,
     };
   }).sort((a, b) => b.profit - a.profit);
+}
+
+// "Hoje tenho N horas, qual rota eu faço?" — primeiro tenta achar a rota SALVA de maior lucro
+// que cabe no tempo (sem estourar); se nenhuma rota salva couber (ou não existir nenhuma ainda),
+// monta um encaixe novo na hora, gulosamente pela DG de melhor Alz/hora, respeitando o limite
+// diário de runs por DG — sobra de tempo de uma DG que bateu o limite passa pra próxima melhor.
+export function suggestRouteForTime(hoursAvailable) {
+  const budgetMs = hoursAvailable * 3600000;
+  if (!(budgetMs > 0)) return null;
+
+  const savedFitting = computeRouteComparison().filter(r => r.hasTimeData && r.estimatedTimeMs <= budgetMs);
+  if (savedFitting.length) return { type: 'saved', ...savedFitting[0] };
+
+  const dgStats = computeDgComparison();
+  const candidates = [...dgStats].filter(d => d.msPerRun != null && d.alzPerHour != null).sort((a, b) => b.alzPerHour - a.alzPerHour);
+
+  let remainingMs = budgetMs;
+  const items = [];
+  candidates.forEach(dg => {
+    if (remainingMs <= 0) return;
+    const runs = Math.min(Math.floor(remainingMs / dg.msPerRun), DAILY_RUN_LIMIT);
+    if (runs <= 0) return;
+    items.push({ dungeonId: dg.dungeonId, dungeonName: dg.dungeonName, repetitions: runs });
+    remainingMs -= runs * dg.msPerRun;
+  });
+
+  if (!items.length) return { type: 'none' };
+
+  const expectedAlz = items.reduce((sum, it) => {
+    const stat = dgStats.find(d => d.dungeonId === it.dungeonId);
+    return sum + (stat?.alzPerRun ?? 0) * it.repetitions;
+  }, 0);
+  const cartItems = items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
+  const cost = calculateRushCartCost(cartItems).total;
+
+  return {
+    type: 'generated',
+    items,
+    dgCount: items.length,
+    expectedAlz,
+    cost,
+    profit: expectedAlz - cost,
+    estimatedTimeMs: budgetMs - remainingMs,
+  };
+}
+
+export function setTimeAvailableHours(value) {
+  AppState.timeAvailableHours = value;
+  renderPage();
+}
+
+// Aplica a sugestão (salva ou recém-montada) no carrinho de hoje — recalcula na hora em vez de
+// guardar estado à parte, pra nunca aplicar algo diferente do que está na tela.
+export function applySuggestedRoute() {
+  const hours = Number(AppState.timeAvailableHours) || 0;
+  const suggestion = suggestRouteForTime(hours);
+  if (!suggestion || suggestion.type === 'none') return;
+
+  if (suggestion.type === 'saved') {
+    applyRushRoute(suggestion.id);
+    return;
+  }
+
+  const cartItems = suggestion.items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
+  AppState.rushCart = cartItems;
+  renderPage();
 }

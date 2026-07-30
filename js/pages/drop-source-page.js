@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { findDropSources, getKnownSessionItemNames } from '../features/drop-source.js';
+import { DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { formatDateBR } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 
@@ -59,11 +60,6 @@ function formatAvgPerRun(rate) {
   const high = Math.ceil(rate);
   return low === high ? `≈${low} por run` : `≈${low} a ${high} por run`;
 }
-
-// Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
-// só pra dar uma noção de prazo, não considera reset (ver "Vale a pena resetar?" em Sessões de
-// farme pra essa conta à parte).
-const DAILY_RUN_LIMIT = 20;
 
 export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';

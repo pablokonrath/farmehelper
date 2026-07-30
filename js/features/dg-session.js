@@ -9,6 +9,10 @@ import { renderPage } from '../router.js';
 
 const MAX_DG_SESSIONS = 300;
 
+// Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
+// em qualquer conta "quantos dias" ou "quanto cabe hoje" pelo app.
+export const DAILY_RUN_LIMIT = 20;
+
 // Drops do LOG (não manuais) que caíram na janela [startAt, endAt]. A atribuição é por horário:
 // game e navegador rodam na mesma máquina, então o timestamp do log bate com o relógio real.
 function sessionDrops(startAt, endAt) {
@@ -197,6 +201,9 @@ export function computeDgComparison() {
       durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
       alzPerHour: a.activeMs > 60000 ? a.totalAlz / (a.activeMs / 3600000) : null,
       alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
+      // Tempo médio por run = tempo ativo somado ÷ runs somadas — mesma ideia do Alz/run, sem
+      // precisar de nenhum campo novo (usado pra sugerir rota pelo tempo disponível do jogador).
+      msPerRun: a.runs > 0 ? a.activeMs / a.runs : null,
     }))
     // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide
     // onde gastar as entradas é o rendimento por run (quem não tem runs informadas vai pro fim).

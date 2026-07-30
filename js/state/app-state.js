@@ -117,6 +117,9 @@ export const AppState = {
   // Rotas de DGs reutilizáveis (molde de rush, sem data fixa) — [{id, name, items: [{dungeonId,
   // repetitions}]}]. Ver rush-routes.js.
   rushRoutes: [],
+  // Calculadora "quanto tempo eu tenho hoje" em Sessões de farme — puramente client-side, não
+  // persiste (mesmo espírito de dropSourceTargetQty).
+  timeAvailableHours: '',
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
   currentPage: 'overview',

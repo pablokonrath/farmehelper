@@ -1,8 +1,8 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { getItemPrice } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
-import { computeRouteComparison } from '../features/rush-routes.js';
+import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -96,6 +96,8 @@ export function renderSessionsPage() {
   const active = getActiveSessionSummary();
   const comparison = computeDgComparison();
   const routeComparison = computeRouteComparison();
+  const timeAvailableHours = Number(AppState.timeAvailableHours) || 0;
+  const timeSuggestion = timeAvailableHours > 0 ? suggestRouteForTime(timeAvailableHours) : null;
   const today = todayISODate();
   const historyDate = AppState.sessionsHistoryDate || today;
   const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
@@ -172,6 +174,36 @@ export function renderSessionsPage() {
   </tbody></table>
 </div>`;
 
+  const timeSuggestionCard = `
+<div class="card card-featured">
+  <div class="ctitle"><i class="ti ti-clock" style="color:var(--gold)"></i>Quanto tempo você tem hoje?</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Sugere a rota salva de maior lucro que cabe no tempo (tempo/run vem da média real das suas sessões). Se nenhuma rota salva couber, monta um encaixe novo pelas DGs de melhor Alz/hora, respeitando o limite de ${DAILY_RUN_LIMIT} runs/dia por DG.</div>
+  <div class="row" style="margin-bottom:14px;align-items:flex-end">
+    <div style="width:140px"><label class="lbl">Horas disponíveis</label><input class="inp" id="timeAvailableHoursInput" type="number" min="0" step="0.5" placeholder="ex: 3" value="${AppState.timeAvailableHours || ''}" onchange="setTimeAvailableHours(this.value)"></div>
+  </div>
+  ${!timeAvailableHours ? '' : !timeSuggestion || timeSuggestion.type === 'none'
+    ? '<div class="empty">Ainda não há DG com runs e tempo suficientes farmados pra sugerir algo pro seu tempo.</div>'
+    : timeSuggestion.type === 'saved'
+      ? `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Rota salva que cabe no seu tempo:</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="font-weight:700;font-size:15px;color:var(--gold)">${esc(timeSuggestion.name)}</div>
+            <button class="btn btn-p btn-xs" onclick="applySuggestedRoute()"><i class="ti ti-player-play"></i>Aplicar no carrinho</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">Tempo estimado: <strong style="color:var(--txt)">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
+        </div>`
+      : `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Nenhuma rota salva coube no tempo — encaixe novo montado pelas DGs de melhor Alz/hora:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            ${timeSuggestion.items.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}</span>`).join('')}
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <div style="font-size:12px;color:var(--muted)">Tempo estimado: <strong style="color:var(--txt)">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
+            <button class="btn btn-p btn-xs" onclick="applySuggestedRoute()"><i class="ti ti-player-play"></i>Aplicar no carrinho</button>
+          </div>
+        </div>`}
+</div>`;
+
   const historyCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de sessões</div>
@@ -241,6 +273,7 @@ ${nowFarmingCard}
 ${renderRushProgressCard()}
 ${comparisonCard}
 ${routeComparisonCard}
+${timeSuggestionCard}
 ${resetCard}
 ${historyCard}`;
 }
