@@ -1,8 +1,29 @@
 import { AppState } from '../state/app-state.js';
 import { saveRushRoutes } from '../state/persistence.js';
 import { buildCartItem, calculateRushCartCost } from './rush-cart.js';
-import { computeDgComparison, DAILY_RUN_LIMIT } from './dg-session.js';
+import { computeDgComparison, computeResetWorth, DAILY_RUN_LIMIT } from './dg-session.js';
 import { renderPage } from '../router.js';
+
+// Custo extra (em Alz) de rodar uma DG além do limite diário de ${DAILY_RUN_LIMIT}, usando reset
+// por gemas — mesma conta de "Vale a pena resetar?" em Sessões de farme, só que amortizada pra
+// quantas repetições passaram do limite. Sem valor de gema configurado (AppState.resetConfig),
+// devolve 0 — não dá pra estimar sem esse dado, então trata como se não fosse resetar.
+function extraResetCostAlz(repetitions) {
+  const param = buildResetParamForRepetitions(repetitions);
+  return param ? param.qty * param.price : 0;
+}
+
+// Monta o { used, qty, price } que buildCartItem espera, pras repetições que passam do limite
+// diário — mesma amortização usada em extraResetCostAlz, só que no formato que o carrinho
+// entende, pra o custo aplicado no carrinho bater com o estimado na sugestão/comparativo.
+function buildResetParamForRepetitions(repetitions) {
+  const cfg = AppState.resetConfig;
+  const extraRuns = Math.max(0, repetitions - DAILY_RUN_LIMIT);
+  if (!(cfg.gemValueAlz > 0) || extraRuns <= 0) return null;
+  const runsPerReset = Math.max(1, cfg.runsPerReset || 1);
+  const resetBatches = Math.ceil(extraRuns / runsPerReset);
+  return { used: true, qty: resetBatches * (cfg.resetCostGems || 0), price: cfg.gemValueAlz };
+}
 
 // Salva o carrinho atual como uma rota nomeada, reutilizável (sem data fixa) — reaproveita a
 // mesma UI de montar carrinho que já existe, só troca "salvar rush do dia" por "salvar como
@@ -37,7 +58,7 @@ export function applyRushRoute(routeId) {
   const route = AppState.rushRoutes.find(r => r.id === routeId);
   if (!route) return;
 
-  const cartItems = route.items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
+  const cartItems = route.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
   const skipped = route.items.length - cartItems.length;
 
   AppState.rushCart = cartItems;
@@ -82,6 +103,8 @@ export function computeRouteComparison() {
 
     let estimatedTimeMs = 0;
     let hasTimeData = true;
+    let resetCost = 0;
+    let needsReset = false;
 
     route.items.forEach(it => {
       const stat = dgStatsById[it.dungeonId];
@@ -91,11 +114,14 @@ export function computeRouteComparison() {
       if (stat && stat.msPerRun != null) estimatedTimeMs += stat.msPerRun * it.repetitions;
       else hasTimeData = false;
 
+      const extra = extraResetCostAlz(it.repetitions);
+      if (extra > 0) { resetCost += extra; needsReset = true; }
+
       const cartItem = buildCartItem(it.dungeonId, it.repetitions);
       if (cartItem) cartItems.push(cartItem);
     });
 
-    const cost = calculateRushCartCost(cartItems).total;
+    const cost = calculateRushCartCost(cartItems).total + resetCost;
     return {
       id: route.id,
       name: route.name,
@@ -103,6 +129,7 @@ export function computeRouteComparison() {
       missingDataCount,
       expectedAlz,
       cost,
+      needsReset,
       profit: expectedAlz - cost,
       // Só confiável se TODA DG da rota tem tempo/run conhecido — uma estimativa parcial
       // subestimaria o tempo real (ver suggestRouteForTime, que depende disso pra não sugerir
@@ -125,15 +152,26 @@ export function suggestRouteForTime(hoursAvailable) {
   if (savedFitting.length) return { type: 'saved', ...savedFitting[0] };
 
   const dgStats = computeDgComparison();
+  const resetWorth = computeResetWorth();
+  const worthResetByDgName = {};
+  resetWorth.rows.forEach(r => { worthResetByDgName[r.dungeonName] = r.worth; });
+
   const candidates = [...dgStats].filter(d => d.msPerRun != null && d.alzPerHour != null).sort((a, b) => b.alzPerHour - a.alzPerHour);
 
   let remainingMs = budgetMs;
   const items = [];
+  let anyReset = false;
   candidates.forEach(dg => {
     if (remainingMs <= 0) return;
-    const runs = Math.min(Math.floor(remainingMs / dg.msPerRun), DAILY_RUN_LIMIT);
+    // DG onde resetar compensa (ver "Vale a pena resetar?") não fica travada no limite diário —
+    // sobra de tempo só passa pra próxima DG quando esta já não vale mais a pena resetar (ou o
+    // valor da gema não foi configurado, aí resetWorth nem calcula nada).
+    const canExceedCap = resetWorth.gemValueSet && worthResetByDgName[dg.dungeonName];
+    const cap = canExceedCap ? Infinity : DAILY_RUN_LIMIT;
+    const runs = Math.min(Math.floor(remainingMs / dg.msPerRun), cap);
     if (runs <= 0) return;
-    items.push({ dungeonId: dg.dungeonId, dungeonName: dg.dungeonName, repetitions: runs });
+    if (runs > DAILY_RUN_LIMIT) anyReset = true;
+    items.push({ dungeonId: dg.dungeonId, dungeonName: dg.dungeonName, repetitions: runs, usedReset: runs > DAILY_RUN_LIMIT });
     remainingMs -= runs * dg.msPerRun;
   });
 
@@ -144,7 +182,8 @@ export function suggestRouteForTime(hoursAvailable) {
     return sum + (stat?.alzPerRun ?? 0) * it.repetitions;
   }, 0);
   const cartItems = items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
-  const cost = calculateRushCartCost(cartItems).total;
+  const resetCost = items.reduce((sum, it) => sum + extraResetCostAlz(it.repetitions), 0);
+  const cost = calculateRushCartCost(cartItems).total + resetCost;
 
   return {
     type: 'generated',
@@ -152,6 +191,7 @@ export function suggestRouteForTime(hoursAvailable) {
     dgCount: items.length,
     expectedAlz,
     cost,
+    needsReset: anyReset,
     profit: expectedAlz - cost,
     estimatedTimeMs: budgetMs - remainingMs,
   };
@@ -174,7 +214,7 @@ export function applySuggestedRoute() {
     return;
   }
 
-  const cartItems = suggestion.items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
+  const cartItems = suggestion.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
   AppState.rushCart = cartItems;
   renderPage();
 }
