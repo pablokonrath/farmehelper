@@ -38,6 +38,11 @@ export function startDgSession(dungeonId, runMinutes) {
   // que ligamos, pra desligar apenas o que ligamos ao encerrar. Fica no registro da sessão ativa
   // (persistido no app_settings), então sobrevive a um reload no meio da sessão.
   const autoWatchdog = !AppState.alertSettings.watchdogEnabled;
+  // Se essa DG faz parte da última rota aplicada no carrinho, a sessão herda o rótulo da rota —
+  // farme "de rota" fica separado de farme avulso no histórico (ver Sessões de farme). DG que
+  // não está em nenhuma rota aplicada (ou nenhuma rota foi aplicada ainda) fica sem rótulo.
+  const appliedRoute = AppState.lastAppliedRouteId ? AppState.rushRoutes.find(r => r.id === AppState.lastAppliedRouteId) : null;
+  const routeMatch = appliedRoute?.items.some(it => it.dungeonId === dungeonId) ? appliedRoute : null;
   // runMinutes é opcional: se informado, o ticker (startDgSessionTicker) deriva "Runs feitas"
   // sozinho a partir do tempo ATIVO de farme ÷ tempo por run, em vez de depender do jogador
   // lembrar de preencher na mão. runsManuallySet vira true assim que o jogador editar o campo
@@ -45,6 +50,8 @@ export function startDgSession(dungeonId, runMinutes) {
   AppState.activeDgSession = {
     dungeonId: dg.id,
     dungeonName: dg.name,
+    routeId: routeMatch?.id || null,
+    routeName: routeMatch?.name || null,
     startAt: Date.now(),
     runs: 0,
     runMinutes: Math.max(0, parseFloat(String(runMinutes).replace(',', '.')) || 0),
@@ -154,6 +161,8 @@ export function endDgSession() {
   AppState.dgSessions.push({
     dungeonId: s.dungeonId,
     dungeonName: s.dungeonName,
+    routeId: s.routeId || null,
+    routeName: s.routeName || null,
     date: drops[0]?.date || todayISODate(),
     startAt: s.startAt,
     endAt,

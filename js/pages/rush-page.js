@@ -1,6 +1,7 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
-import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput } from '../utils/formatting.js';
+import { computeRouteComparison } from '../features/rush-routes.js';
+import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
 import { esc } from '../utils/escape.js';
@@ -52,6 +53,9 @@ export function cancelEditingDungeon() {
 
 export function renderRushPage() {
   const cost = calculateRushCartCost();
+  const editingRoute = AppState.editingRouteId ? AppState.rushRoutes.find(r => r.id === AppState.editingRouteId) : null;
+  const routeTimeById = {};
+  computeRouteComparison().forEach(r => { routeTimeById[r.id] = r; });
 
   return `
 <div class="pg-title"><i class="ti ti-swords" style="color:var(--acc)"></i>DGs de rush diário</div>
@@ -192,9 +196,11 @@ export function renderRushPage() {
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}</div>
   <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>${AppState.rushHistory[AppState.rushCartDate] ? 'Atualizar rush do dia' : 'Salvar rush do dia'}</button></div>
-  ${AppState.rushCart.length ? `<div class="row" style="margin-bottom:12px">
-    <div style="flex:1"><input class="inp" id="newRushRouteName" placeholder="Nome da rota (ex: Iniciante, Foco Alz...)" onkeydown="if(event.key==='Enter')createRushRouteFromCart()"></div>
-    <button class="btn btn-d" onclick="createRushRouteFromCart()" title="Salva as DGs e repetições atuais como um molde reutilizável, sem data fixa"><i class="ti ti-route"></i>Salvar como rota</button>
+  ${AppState.rushCart.length ? `
+  ${editingRoute ? `<div style="font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-edit"></i> Editando a rota <strong>${esc(editingRoute.name)}</strong> — salvar abaixo sobrescreve ela (não cria outra). <a href="#" onclick="cancelEditingRushRoute();return false" style="color:var(--gold);text-decoration:underline">Cancelar edição</a></div>` : ''}
+  <div class="row" style="margin-bottom:12px">
+    <div style="flex:1"><input class="inp" id="newRushRouteName" placeholder="Nome da rota (ex: Iniciante, Foco Alz...)" value="${editingRoute ? esc(editingRoute.name) : ''}" onkeydown="if(event.key==='Enter')createRushRouteFromCart()"></div>
+    <button class="btn btn-d" onclick="createRushRouteFromCart()" title="${editingRoute ? 'Sobrescreve a rota que está sendo editada' : 'Salva as DGs e repetições atuais como um molde reutilizável, sem data fixa'}"><i class="ti ti-route"></i>${editingRoute ? 'Salvar alterações da rota' : 'Salvar como rota'}</button>
   </div>` : ''}
   ${AppState.rushHistory[AppState.rushCartDate] ? `<div style="font-size:12px;color:var(--acc);background:var(--acc-bg,rgba(34,211,238,.08));border:1px solid var(--acc-border,rgba(34,211,238,.3));border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-info-circle"></i> Este dia (${formatDateBR(AppState.rushCartDate)}) já tem um rush salvo. Ao salvar, ele é <strong>atualizado</strong> com o carrinho atual — não cria outro nem duplica.</div>` : ''}
   ${!AppState.rushCart.length ? '<div class="empty">Nenhuma DG adicionada. Escolha uma DG acima e clique em Adicionar.</div>' : `
@@ -257,16 +263,21 @@ export function renderRushPage() {
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Minhas rotas</div></div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Molde reutilizável de DGs + repetições, sem data fixa — monte o carrinho acima e clique "Salvar como rota" pra criar uma. Aplicar carrega no carrinho com os preços de hoje. Compare o lucro de cada rota em Sessões de farme.</div>
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
-  <table><thead><tr><th>Rota</th><th>DGs</th><th style="width:120px">Ações</th></tr></thead><tbody>
-  ${AppState.rushRoutes.map(route => `<tr>
+  <table><thead><tr><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th style="width:150px">Ações</th></tr></thead><tbody>
+  ${AppState.rushRoutes.map(route => {
+    const stats = routeTimeById[route.id];
+    return `<tr>
     <td style="font-weight:500">${esc(route.name)}</td>
     <td>${route.items.length} DG${route.items.length > 1 ? 's' : ''}</td>
+    <td>${stats?.hasTimeData ? formatDuration(stats.estimatedTimeMs) : '<span style="color:var(--muted)" title="Alguma DG desta rota ainda não tem tempo/run farmado o suficiente">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-d btn-xs" onclick="applyRushRoute('${route.id}')" title="Carregar no carrinho de hoje"><i class="ti ti-player-play"></i></button>
-      <button class="btn btn-d btn-xs" onclick="renameRushRoute('${route.id}')" title="Renomear"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-d btn-xs" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
+      <button class="btn btn-d btn-xs" onclick="renameRushRoute('${route.id}')" title="Só renomear"><i class="ti ti-tag"></i></button>
       <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushRoute('${route.id}')" title="Excluir"><i class="ti ti-trash"></i></button>
     </div></td>
-  </tr>`).join('')}
+  </tr>`;
+  }).join('')}
   </tbody></table>`}
 </div>`;
 }

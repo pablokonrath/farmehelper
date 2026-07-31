@@ -619,6 +619,24 @@ Duas coisas novas, pessoais por conta (nada compartilhado):
   melhor pra pior. DG da rota sem sessão farmada ainda não entra no retorno (sinalizado com um
   aviso), pra não estimar lucro de algo sem dado nenhum.
 
+## Editar rota + agrupar sessões por rota no histórico
+
+Se seu banco já rodou `sql/migrate_rush_routes.sql`, rode agora
+`sql/migrate_dg_session_routes.sql` no phpMyAdmin (aba SQL) — adiciona `route_id`/`route_name`
+em `dg_sessions`. Instalação nova do zero não precisa — já vem no `sql/schema.sql`. **Não é
+urgente**: `api/dg-sessions.php` funciona normalmente mesmo sem rodar essa migração (cai
+sozinho pra um modo sem essas colunas), só o agrupamento por rota no histórico não persiste
+entre sessões de navegador até a migração rodar.
+
+- **Editar rota**: além de aplicar/renomear/excluir, agora dá pra editar de verdade (ícone de
+  lápis em "Minhas rotas") — carrega a rota no carrinho, você ajusta as DGs/repetições, e
+  "Salvar alterações da rota" sobrescreve a mesma rota em vez de criar outra.
+- **Tempo estimado**: a lista de rotas agora mostra uma coluna com o tempo total estimado
+  (mesma conta usada na sugestão por tempo em Sessões de farme).
+- **Agrupamento por rota no histórico**: sessão iniciada numa DG que fazia parte da última rota
+  aplicada no carrinho herda o rótulo dela — o histórico em Sessões de farme agrupa essas
+  sessões sob o nome da rota, com o farme avulso (fora de qualquer rota) junto em "Avulsas".
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira

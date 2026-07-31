@@ -109,6 +109,11 @@ CREATE TABLE IF NOT EXISTS dg_sessions (
   best_item_name VARCHAR(255) NULL,
   best_item_price BIGINT NULL,
   items MEDIUMTEXT NULL,
+  -- Rota aplicada no carrinho quando a sessão foi iniciada (ver applyRushRoute em
+  -- rush-routes.js), se a DG farmada fazia parte dela — NULL pra farme avulso. Usado só pra
+  -- agrupar o histórico em Sessões de farme, não afeta nenhum cálculo.
+  route_id VARCHAR(50) NULL,
+  route_name VARCHAR(100) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY user_start (user_id, start_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

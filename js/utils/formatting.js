@@ -2,6 +2,16 @@ export function formatNumber(value) {
   return Math.round(value || 0).toLocaleString('pt-BR');
 }
 
+// "2h 15min" / "45min" / "< 1min" — usado em qualquer lugar que mostra duração de sessão/rota.
+export function formatDuration(ms) {
+  const totalMin = Math.round(ms / 60000);
+  if (totalMin < 1) return '< 1min';
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m}min`;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
 // Extrai apenas os dígitos de um valor digitado em campo mascarado (Alz sempre inteiro, sem centavos).
 export function parseAlzInput(rawValue) {
   const digits = String(rawValue ?? '').replace(/\D/g, '');

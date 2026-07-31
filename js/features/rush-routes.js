@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveRushRoutes } from '../state/persistence.js';
+import { saveRushRoutes, saveLastAppliedRoute } from '../state/persistence.js';
 import { buildCartItem, calculateRushCartCost } from './rush-cart.js';
 import { computeDgComparison, computeResetWorth, DAILY_RUN_LIMIT } from './dg-session.js';
 import { renderPage } from '../router.js';
@@ -25,10 +25,9 @@ function buildResetParamForRepetitions(repetitions) {
   return { used: true, qty: resetBatches * (cfg.resetCostGems || 0), price: cfg.gemValueAlz };
 }
 
-// Salva o carrinho atual como uma rota nomeada, reutilizável (sem data fixa) — reaproveita a
-// mesma UI de montar carrinho que já existe, só troca "salvar rush do dia" por "salvar como
-// rota". Guarda só dungeonId + repetições (nunca preço), pra aplicar depois sempre com os
-// valores atuais da DG (ver applyRushRoute).
+// Salva o carrinho atual como rota — nova (nome digitado) ou sobrescrevendo a que estiver sendo
+// editada (ver startEditingRushRoute/AppState.editingRouteId). Guarda só dungeonId + repetições
+// (nunca preço), pra aplicar depois sempre com os valores atuais da DG (ver applyRushRoute).
 export function createRushRouteFromCart() {
   const input = document.getElementById('newRushRouteName');
   const name = input?.value.trim();
@@ -45,7 +44,14 @@ export function createRushRouteFromCart() {
 
   if (!items.length) return;
 
-  AppState.rushRoutes.push({ id: 'route' + Date.now(), name, items });
+  const editing = AppState.editingRouteId ? AppState.rushRoutes.find(r => r.id === AppState.editingRouteId) : null;
+  if (editing) {
+    editing.name = name;
+    editing.items = items;
+    AppState.editingRouteId = null;
+  } else {
+    AppState.rushRoutes.push({ id: 'route' + Date.now(), name, items });
+  }
   saveRushRoutes().catch(err => console.error('Falha ao salvar rota:', err));
   input.value = '';
   renderPage();
@@ -53,7 +59,9 @@ export function createRushRouteFromCart() {
 
 // Recarrega os itens de uma rota salva no carrinho, com os preços/custos ATUAIS de cada DG —
 // uma rota nunca guarda preço, só a composição (DG + repetições). DG removida desde que a rota
-// foi criada é ignorada (buildCartItem devolve null pra ela).
+// foi criada é ignorada (buildCartItem devolve null pra ela). Marca essa rota como "a de hoje" —
+// sessão iniciada numa DG dela entra no histórico já rotulada com o nome da rota (ver
+// startDgSession em dg-session.js e o agrupamento em Sessões de farme).
 export function applyRushRoute(routeId) {
   const route = AppState.rushRoutes.find(r => r.id === routeId);
   if (!route) return;
@@ -62,11 +70,31 @@ export function applyRushRoute(routeId) {
   const skipped = route.items.length - cartItems.length;
 
   AppState.rushCart = cartItems;
+  AppState.lastAppliedRouteId = route.id;
+  AppState.lastAppliedRouteName = route.name;
+  saveLastAppliedRoute().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   renderPage();
 
   if (skipped > 0) {
     alert(`${skipped} DG${skipped > 1 ? 's' : ''} desta rota não existe${skipped > 1 ? 'm' : ''} mais no catálogo e foi${skipped > 1 ? 'ram' : ''} ignorada${skipped > 1 ? 's' : ''}.`);
   }
+}
+
+// Carrega a rota no carrinho pra EDIÇÃO — igual applyRushRoute, mas marca editingRouteId, então
+// o próximo "salvar" sobrescreve esta rota em vez de criar uma nova (e não mexe em
+// lastAppliedRouteId, editar não é "aplicar pra farmar hoje").
+export function startEditingRushRoute(routeId) {
+  const route = AppState.rushRoutes.find(r => r.id === routeId);
+  if (!route) return;
+  AppState.rushCart = route.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
+  AppState.editingRouteId = route.id;
+  renderPage();
+  document.getElementById('newRushRouteName')?.focus();
+}
+
+export function cancelEditingRushRoute() {
+  AppState.editingRouteId = null;
+  renderPage();
 }
 
 export function renameRushRoute(routeId) {
@@ -83,6 +111,12 @@ export function deleteRushRoute(routeId) {
   const route = AppState.rushRoutes.find(r => r.id === routeId);
   if (!route || !confirm(`Excluir a rota "${route.name}"?`)) return;
   AppState.rushRoutes = AppState.rushRoutes.filter(r => r.id !== routeId);
+  if (AppState.editingRouteId === routeId) AppState.editingRouteId = null;
+  if (AppState.lastAppliedRouteId === routeId) {
+    AppState.lastAppliedRouteId = null;
+    AppState.lastAppliedRouteName = '';
+    saveLastAppliedRoute().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+  }
   saveRushRoutes().catch(err => console.error('Falha ao salvar rota:', err));
   renderPage();
 }

@@ -3,7 +3,7 @@ import { getActiveSessionSummary, computeDgComparison, computeResetWorth, comput
 import { getItemPrice } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
-import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
+import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
@@ -42,15 +42,6 @@ function renderRushProgressCard() {
     </div>`).join('')}
   </div>
 </div>`;
-}
-
-function formatDuration(ms) {
-  const totalMin = Math.round(ms / 60000);
-  if (totalMin < 1) return '< 1min';
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h <= 0) return `${m}min`;
-  return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
 function timeHM(ms) {
@@ -92,6 +83,62 @@ function sessionItemsRow(s) {
   </td></tr>`;
 }
 
+// Uma linha do histórico (extraído pra reaproveitar dentro dos grupos por rota abaixo).
+function sessionHistoryRow(s) {
+  const expanded = !!AppState.expandedDgSessions[s.startAt];
+  const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
+  return `<tr>
+        <td>${formatDateBR(s.date)}</td>
+        <td><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
+          ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
+          ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === s.dungeonId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
+        </select></div></td>
+        <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
+        <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
+        <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
+        <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
+        <td style="color:${getAlzTierColor(s.totalAlz)};font-weight:600" title="${formatNumber(s.totalAlz)} Alz">${formatAlzGamer(s.totalAlz)}</td>
+        <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(s.totalAlz / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
+        <td><button title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
+      </tr>${expanded ? sessionItemsRow(s) : ''}`;
+}
+
+function sessionHistoryGroupHeader(label, sessions, isRoute) {
+  const totalAlz = sessions.reduce((sum, s) => sum + s.totalAlz, 0);
+  return `<tr><td colspan="9" style="background:${isRoute ? 'var(--gold-bg)' : 'var(--surf2)'};padding:7px 16px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:${isRoute ? 'var(--gold)' : 'var(--muted)'}">
+    ${isRoute ? '<i class="ti ti-route"></i> ' : ''}${esc(label)} <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.85">— ${sessions.length} sessão${sessions.length > 1 ? 'ões' : ''}${totalAlz ? ', ' + formatAlzGamer(totalAlz) : ''}</span>
+  </td></tr>`;
+}
+
+// Agrupa o histórico do dia por rota — sessão de uma DG que fazia parte da rota aplicada no
+// carrinho quando você iniciou (ver startDgSession em dg-session.js) fica junto sob o nome da
+// rota; o resto (farme avulso, fora de qualquer rota) fica agrupado em "Avulsas" ao final. Só
+// agrupa quando há pelo menos uma sessão de rota no dia — dia 100% avulso continua uma lista
+// simples, sem cabeçalho redundante.
+function renderSessionHistoryGroups(history) {
+  const hasAnyRoute = history.some(s => s.routeName);
+  if (!hasAnyRoute) return history.map(sessionHistoryRow).join('');
+
+  const byRouteName = new Map();
+  const avulsas = [];
+  history.forEach(s => {
+    if (!s.routeName) { avulsas.push(s); return; }
+    if (!byRouteName.has(s.routeName)) byRouteName.set(s.routeName, []);
+    byRouteName.get(s.routeName).push(s);
+  });
+
+  let html = '';
+  byRouteName.forEach((sessions, routeName) => {
+    html += sessionHistoryGroupHeader(routeName, sessions, true);
+    html += sessions.map(sessionHistoryRow).join('');
+  });
+  if (avulsas.length) {
+    html += sessionHistoryGroupHeader('Avulsas (fora de rota)', avulsas, false);
+    html += avulsas.map(sessionHistoryRow).join('');
+  }
+  return html;
+}
+
 export function renderSessionsPage() {
   const active = getActiveSessionSummary();
   const comparison = computeDgComparison();
@@ -111,7 +158,7 @@ export function renderSessionsPage() {
         <div style="display:flex;align-items:center;gap:10px">
           ${dgIcon(AppState.activeDgSession.dungeonId, 34)}
           <div>
-          <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}</div>
+          <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}${AppState.activeDgSession.routeName ? ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(AppState.activeDgSession.routeName)}</span>` : ''}</div>
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
@@ -212,28 +259,11 @@ export function renderSessionsPage() {
       ${renderDateInputBR({ id: 'sessHistDate', value: historyDate, onChange: 'setSessionsHistoryDate' })}
     </div>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mostra só o dia selecionado. A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mostra só o dia selecionado, agrupado por rota quando você iniciou a sessão com uma aplicada no carrinho (farme avulso fica junto em "Avulsas"). A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens.</div>
   ${!history.length
     ? `<div class="empty">Nenhuma sessão de DG encerrada em ${formatDateBR(historyDate)}.</div>`
     : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th></tr></thead><tbody>
-      ${history.map(s => {
-        const expanded = !!AppState.expandedDgSessions[s.startAt];
-        const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
-        return `<tr>
-        <td>${formatDateBR(s.date)}</td>
-        <td><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
-          ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
-          ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === s.dungeonId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
-        </select></div></td>
-        <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
-        <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
-        <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
-        <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
-        <td style="color:${getAlzTierColor(s.totalAlz)};font-weight:600" title="${formatNumber(s.totalAlz)} Alz">${formatAlzGamer(s.totalAlz)}</td>
-        <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(s.totalAlz / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
-        <td><button title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
-      </tr>${expanded ? sessionItemsRow(s) : ''}`;
-      }).join('')}
+      ${renderSessionHistoryGroups(history)}
       </tbody></table>`}
 </div>`;
 

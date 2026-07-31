@@ -71,7 +71,7 @@ import {
   setRushCreditMarketPrice,
   setRushCreditCraftCost,
 } from './features/rush-cart.js';
-import { createRushRouteFromCart, applyRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute } from './features/rush-routes.js';
+import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute } from './features/rush-routes.js';
 import { exportDropsToCSV } from './features/export.js';
 import { maskDateInputBR, parseDateInputBR, maskAlzInputLive, maskTimeInputBR } from './utils/formatting.js';
 
@@ -144,6 +144,8 @@ Object.assign(window, {
   duplicateSavedRush,
   createRushRouteFromCart,
   applyRushRoute,
+  startEditingRushRoute,
+  cancelEditingRushRoute,
   renameRushRoute,
   deleteRushRoute,
   setTimeAvailableHours,

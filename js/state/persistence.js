@@ -123,6 +123,8 @@ export async function loadPersistedState() {
   const legacyDgSessions = appSettings.dgSessions ?? [];
   AppState.dgSessions = dgSessionsRows.length ? dgSessionsRows : legacyDgSessions;
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
+  AppState.lastAppliedRouteId = appSettings.lastAppliedRouteId ?? null;
+  AppState.lastAppliedRouteName = appSettings.lastAppliedRouteName ?? '';
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -186,6 +188,10 @@ export function saveDgSessions() {
 
 export function saveActiveDgSession() {
   return put('app-settings.php', { activeDgSession: AppState.activeDgSession });
+}
+
+export function saveLastAppliedRoute() {
+  return put('app-settings.php', { lastAppliedRouteId: AppState.lastAppliedRouteId, lastAppliedRouteName: AppState.lastAppliedRouteName });
 }
 
 export function saveResetConfig() {
