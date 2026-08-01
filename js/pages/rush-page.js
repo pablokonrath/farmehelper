@@ -65,12 +65,17 @@ export function renderRushPage() {
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Minhas rotas</div></div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. Compare o lucro de cada rota em Sessões de farme.</div>
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
-  <table><thead><tr><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th style="width:150px">Ações</th></tr></thead><tbody>
+  <table><thead><tr><th>Rota</th><th style="width:320px">DGs</th><th>Tempo estimado</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
     const stats = routeTimeById[route.id];
     return `<tr>
     <td style="font-weight:500">${esc(route.name)}</td>
-    <td>${route.items.length} DG${route.items.length > 1 ? 's' : ''}</td>
+    <td><div style="display:flex;flex-wrap:wrap;gap:4px">
+      ${route.items.map(it => {
+        const dg = AppState.dungeonList.find(d => d.id === it.dungeonId);
+        return `<span class="badge badge-muted" title="${dg ? esc(dg.name) : 'DG removida'}">${dg ? esc(dg.name) : '(DG removida)'} ×${it.repetitions}</span>`;
+      }).join('')}
+    </div></td>
     <td>${stats?.estimatedTimeMs
       ? (stats.hasTimeData
         ? formatDuration(stats.estimatedTimeMs)
