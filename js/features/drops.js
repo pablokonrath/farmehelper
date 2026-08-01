@@ -16,6 +16,7 @@ export function getItemCategory(itemName) {
 const EXCLUDED_ITEM_KEYWORDS = [
   'greva', 'manopla', 'armadura', 'elmo', 'punho', 'luva', 'quimono', 'traje', 'coturno',
   'sapatilha', 'mascara', 'visor', 'montante', 'espada', 'katana', 'orb', 'cristal', 'disco',
+  'chakram',
 ].map(kw => normalizeForSearch(kw));
 
 export function isExcludedGearItem(name) {
