@@ -649,6 +649,23 @@ só não fica desatualizado). Depende do Apache da Hostinger ter `mod_headers` a
 hospedagem compartilhada comum). Ícones/imagens não entram nessa regra — esses continuam com
 cache normal do navegador, não mudam a cada deploy.
 
+## Craft: receitas + aviso de materiais reunidos
+
+Nova página **Craft** (nav lateral). Cadastre o item que quer craftar e os materiais/quantidades
+necessárias — o sistema soma os itens das suas sessões de DG encerradas e avisa quando bater a
+meta de todos os materiais da receita, registrando no histórico da própria página. Não é controle
+de estoque de verdade (não desconta se você vender/gastar o material de outro jeito) — é só um
+checkpoint que avança sozinho a cada aviso, pra não ficar dizendo "pode craftar" pra sempre depois
+da primeira vez.
+
+Rode `sql/migrate_craft.sql` no phpMyAdmin (aba SQL) — cria as tabelas `craft_recipes` e
+`craft_alert_history`. Instalação nova do zero não precisa, já vem no `sql/schema.sql`. **Não é
+urgente pro resto do app continuar funcionando**: `api/craft-recipes.php` e
+`api/craft-alert-history.php` devolvem lista vazia se as tabelas ainda não existirem (em vez de
+quebrar o carregamento do app inteiro) — só a página Craft fica vazia até a migração rodar; nada
+salvo antes da migração persiste entre recarregamentos, então rode assim que puder depois do
+deploy.
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira

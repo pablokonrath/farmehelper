@@ -129,6 +129,12 @@ export const AppState = {
   // Rota carregada no carrinho pra EDIÇÃO (ver startEditingRushRoute) — enquanto setado, salvar
   // sobrescreve essa rota em vez de criar uma nova.
   editingRouteId: null,
+  // Receitas de craft: item final + materiais/quantidades necessárias + checkpoint de contagem
+  // (resetAt). [{id, itemName, materials: [{itemName, quantity}], resetAt}]. Ver craft.js.
+  craftRecipes: [],
+  // Histórico de "receita ficou pronta pra craftar" (cortado nos 200 mais recentes, mesmo padrão
+  // de alertHistory). [{id, timestamp, recipeName, materials: [{itemName, quantity}]}].
+  craftAlertHistory: [],
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
   currentPage: 'overview',
