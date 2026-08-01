@@ -1,0 +1,10 @@
+# Evita servir JS/CSS/HTML "velhos" do cache do navegador depois de um deploy automático (git
+# push). Sem isso, uma feature nova só aparecia de verdade depois de um hard refresh manual —
+# o app não usa build tool nem hash no nome dos arquivos, então o navegador não tinha como saber
+# sozinho que o conteúdo mudou. no-cache NÃO desliga o cache, só obriga revalidar com o servidor
+# a cada carregamento (troca por um 304 quando nada mudou, então continua rápido).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|html)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

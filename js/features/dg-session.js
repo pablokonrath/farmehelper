@@ -200,14 +200,13 @@ export function endDgSession() {
 }
 
 // Alguns drops do log já caíram sem sessão vinculada (o jogador esqueceu de clicar "Iniciar" antes
-// de entrar na DG). Sugere a janela recuperável: do fim da última sessão de hoje (ou meia-noite,
-// se ainda não farmou hoje) até agora — os drops que sobraram fora de qualquer sessão encerrada.
+// de entrar na DG). Sugere a janela recuperável: do fim da ÚLTIMA sessão já encerrada (não importa
+// o dia — se você só percebeu no dia seguinte que esqueceu ontem, ainda dá pra recuperar) até
+// agora. Sem nenhuma sessão no histórico ainda, cai em meia-noite de hoje, pra não puxar semanas
+// de log de quem nunca usou o controle de sessão.
 export function suggestForgottenSessionWindow() {
-  const today = todayISODate();
-  const todaySessions = AppState.dgSessions.filter(s => s.date === today);
-  const lastEndAt = todaySessions.length ? Math.max(...todaySessions.map(s => s.endAt || 0)) : 0;
-  const startOfToday = new Date().setHours(0, 0, 0, 0);
-  const anchor = Math.max(lastEndAt, startOfToday);
+  const lastEndAt = AppState.dgSessions.length ? Math.max(...AppState.dgSessions.map(s => s.endAt || 0)) : 0;
+  const anchor = lastEndAt || new Date().setHours(0, 0, 0, 0);
   const unclaimed = AppState.drops.filter(d => d.timestamp && d.timestamp.getTime() > anchor && !isExcludedGearItem(d.name));
   if (!unclaimed.length) return null;
   const times = unclaimed.map(d => d.timestamp.getTime()).sort((a, b) => a - b);
@@ -229,7 +228,9 @@ export function recoverForgottenSession(dungeonId, startTimeInput) {
   const suggestion = suggestForgottenSessionWindow();
   if (!dg || !suggestion) return;
   const parsedTime = parseTimeInputBR(startTimeInput);
-  const startAt = parsedTime ? new Date(`${todayISODate()}T${parsedTime}:00`).getTime() : suggestion.suggestedStart;
+  // O horário digitado à mão é só um ajuste fino dentro da janela sugerida — usa o DIA de
+  // suggestedStart, não "hoje", pra continuar certo quando a sessão esquecida foi ontem.
+  const startAt = parsedTime ? new Date(`${todayISODate(new Date(suggestion.suggestedStart))}T${parsedTime}:00`).getTime() : suggestion.suggestedStart;
   const endAt = Date.now();
   if (!(startAt < endAt)) { alert('Horário de início inválido — precisa ser antes de agora.'); return; }
 

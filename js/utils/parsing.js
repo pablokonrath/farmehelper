@@ -1,13 +1,13 @@
 export const DROP_LOG_REGEX = /\[(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})\]: Dropou: \$(\d+)#(.+)\$/;
 
-// new Date().toISOString() converte pra UTC — à noite no Brasil (UTC-3) isso já pode ser o
-// dia seguinte, fazendo "hoje" não bater com nenhum drop do log local. Usa os componentes de
-// data locais em vez disso.
-export function todayISODate() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
+// date.toISOString() converte pra UTC — à noite no Brasil (UTC-3) isso já pode ser o dia
+// seguinte, fazendo "hoje" não bater com nenhum drop do log local. Usa os componentes de data
+// locais em vez disso. Aceita uma data opcional (default agora) pra formatar qualquer momento,
+// não só "hoje" — ex: o dia real de um drop recuperado que caiu antes da meia-noite.
+export function todayISODate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
 

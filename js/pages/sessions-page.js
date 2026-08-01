@@ -142,11 +142,12 @@ function renderSessionHistoryGroups(history) {
 // Painel de "esqueci de marcar" — some se não sobrou nenhum drop fora de sessão pra recuperar.
 function forgottenSessionRecoveryPanel() {
   const suggestion = suggestForgottenSessionWindow();
+  const suggestionIsToday = suggestion && todayISODate(new Date(suggestion.suggestedStart)) === todayISODate();
   return `<div style="margin-top:12px;padding:12px;background:var(--surf2);border:1px dashed var(--border);border-radius:8px">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Usa os drops do log que já caíram sem sessão vinculada, do fim da sua última sessão de hoje (ou meia-noite, se ainda não farmou hoje) até agora. Ajuste o início se o log só passou a registrar depois que você já tinha entrado na DG.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Usa os drops do log que já caíram sem sessão vinculada, do fim da sua última sessão encerrada (mesmo que tenha sido ontem) até agora. Ajuste o início se o log só passou a registrar depois que você já tinha entrado na DG.</div>
     ${!suggestion
       ? '<div class="empty" style="padding:8px 0">Nenhum drop fora de sessão desde então — nada pra recuperar.</div>'
-      : `<div style="font-size:12px;color:var(--txt);margin-bottom:10px">${suggestion.dropCount} drop(s) encontrados, a partir de <strong>${timeHM(suggestion.suggestedStart)}</strong>.</div>
+      : `<div style="font-size:12px;color:var(--txt);margin-bottom:10px">${suggestion.dropCount} drop(s) encontrados, a partir de <strong>${suggestionIsToday ? '' : formatDateBR(todayISODate(new Date(suggestion.suggestedStart))) + ' '}${timeHM(suggestion.suggestedStart)}</strong>.</div>
       <div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que era</label>
           <select class="inp" id="recoverDgSelect">

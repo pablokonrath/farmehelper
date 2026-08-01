@@ -637,6 +637,18 @@ entre sessões de navegador até a migração rodar.
   aplicada no carrinho herda o rótulo dela — o histórico em Sessões de farme agrupa essas
   sessões sob o nome da rota, com o farme avulso (fora de qualquer rota) junto em "Avulsas".
 
+## Cache do navegador depois de um deploy
+
+O app não usa build tool nem hash no nome dos arquivos (ver convenção do projeto), então o
+navegador não tinha como saber sozinho que `js/*.js`/`css/styles.css`/`index.html` mudaram
+depois de um `git push` — quem já tinha o site aberto podia continuar rodando código velho até
+dar um hard refresh manual (Ctrl+Shift+R). O `.htaccess` na raiz resolve isso: manda
+`Cache-Control: no-cache, must-revalidate` pra esses arquivos, então o navegador sempre confere
+com o servidor antes de usar a cópia salva (troca por um 304 quando nada mudou — continua rápido,
+só não fica desatualizado). Depende do Apache da Hostinger ter `mod_headers` ativo (padrão em
+hospedagem compartilhada comum). Ícones/imagens não entram nessa regra — esses continuam com
+cache normal do navegador, não mudam a cada deploy.
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira
