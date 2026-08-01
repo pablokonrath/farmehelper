@@ -11,6 +11,19 @@ import { renderPage } from '../router.js';
 // em qualquer conta "quantos dias" ou "quanto cabe hoje" pelo app.
 export const DAILY_RUN_LIMIT = 20;
 
+// Se essa DG faz parte de alguma rota aplicada hoje (ver applyRushRoute, que agora SOMA — pode
+// ter mais de uma aplicada ao mesmo tempo), a sessão herda o rótulo dela — farme "de rota" fica
+// separado de farme avulso no histórico (ver Sessões de farme). DG que não está em nenhuma rota
+// aplicada fica sem rótulo. Quando a DG está em mais de uma rota aplicada, usa a primeira — o
+// histórico só guarda um rótulo por sessão.
+function findAppliedRouteForDungeon(dungeonId) {
+  for (const routeId of AppState.appliedRouteIds) {
+    const route = AppState.rushRoutes.find(r => r.id === routeId);
+    if (route?.items.some(it => it.dungeonId === dungeonId)) return route;
+  }
+  return null;
+}
+
 // Drops do LOG (não manuais) que caíram na janela [startAt, endAt]. A atribuição é por horário:
 // game e navegador rodam na mesma máquina, então o timestamp do log bate com o relógio real.
 // Equipamento genérico (ver isExcludedGearItem) fica de fora — não conta pra Alz da sessão (já
@@ -39,11 +52,7 @@ export function startDgSession(dungeonId, runMinutes) {
   // que ligamos, pra desligar apenas o que ligamos ao encerrar. Fica no registro da sessão ativa
   // (persistido no app_settings), então sobrevive a um reload no meio da sessão.
   const autoWatchdog = !AppState.alertSettings.watchdogEnabled;
-  // Se essa DG faz parte da última rota aplicada no carrinho, a sessão herda o rótulo da rota —
-  // farme "de rota" fica separado de farme avulso no histórico (ver Sessões de farme). DG que
-  // não está em nenhuma rota aplicada (ou nenhuma rota foi aplicada ainda) fica sem rótulo.
-  const appliedRoute = AppState.lastAppliedRouteId ? AppState.rushRoutes.find(r => r.id === AppState.lastAppliedRouteId) : null;
-  const routeMatch = appliedRoute?.items.some(it => it.dungeonId === dungeonId) ? appliedRoute : null;
+  const routeMatch = findAppliedRouteForDungeon(dungeonId);
   // runMinutes é opcional: se informado, o ticker (startDgSessionTicker) deriva "Runs feitas"
   // sozinho a partir do tempo ATIVO de farme ÷ tempo por run, em vez de depender do jogador
   // lembrar de preencher na mão. runsManuallySet vira true assim que o jogador editar o campo
@@ -104,6 +113,18 @@ export function setSessionDungeon(startAt, dungeonId) {
   if (!s || !dg) return;
   s.dungeonId = dg.id;
   s.dungeonName = dg.name;
+  saveDgSessions();
+  renderPage();
+}
+
+// Remove uma sessão errada do histórico (ex: ficou aberta por horas sem farmar de verdade,
+// inflando o tempo médio por run daquele DG pra sempre — o agregado de "Qual DG rende mais" soma
+// TODO o histórico, sem cap de quantidade, então uma sessão ruim distorce a média até ser
+// removida). Sem confirmação extra: já tem o ícone de lixeira + é uma ação isolada por linha,
+// mesmo padrão de deleteRushForDay/deleteRushRoute.
+export function deleteSession(startAt) {
+  if (!confirm('Remover esta sessão do histórico? Essa ação não pode ser desfeita.')) return;
+  AppState.dgSessions = AppState.dgSessions.filter(s => s.startAt !== startAt);
   saveDgSessions();
   renderPage();
 }
@@ -234,8 +255,7 @@ export function recoverForgottenSession(dungeonId, startTimeInput) {
   const endAt = Date.now();
   if (!(startAt < endAt)) { alert('Horário de início inválido — precisa ser antes de agora.'); return; }
 
-  const appliedRoute = AppState.lastAppliedRouteId ? AppState.rushRoutes.find(r => r.id === AppState.lastAppliedRouteId) : null;
-  const routeMatch = appliedRoute?.items.some(it => it.dungeonId === dungeonId) ? appliedRoute : null;
+  const routeMatch = findAppliedRouteForDungeon(dungeonId);
 
   AppState.dgSessions.push(buildSessionRecord({
     dungeonId: dg.id,

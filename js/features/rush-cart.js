@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
-import { saveRushHistory, saveRushCreditCraftCosts, saveLastAppliedRoute } from '../state/persistence.js';
+import { saveRushHistory, saveRushCreditCraftCosts, saveAppliedRoutes } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
@@ -117,15 +117,14 @@ export function removeDungeonFromCart(index) {
   renderPage();
 }
 
-// Esvazia o carrinho de uma vez (em vez de remover DG por DG) — junto, solta o rótulo "veio da
-// rota X" (ver cartMatchesAppliedRoute em rush-routes.js), já que um carrinho vazio não é mais
+// Esvazia o carrinho de uma vez (em vez de remover DG por DG) — junto, solta os selos de rota
+// aplicada (ver appliedRoutesToday em rush-routes.js), já que um carrinho vazio não é mais
 // nenhuma rota.
 export function clearRushCart() {
   if (!AppState.rushCart.length || !confirm('Limpar todas as DGs do carrinho de hoje?')) return;
   AppState.rushCart = [];
-  AppState.lastAppliedRouteId = null;
-  AppState.lastAppliedRouteName = '';
-  saveLastAppliedRoute().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+  AppState.appliedRouteIds = [];
+  saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   renderPage();
 }
 

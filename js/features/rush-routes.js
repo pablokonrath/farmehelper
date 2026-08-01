@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveRushRoutes, saveLastAppliedRoute } from '../state/persistence.js';
+import { saveRushRoutes, saveAppliedRoutes } from '../state/persistence.js';
 import { buildCartItem, calculateRushCartCost } from './rush-cart.js';
 import { computeDgComparison, computeResetWorth, DAILY_RUN_LIMIT } from './dg-session.js';
 import { renderPage } from '../router.js';
@@ -57,22 +57,38 @@ export function createRushRouteFromCart() {
   renderPage();
 }
 
-// Recarrega os itens de uma rota salva no carrinho, com os preços/custos ATUAIS de cada DG —
-// uma rota nunca guarda preço, só a composição (DG + repetições). DG removida desde que a rota
-// foi criada é ignorada (buildCartItem devolve null pra ela). Marca essa rota como "a de hoje" —
-// sessão iniciada numa DG dela entra no histórico já rotulada com o nome da rota (ver
-// startDgSession em dg-session.js e o agrupamento em Sessões de farme).
+// SOMA os itens de uma rota salva ao carrinho de hoje (não substitui) — dá pra combinar duas
+// rotas diferentes no mesmo dia. DG que já está no carrinho (de outra rota ou adicionada na mão)
+// tem as repetições SOMADAS em vez de duplicar a linha, e o reset é recalculado com base no total
+// combinado (pode passar o limite diário só depois de somar). Preços/custos são sempre os ATUAIS
+// de cada DG — uma rota nunca guarda preço, só a composição. DG removida desde que a rota foi
+// criada é ignorada. Marca a rota como aplicada hoje — sessão iniciada numa DG dela entra no
+// histórico já rotulada com o nome da rota (ver startDgSession em dg-session.js e o agrupamento
+// em Sessões de farme).
 export function applyRushRoute(routeId) {
   const route = AppState.rushRoutes.find(r => r.id === routeId);
   if (!route) return;
 
-  const cartItems = route.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
-  const skipped = route.items.length - cartItems.length;
+  let skipped = 0;
+  route.items.forEach(it => {
+    const dungeon = AppState.dungeonList.find(d => d.id === it.dungeonId);
+    if (!dungeon) { skipped++; return; }
 
-  AppState.rushCart = cartItems;
-  AppState.lastAppliedRouteId = route.id;
-  AppState.lastAppliedRouteName = route.name;
-  saveLastAppliedRoute().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+    const existing = AppState.rushCart.find(item => item.dungeonId === it.dungeonId);
+    if (existing) {
+      existing.repetitions += it.repetitions;
+      const resetParam = buildResetParamForRepetitions(existing.repetitions);
+      existing.usedReset = !!resetParam;
+      existing.resetGemQuantity = resetParam ? resetParam.qty : 0;
+      existing.resetGemUnitPrice = resetParam ? resetParam.price : 0;
+    } else {
+      const cartItem = buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions));
+      if (cartItem) AppState.rushCart.push(cartItem);
+    }
+  });
+
+  if (!AppState.appliedRouteIds.includes(route.id)) AppState.appliedRouteIds.push(route.id);
+  saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   renderPage();
 
   if (skipped > 0) {
@@ -80,21 +96,18 @@ export function applyRushRoute(routeId) {
   }
 }
 
-// A última rota aplicada (AppState.lastAppliedRouteId) só continua "sendo" essa rota enquanto o
-// carrinho não for mexido — usado pra mostrar "Carrinho = Rota X" em DGs de rush diário sem
-// arriscar um rótulo mentiroso depois que o jogador adiciona/remove/edita algo na mão.
-export function cartMatchesAppliedRoute() {
-  if (!AppState.lastAppliedRouteId) return null;
-  const route = AppState.rushRoutes.find(r => r.id === AppState.lastAppliedRouteId);
-  if (!route || route.items.length !== AppState.rushCart.length) return null;
-  const cartByDg = new Map(AppState.rushCart.map(item => [item.dungeonId, item.repetitions]));
-  const matches = route.items.every(it => cartByDg.get(it.dungeonId) === it.repetitions);
-  return matches ? route : null;
+// Rotas aplicadas hoje (AppState.appliedRouteIds) — mostrado como selo no carrinho de DGs de rush
+// diário. Como aplicar SOMA (pode ter 2+ rotas misturadas, e uma DG repetida em ambas vira uma
+// única linha com repetições somadas), não dá pra verificar com certeza se o carrinho ainda
+// "é exatamente" cada rota — é só a lista do que foi aplicado, não uma prova de que nada mudou.
+export function appliedRoutesToday() {
+  return AppState.appliedRouteIds.map(id => AppState.rushRoutes.find(r => r.id === id)).filter(Boolean);
 }
 
-// Carrega a rota no carrinho pra EDIÇÃO — igual applyRushRoute, mas marca editingRouteId, então
-// o próximo "salvar" sobrescreve esta rota em vez de criar uma nova (e não mexe em
-// lastAppliedRouteId, editar não é "aplicar pra farmar hoje").
+// Carrega a rota no carrinho pra EDIÇÃO — ao contrário de applyRushRoute, SUBSTITUI o carrinho
+// (edição é sobre ESSA rota isolada, não sobre o plano combinado do dia) e marca editingRouteId,
+// então o próximo "salvar" sobrescreve esta rota em vez de criar uma nova (e não mexe em
+// appliedRouteIds — editar não é "aplicar pra farmar hoje").
 export function startEditingRushRoute(routeId) {
   const route = AppState.rushRoutes.find(r => r.id === routeId);
   if (!route) return;
@@ -124,10 +137,9 @@ export function deleteRushRoute(routeId) {
   if (!route || !confirm(`Excluir a rota "${route.name}"?`)) return;
   AppState.rushRoutes = AppState.rushRoutes.filter(r => r.id !== routeId);
   if (AppState.editingRouteId === routeId) AppState.editingRouteId = null;
-  if (AppState.lastAppliedRouteId === routeId) {
-    AppState.lastAppliedRouteId = null;
-    AppState.lastAppliedRouteName = '';
-    saveLastAppliedRoute().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+  if (AppState.appliedRouteIds.includes(routeId)) {
+    AppState.appliedRouteIds = AppState.appliedRouteIds.filter(id => id !== routeId);
+    saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   }
   saveRushRoutes().catch(err => console.error('Falha ao salvar rota:', err));
   renderPage();
@@ -252,18 +264,27 @@ export function setTimeAvailableHours(value) {
 }
 
 // Aplica a sugestão (salva ou recém-montada) no carrinho de hoje — recalcula na hora em vez de
-// guardar estado à parte, pra nunca aplicar algo diferente do que está na tela.
+// guardar estado à parte, pra nunca aplicar algo diferente do que está na tela. Ao contrário de
+// applyRushRoute, SUBSTITUI o carrinho (não soma): a promessa da sugestão é "esse plano cabe nas
+// suas N horas" — misturar com o que já estava no carrinho invalidaria essa conta.
 export function applySuggestedRoute() {
   const hours = Number(AppState.timeAvailableHours) || 0;
   const suggestion = suggestRouteForTime(hours);
   if (!suggestion || suggestion.type === 'none') return;
 
   if (suggestion.type === 'saved') {
-    applyRushRoute(suggestion.id);
+    const route = AppState.rushRoutes.find(r => r.id === suggestion.id);
+    if (!route) return;
+    AppState.rushCart = route.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
+    AppState.appliedRouteIds = [route.id];
+    saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+    renderPage();
     return;
   }
 
   const cartItems = suggestion.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
   AppState.rushCart = cartItems;
+  AppState.appliedRouteIds = [];
+  saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   renderPage();
 }

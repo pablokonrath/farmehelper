@@ -1,6 +1,6 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
-import { computeRouteComparison, cartMatchesAppliedRoute } from '../features/rush-routes.js';
+import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
@@ -54,10 +54,7 @@ export function cancelEditingDungeon() {
 export function renderRushPage() {
   const cost = calculateRushCartCost();
   const editingRoute = AppState.editingRouteId ? AppState.rushRoutes.find(r => r.id === AppState.editingRouteId) : null;
-  // Só continua "sendo" a rota aplicada enquanto o carrinho não for mexido na mão — evita um
-  // rótulo mentiroso depois que o jogador adiciona/remove/edita algo por cima (ver
-  // cartMatchesAppliedRoute em rush-routes.js).
-  const matchedRoute = cartMatchesAppliedRoute();
+  const appliedRoutes = appliedRoutesToday();
   const routeTimeById = {};
   computeRouteComparison().forEach(r => { routeTimeById[r.id] = r; });
 
@@ -66,7 +63,7 @@ export function renderRushPage() {
   const routesCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Minhas rotas</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>substitui</strong> o carrinho de hoje pelas DGs da rota, com os preços atuais — nada do que estava lá antes fica misturado. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. Compare o lucro de cada rota em Sessões de farme.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. Compare o lucro de cada rota em Sessões de farme.</div>
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
   <table><thead><tr><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
@@ -80,7 +77,7 @@ export function renderRushPage() {
         : `<span title="Falta tempo/run farmado de: ${esc(stats.missingTimeDataDgNames.join(', '))} — soma só das DGs com dado">≈${formatDuration(stats.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)" title="Nenhuma DG desta rota tem tempo/run farmado ainda">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
-      <button class="btn btn-d btn-xs" onclick="applyRushRoute('${route.id}')" title="Carregar no carrinho de hoje (substitui o que estava lá)"><i class="ti ti-player-play"></i></button>
+      <button class="btn btn-d btn-xs" onclick="applyRushRoute('${route.id}')" title="Soma as DGs desta rota ao carrinho de hoje"><i class="ti ti-player-play"></i></button>
       <button class="btn btn-d btn-xs" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
       <button class="btn btn-d btn-xs" onclick="renameRushRoute('${route.id}')" title="Só renomear"><i class="ti ti-tag"></i></button>
       <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushRoute('${route.id}')" title="Excluir"><i class="ti ti-trash"></i></button>
@@ -234,7 +231,7 @@ ${routesCard}
 
 <!-- CARRINHO -->
 <div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}${matchedRoute ? ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(matchedRoute.name)}</span>` : ''}</div>
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}${appliedRoutes.length ? appliedRoutes.map(r => ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(r.name)}</span>`).join('') : ''}</div>
   <div style="display:flex;gap:8px">
     ${AppState.rushCart.length ? '<button class="btn btn-d" onclick="clearRushCart()" title="Remove todas as DGs do carrinho"><i class="ti ti-eraser"></i>Limpar carrinho</button>' : ''}
     <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>${AppState.rushHistory[AppState.rushCartDate] ? 'Atualizar rush do dia' : 'Salvar rush do dia'}</button>

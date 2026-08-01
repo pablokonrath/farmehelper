@@ -120,11 +120,12 @@ export const AppState = {
   // Calculadora "quanto tempo eu tenho hoje" em Sessões de farme — puramente client-side, não
   // persiste (mesmo espírito de dropSourceTargetQty).
   timeAvailableHours: '',
-  // Última rota aplicada no carrinho (ver applyRushRoute) — sessão iniciada numa DG que faz
-  // parte dela herda o rótulo da rota, pra distinguir farme "de rota" de farme avulso no
-  // histórico. Persiste (ver saveLastAppliedRoute) pra sobreviver a um F5 no meio do dia.
-  lastAppliedRouteId: null,
-  lastAppliedRouteName: '',
+  // Rotas aplicadas hoje no carrinho (ver applyRushRoute) — pode ter mais de uma, já que aplicar
+  // SOMA ao carrinho em vez de substituir (pra dar pra combinar duas rotas no mesmo dia). Sessão
+  // iniciada numa DG que faz parte de alguma delas herda o rótulo da rota, pra distinguir farme
+  // "de rota" de farme avulso no histórico. Persiste (ver saveAppliedRoutes) pra sobreviver a um
+  // F5 no meio do dia.
+  appliedRouteIds: [],
   // Rota carregada no carrinho pra EDIÇÃO (ver startEditingRushRoute) — enquanto setado, salvar
   // sobrescreve essa rota em vez de criar uma nova.
   editingRouteId: null,
