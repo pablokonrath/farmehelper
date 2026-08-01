@@ -203,6 +203,8 @@ export const AppState = {
   sessionsHistoryDate: todayISODate(),
   // Quais sessões do histórico estão com a lista de itens expandida (só UI, não persiste).
   expandedDgSessions: {},
+  // Painel de "recuperar sessão esquecida" (Sessões de farme) aberto ou não — só UI, não persiste.
+  forgottenSessionRecoveryOpen: false,
   // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings). Valor de gema/ticket
   // em Alz pra converter custos; custo do reset em gemas e quantas runs cada reset devolve.
   resetConfig: { gemValueAlz: 0, ticketValueAlz: 0, resetCostGems: 500, runsPerReset: 1 },

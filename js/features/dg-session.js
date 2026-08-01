@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
-import { formatAlzGamer } from '../utils/formatting.js';
+import { formatAlzGamer, parseTimeInputBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled } from './alerts.js';
@@ -130,6 +130,35 @@ function activeDurationMs(drops) {
   return active;
 }
 
+// Monta o registro final de uma sessão a partir de uma janela [startAt, endAt] — usado tanto pelo
+// encerramento normal (endDgSession) quanto pela recuperação de sessão esquecida (abaixo), que
+// reconstrói a janela a partir do log em vez de uma sessão ativa de verdade.
+function buildSessionRecord({ dungeonId, dungeonName, routeId, routeName, startAt, endAt, runs }) {
+  const drops = sessionDrops(startAt, endAt);
+  const activeMs = activeDurationMs(drops); // tempo farmando, sem contar inatividade
+  const { totalAlz, bestItem } = summarizeDrops(drops);
+  const items = {};
+  summarizeDropsByItem(drops).forEach(it => (items[it.name] = it.qty));
+  return {
+    dungeonId,
+    dungeonName,
+    routeId: routeId || null,
+    routeName: routeName || null,
+    date: drops[0]?.date || todayISODate(),
+    startAt,
+    endAt,
+    durationMs: endAt - startAt,   // relógio total (início → encerrar)
+    activeDurationMs: activeMs,    // tempo fiel de farme (desconta inatividade)
+    runs: runs || 0,
+    dropCount: drops.length,
+    uniqueItems: Object.keys(items).length,
+    totalAlz,
+    alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
+    bestItem,
+    items,
+  };
+}
+
 // Resumo ao vivo da sessão em andamento (ou null). Recalculado sob demanda a partir da janela.
 export function getActiveSessionSummary() {
   const s = AppState.activeDgSession;
@@ -151,32 +180,15 @@ export function getActiveSessionSummary() {
 export function endDgSession() {
   const s = AppState.activeDgSession;
   if (!s) return;
-  const endAt = Date.now();
-  const drops = sessionDrops(s.startAt, endAt);
-  const durationMs = endAt - s.startAt;
-  const activeMs = activeDurationMs(drops); // tempo farmando, sem contar inatividade
-  const { totalAlz, bestItem } = summarizeDrops(drops);
-  const items = {};
-  summarizeDropsByItem(drops).forEach(it => (items[it.name] = it.qty));
-
-  AppState.dgSessions.push({
+  AppState.dgSessions.push(buildSessionRecord({
     dungeonId: s.dungeonId,
     dungeonName: s.dungeonName,
-    routeId: s.routeId || null,
-    routeName: s.routeName || null,
-    date: drops[0]?.date || todayISODate(),
+    routeId: s.routeId,
+    routeName: s.routeName,
     startAt: s.startAt,
-    endAt,
-    durationMs,               // relógio total (início → encerrar)
-    activeDurationMs: activeMs, // tempo fiel de farme (desconta inatividade)
-    runs: s.runs || 0,
-    dropCount: drops.length,
-    uniqueItems: Object.keys(items).length,
-    totalAlz,
-    alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
-    bestItem,
-    items,
-  });
+    endAt: Date.now(),
+    runs: s.runs,
+  }));
   const wasAutoWatchdog = s.autoWatchdog;
   AppState.activeDgSession = null;
   saveDgSessions();
@@ -184,6 +196,57 @@ export function endDgSession() {
   // Se fomos nós que ligamos o watchdog ao iniciar, desliga junto ao encerrar. Se o jogador já o
   // desligou na mão no meio da sessão, o guard abaixo evita mexer (fica no-op).
   if (wasAutoWatchdog && AppState.alertSettings.watchdogEnabled) setWatchdogEnabled(false);
+  renderPage();
+}
+
+// Alguns drops do log já caíram sem sessão vinculada (o jogador esqueceu de clicar "Iniciar" antes
+// de entrar na DG). Sugere a janela recuperável: do fim da última sessão de hoje (ou meia-noite,
+// se ainda não farmou hoje) até agora — os drops que sobraram fora de qualquer sessão encerrada.
+export function suggestForgottenSessionWindow() {
+  const today = todayISODate();
+  const todaySessions = AppState.dgSessions.filter(s => s.date === today);
+  const lastEndAt = todaySessions.length ? Math.max(...todaySessions.map(s => s.endAt || 0)) : 0;
+  const startOfToday = new Date().setHours(0, 0, 0, 0);
+  const anchor = Math.max(lastEndAt, startOfToday);
+  const unclaimed = AppState.drops.filter(d => d.timestamp && d.timestamp.getTime() > anchor && !isExcludedGearItem(d.name));
+  if (!unclaimed.length) return null;
+  const times = unclaimed.map(d => d.timestamp.getTime()).sort((a, b) => a - b);
+  return { suggestedStart: times[0], dropCount: unclaimed.length };
+}
+
+// Mostra/esconde o painel de recuperação de sessão esquecida em Sessões de farme (estado só de
+// UI, não persiste).
+export function toggleForgottenSessionRecovery() {
+  AppState.forgottenSessionRecoveryOpen = !AppState.forgottenSessionRecoveryOpen;
+  renderPage();
+}
+
+// Registra retroativamente a sessão esquecida: usa a janela sugerida (ou um horário de início
+// digitado na mão, quando o log só começou a registrar depois que o jogador já tinha entrado na
+// DG) até agora. "Runs feitas" fica em 0 pra preencher depois, igual qualquer sessão do histórico.
+export function recoverForgottenSession(dungeonId, startTimeInput) {
+  const dg = AppState.dungeonList.find(d => d.id === dungeonId);
+  const suggestion = suggestForgottenSessionWindow();
+  if (!dg || !suggestion) return;
+  const parsedTime = parseTimeInputBR(startTimeInput);
+  const startAt = parsedTime ? new Date(`${todayISODate()}T${parsedTime}:00`).getTime() : suggestion.suggestedStart;
+  const endAt = Date.now();
+  if (!(startAt < endAt)) { alert('Horário de início inválido — precisa ser antes de agora.'); return; }
+
+  const appliedRoute = AppState.lastAppliedRouteId ? AppState.rushRoutes.find(r => r.id === AppState.lastAppliedRouteId) : null;
+  const routeMatch = appliedRoute?.items.some(it => it.dungeonId === dungeonId) ? appliedRoute : null;
+
+  AppState.dgSessions.push(buildSessionRecord({
+    dungeonId: dg.id,
+    dungeonName: dg.name,
+    routeId: routeMatch?.id,
+    routeName: routeMatch?.name,
+    startAt,
+    endAt,
+    runs: 0,
+  }));
+  AppState.forgottenSessionRecoveryOpen = false;
+  saveDgSessions();
   renderPage();
 }
 

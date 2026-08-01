@@ -6,7 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, toggleSessionItems, setResetConfig } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
 import { setSessionsHistoryDate } from './pages/sessions-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
@@ -184,6 +184,8 @@ Object.assign(window, {
   setSessionDungeon,
   toggleSessionItems,
   setResetConfig,
+  toggleForgottenSessionRecovery,
+  recoverForgottenSession,
   setSessionsHistoryDate,
   addSale,
   deleteSale,
