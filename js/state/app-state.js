@@ -146,6 +146,7 @@ export const AppState = {
   rushCart: [],
   rushCredits: buildDefaultRushCredits(),
   rushCreditCraftCosts: { ...DEFAULT_CREDIT_CRAFT_COSTS },
+  isCreditsManagerOpen: false,
   dungeonList: DEFAULT_DUNGEONS.map(dg => ({ ...dg })),
   isDungeonManagerOpen: false,
   editingDungeonId: null,

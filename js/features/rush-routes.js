@@ -80,6 +80,18 @@ export function applyRushRoute(routeId) {
   }
 }
 
+// A última rota aplicada (AppState.lastAppliedRouteId) só continua "sendo" essa rota enquanto o
+// carrinho não for mexido — usado pra mostrar "Carrinho = Rota X" em DGs de rush diário sem
+// arriscar um rótulo mentiroso depois que o jogador adiciona/remove/edita algo na mão.
+export function cartMatchesAppliedRoute() {
+  if (!AppState.lastAppliedRouteId) return null;
+  const route = AppState.rushRoutes.find(r => r.id === AppState.lastAppliedRouteId);
+  if (!route || route.items.length !== AppState.rushCart.length) return null;
+  const cartByDg = new Map(AppState.rushCart.map(item => [item.dungeonId, item.repetitions]));
+  const matches = route.items.every(it => cartByDg.get(it.dungeonId) === it.repetitions);
+  return matches ? route : null;
+}
+
 // Carrega a rota no carrinho pra EDIÇÃO — igual applyRushRoute, mas marca editingRouteId, então
 // o próximo "salvar" sobrescreve esta rota em vez de criar uma nova (e não mexe em
 // lastAppliedRouteId, editar não é "aplicar pra farmar hoje").
