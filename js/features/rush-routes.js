@@ -136,7 +136,7 @@ export function computeRouteComparison() {
     const cartItems = [];
 
     let estimatedTimeMs = 0;
-    let hasTimeData = true;
+    const missingTimeDataDgNames = [];
     let resetCost = 0;
     let needsReset = false;
 
@@ -146,7 +146,7 @@ export function computeRouteComparison() {
       else missingDataCount++;
 
       if (stat && stat.msPerRun != null) estimatedTimeMs += stat.msPerRun * it.repetitions;
-      else hasTimeData = false;
+      else missingTimeDataDgNames.push(stat?.dungeonName || AppState.dungeonList.find(d => d.id === it.dungeonId)?.name || it.dungeonId);
 
       const extra = extraResetCostAlz(it.repetitions);
       if (extra > 0) { resetCost += extra; needsReset = true; }
@@ -156,6 +156,7 @@ export function computeRouteComparison() {
     });
 
     const cost = calculateRushCartCost(cartItems).total + resetCost;
+    const hasTimeData = missingTimeDataDgNames.length === 0;
     return {
       id: route.id,
       name: route.name,
@@ -165,11 +166,13 @@ export function computeRouteComparison() {
       cost,
       needsReset,
       profit: expectedAlz - cost,
-      // Só confiável se TODA DG da rota tem tempo/run conhecido — uma estimativa parcial
-      // subestimaria o tempo real (ver suggestRouteForTime, que depende disso pra não sugerir
-      // uma rota "rápida" que na verdade só parece rápida por faltar dado de uma DG).
-      estimatedTimeMs: hasTimeData ? estimatedTimeMs : null,
+      // Soma parcial: entra o tempo de toda DG que já tem sessão com runs preenchidos, mesmo que
+      // outra DG da mesma rota ainda não tenha — hasTimeData (e missingTimeDataDgNames) sinalizam
+      // que é parcial em vez de esconder a estimativa inteira. suggestRouteForTime ainda exige
+      // hasTimeData=true pra não sugerir uma rota "rápida" que só parece rápida por faltar dado.
+      estimatedTimeMs: estimatedTimeMs > 0 ? estimatedTimeMs : null,
       hasTimeData,
+      missingTimeDataDgNames,
     };
   }).sort((a, b) => b.profit - a.profit);
 }

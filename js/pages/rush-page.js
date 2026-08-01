@@ -269,7 +269,11 @@ export function renderRushPage() {
     return `<tr>
     <td style="font-weight:500">${esc(route.name)}</td>
     <td>${route.items.length} DG${route.items.length > 1 ? 's' : ''}</td>
-    <td>${stats?.hasTimeData ? formatDuration(stats.estimatedTimeMs) : '<span style="color:var(--muted)" title="Alguma DG desta rota ainda não tem tempo/run farmado o suficiente">—</span>'}</td>
+    <td>${stats?.estimatedTimeMs
+      ? (stats.hasTimeData
+        ? formatDuration(stats.estimatedTimeMs)
+        : `<span title="Falta tempo/run farmado de: ${esc(stats.missingTimeDataDgNames.join(', '))} — soma só das DGs com dado">≈${formatDuration(stats.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
+      : '<span style="color:var(--muted)" title="Nenhuma DG desta rota tem tempo/run farmado ainda">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-d btn-xs" onclick="applyRushRoute('${route.id}')" title="Carregar no carrinho de hoje"><i class="ti ti-player-play"></i></button>
       <button class="btn btn-d btn-xs" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
