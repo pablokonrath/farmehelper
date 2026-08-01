@@ -185,10 +185,15 @@ export function renderSessionsPage() {
       <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.</div>`}
 </div>`;
 
+  const totalSessionsEver = AppState.dgSessions.length;
+  const earliestSessionDate = totalSessionsEver
+    ? AppState.dgSessions.reduce((min, s) => (s.date && s.date < min ? s.date : min), AppState.dgSessions[0].date || today)
+    : null;
+
   const comparisonCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}</div>
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
     : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo total</th><th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
@@ -209,11 +214,16 @@ export function renderSessionsPage() {
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais</div></div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje (já incluindo reset por gemas quando alguma DG passa de ${DAILY_RUN_LIMIT} runs e vale a pena resetar). Crie e edite rotas em DGs de rush diário.</div>
-  <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th></tr></thead><tbody>
+  <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th></tr></thead><tbody>
   ${routeComparison.map((r, i) => `<tr>
     <td class="rank">${i + 1}</td>
     <td style="font-weight:500">${esc(r.name)}${r.missingDataCount ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${r.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no retorno esperado"></i>` : ''}${r.needsReset ? ` <i class="ti ti-sparkles" style="color:var(--warn)" title="Custo inclui reset por gemas — alguma DG desta rota passa de ${DAILY_RUN_LIMIT} runs"></i>` : ''}</td>
     <td>${r.dgCount}</td>
+    <td>${r.estimatedTimeMs
+      ? (r.hasTimeData
+        ? formatDuration(r.estimatedTimeMs)
+        : `<span title="Falta tempo/run farmado de: ${esc(r.missingTimeDataDgNames.join(', '))} — soma só das DGs com dado">≈${formatDuration(r.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
+      : '<span style="color:var(--muted)">—</span>'}</td>
     <td style="color:${getAlzTierColor(r.expectedAlz)}" title="${formatNumber(r.expectedAlz)} Alz">${formatAlzGamer(r.expectedAlz)}</td>
     <td style="color:var(--muted)" title="${formatNumber(r.cost)} Alz">${formatAlzGamer(r.cost)}</td>
     <td style="color:${r.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700" title="${formatNumber(r.profit)} Alz">${r.profit >= 0 ? '+' : ''}${formatAlzGamer(r.profit)}</td>
@@ -301,9 +311,9 @@ export function renderSessionsPage() {
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
 ${renderRushProgressCard()}
+${timeSuggestionCard}
 ${comparisonCard}
 ${routeComparisonCard}
-${timeSuggestionCard}
 ${resetCard}
 ${historyCard}`;
 }

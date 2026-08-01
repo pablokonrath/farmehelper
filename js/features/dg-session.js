@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getItemPrice, summarizeDropsByItem } from './drops.js';
+import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -7,16 +7,17 @@ import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled } from './alerts.js';
 import { renderPage } from '../router.js';
 
-const MAX_DG_SESSIONS = 300;
-
 // Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
 // em qualquer conta "quantos dias" ou "quanto cabe hoje" pelo app.
 export const DAILY_RUN_LIMIT = 20;
 
 // Drops do LOG (não manuais) que caíram na janela [startAt, endAt]. A atribuição é por horário:
 // game e navegador rodam na mesma máquina, então o timestamp do log bate com o relógio real.
+// Equipamento genérico (ver isExcludedGearItem) fica de fora — não conta pra Alz da sessão (já
+// não teria preço) e some da lista "o que caiu", que sem isso ficava enorme em qualquer DG.
 function sessionDrops(startAt, endAt) {
-  return AppState.drops.filter(d => d.timestamp && d.timestamp.getTime() >= startAt && d.timestamp.getTime() <= endAt);
+  return AppState.drops.filter(d =>
+    d.timestamp && d.timestamp.getTime() >= startAt && d.timestamp.getTime() <= endAt && !isExcludedGearItem(d.name));
 }
 
 function summarizeDrops(drops) {
@@ -176,9 +177,6 @@ export function endDgSession() {
     bestItem,
     items,
   });
-  if (AppState.dgSessions.length > MAX_DG_SESSIONS) {
-    AppState.dgSessions = AppState.dgSessions.slice(-MAX_DG_SESSIONS);
-  }
   const wasAutoWatchdog = s.autoWatchdog;
   AppState.activeDgSession = null;
   saveDgSessions();

@@ -10,11 +10,26 @@ export function getItemCategory(itemName) {
   return AppState.itemCategoryAssignments[itemName] ?? AppState.itemCategoryAssignments[stripEnhancementSuffix(itemName)] ?? null;
 }
 
+// Peças de equipamento genéricas (armadura/arma básica por classe) — caem aos montes em toda
+// DG, não têm valor de venda e só incham "o que caiu" em cada sessão. Excluídas de vez, não
+// precisam aparecer em lugar nenhum do app (pedido explícito do jogador).
+const EXCLUDED_ITEM_KEYWORDS = [
+  'greva', 'manopla', 'armadura', 'elmo', 'punho', 'luva', 'quimono', 'traje', 'coturno',
+  'sapatilha', 'mascara', 'visor', 'montante', 'espada', 'katana', 'orb', 'cristal', 'disco',
+].map(kw => normalizeForSearch(kw));
+
+export function isExcludedGearItem(name) {
+  const normalized = normalizeForSearch(name);
+  return EXCLUDED_ITEM_KEYWORDS.some(kw => normalized.includes(kw));
+}
+
 // Drops vêm do log do jogo (AppState.drops, recarregado por inteiro a cada upload/conexão
 // de arquivo) + itens adicionados manualmente (AppState.manualDrops, persistidos à parte
-// porque um novo upload de arquivo substitui AppState.drops inteiro).
+// porque um novo upload de arquivo substitui AppState.drops inteiro). Ponto único de filtro
+// de equipamento genérico — filtrar aqui já cobre todo mundo que consome getAllDrops()
+// (sessões de DG, Onde dropa, Cálculo de farme, Vendas, Visão geral).
 export function getAllDrops() {
-  return [...AppState.drops, ...AppState.manualDrops];
+  return [...AppState.drops, ...AppState.manualDrops].filter(d => !isExcludedGearItem(d.name));
 }
 
 // Aplica o filtro "Filtrar apenas itens rastreados" (Cálculo de farme) quando ativo — usado
