@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, DAILY_RUN_LIMIT } from '../features/dg-session.js';
-import { getItemPrice } from '../features/drops.js';
+import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
@@ -59,7 +59,10 @@ function dgIcon(dungeonId, size = 26) {
 // Linha extra (escondida por padrão) com todos os itens que caíram na sessão, ordenados por valor.
 function sessionItemsRow(s) {
   const expectedNames = getExpectedItemNamesForDungeon(s.dungeonId);
+  // Sessões antigas (de antes do filtro de equipamento genérico) ainda podem ter esses itens
+  // salvos no registro — filtra na hora de mostrar, sem precisar reprocessar o histórico.
   const rows = Object.entries(s.items || {})
+    .filter(([name]) => !isExcludedGearItem(name))
     .map(([name, qty]) => ({ name, qty, value: getItemPrice(name) * qty, expected: expectedNames.has(name) }))
     .sort((a, b) => b.value - a.value);
   const alzPerRun = s.runs > 0 ? s.totalAlz / s.runs : null;
