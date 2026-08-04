@@ -22,6 +22,9 @@ const DUNGEON_DIFFICULTY_TIERS = [
       'Templo Esquecido 2SS', 'Siena 2SS', 'Posto das Máquinas', 'Torre dos Mortos 3SS',
       'Templo Esquecido 2SS (Desperto)', 'Vale Tempestuoso (Desperto)', 'Torre dos Mortos 3SS (Parte 2)',
       'Crista Ilusória', 'Arena Acheron', 'Torre Diabólica (Parte 2)', 'Torre Diabólica', 'Keldrasil Sagrado',
+      // C1D = "Castelo das Ilusões Apócritos", C2D = "Salão Radiante Apócritos", C2 = "Salão
+      // Radiante do Castelo das Ilusões" — nomes informais confirmados pelo jogador.
+      'C1D', 'C2D', 'C2',
     ],
   },
 ];
