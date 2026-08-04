@@ -11,7 +11,6 @@ import { renderSessionsPage } from './pages/sessions-page.js';
 import { renderQuickPage } from './pages/quick-page.js';
 import { renderTutorialPage } from './pages/tutorial-page.js';
 import { renderDropSourcePage } from './pages/drop-source-page.js';
-import { renderCraftPage } from './pages/craft-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -38,7 +37,6 @@ export function renderPage() {
   else if (AppState.currentPage === 'rapido') main.innerHTML = renderQuickPage();
   else if (AppState.currentPage === 'tutorial') main.innerHTML = renderTutorialPage();
   else if (AppState.currentPage === 'origem') main.innerHTML = renderDropSourcePage();
-  else if (AppState.currentPage === 'craft') main.innerHTML = renderCraftPage();
   else main.innerHTML = renderReportPage();
 
   afterPageRender();

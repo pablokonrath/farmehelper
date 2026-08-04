@@ -68,33 +68,6 @@ CREATE TABLE IF NOT EXISTS rush_routes (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Receita de craft: item final + materiais/quantidades necessárias. reset_at é o checkpoint a
--- partir de quando os materiais já caídos (via itens de sessões de DG encerradas) contam pra
--- essa receita — ao bater a meta de todos os materiais, o cliente avança reset_at pra agora e
--- registra o evento em craft_alert_history, sem apagar nenhuma sessão. Não é controle de estoque
--- de verdade (não desconta se o jogador vender/gastar o material de outro jeito), só um checkpoint
--- pra não avisar "pode craftar" pra sempre depois da primeira vez.
-CREATE TABLE IF NOT EXISTS craft_recipes (
-  user_id INT NOT NULL,
-  recipe_id VARCHAR(50) NOT NULL,
-  item_name VARCHAR(255) NOT NULL,
-  materials JSON NOT NULL,
-  reset_at BIGINT NOT NULL,
-  PRIMARY KEY (user_id, recipe_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Histórico de "receita ficou pronta" — mesmo espírito de alert_history, cortado nos 200 mais
--- recentes pelo cliente antes de mandar.
-CREATE TABLE IF NOT EXISTS craft_alert_history (
-  id VARCHAR(50) NOT NULL PRIMARY KEY,
-  user_id INT NOT NULL,
-  ts DATETIME NOT NULL,
-  recipe_name VARCHAR(255) NOT NULL,
-  materials JSON NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 CREATE TABLE IF NOT EXISTS tracked_keywords (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL,

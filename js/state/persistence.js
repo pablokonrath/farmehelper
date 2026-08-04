@@ -8,7 +8,6 @@ const API_BASE = 'api';
 
 const MIGRATION_FLAG_KEY = 'droplist.migratedToBackend';
 const MAX_ALERT_HISTORY_ENTRIES = 200;
-const MAX_CRAFT_ALERT_HISTORY_ENTRIES = 200;
 
 async function apiFetch(path, options = {}) {
   const response = await fetch(`${API_BASE}/${path}`, {
@@ -95,7 +94,7 @@ export async function loadPersistedState() {
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, rushRoutes, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows, craftRecipes, craftAlertHistory] = await Promise.all([
+  const [itemPrices, rushHistory, rushRoutes, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('rush-routes.php'),
@@ -106,8 +105,6 @@ export async function loadPersistedState() {
     get('alert-settings.php'),
     get('alert-history.php'),
     get('dg-sessions.php'),
-    get('craft-recipes.php'),
-    get('craft-alert-history.php'),
   ]);
 
   AppState.itemPrices = itemPrices;
@@ -127,8 +124,6 @@ export async function loadPersistedState() {
   AppState.dgSessions = dgSessionsRows.length ? dgSessionsRows : legacyDgSessions;
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
   AppState.appliedRouteIds = appSettings.appliedRouteIds ?? [];
-  AppState.craftRecipes = craftRecipes;
-  AppState.craftAlertHistory = craftAlertHistory;
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -151,17 +146,6 @@ export function saveRushHistory() {
 
 export function saveRushRoutes() {
   return put('rush-routes.php', AppState.rushRoutes);
-}
-
-export function saveCraftRecipes() {
-  return put('craft-recipes.php', AppState.craftRecipes);
-}
-
-export function saveCraftAlertHistory() {
-  if (AppState.craftAlertHistory.length > MAX_CRAFT_ALERT_HISTORY_ENTRIES) {
-    AppState.craftAlertHistory = AppState.craftAlertHistory.slice(-MAX_CRAFT_ALERT_HISTORY_ENTRIES);
-  }
-  return put('craft-alert-history.php', AppState.craftAlertHistory);
 }
 
 export function saveTrackedKeywords() {

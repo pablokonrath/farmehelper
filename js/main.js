@@ -25,7 +25,6 @@ import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty } from './features/drop-source.js';
 import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg } from './features/item-dungeon-sources.js';
-import { addCraftRecipe, deleteCraftRecipe, addCraftMaterial, removeCraftMaterial } from './features/craft.js';
 import {
   setRushCartDate,
   setRushTicketPrice,
@@ -101,10 +100,6 @@ Object.assign(window, {
   addItemDungeonSourceItem,
   removeItemDungeonSourceItem,
   toggleItemDungeonSourceDg,
-  addCraftRecipe,
-  deleteCraftRecipe,
-  addCraftMaterial,
-  removeCraftMaterial,
   toggleFilterByKeywords,
   addItemPrice,
   startEditingItemPrice,

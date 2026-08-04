@@ -5,7 +5,6 @@ import { formatAlzGamer, parseTimeInputBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled } from './alerts.js';
-import { checkCraftReadiness } from './craft.js';
 import { renderPage } from '../router.js';
 
 // Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
@@ -218,18 +217,7 @@ export function endDgSession() {
   // Se fomos nós que ligamos o watchdog ao iniciar, desliga junto ao encerrar. Se o jogador já o
   // desligou na mão no meio da sessão, o guard abaixo evita mexer (fica no-op).
   if (wasAutoWatchdog && AppState.alertSettings.watchdogEnabled) setWatchdogEnabled(false);
-  notifyCraftReadiness();
   renderPage();
-}
-
-// Checa receitas de craft toda vez que uma sessão nova entra no histórico (fim normal ou
-// recuperada) e avisa na hora se alguma acabou de juntar tudo — ver checkCraftReadiness em
-// craft.js pro cálculo e o checkpoint que evita avisar pra sempre depois da primeira vez.
-function notifyCraftReadiness() {
-  const justReady = checkCraftReadiness();
-  if (justReady.length) {
-    alert(`Pronto pra craftar: ${justReady.map(r => r.itemName).join(', ')}! Veja os detalhes na página Craft.`);
-  }
 }
 
 // Alguns drops do log já caíram sem sessão vinculada (o jogador esqueceu de clicar "Iniciar" antes
@@ -280,7 +268,6 @@ export function recoverForgottenSession(dungeonId, startTimeInput) {
   }));
   AppState.forgottenSessionRecoveryOpen = false;
   saveDgSessions();
-  notifyCraftReadiness();
   renderPage();
 }
 
