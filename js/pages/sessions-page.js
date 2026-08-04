@@ -3,6 +3,7 @@ import { getActiveSessionSummary, computeDgComparison, computeResetWorth, comput
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
+import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -94,7 +95,7 @@ function sessionHistoryRow(s) {
         <td>${formatDateBR(s.date)}</td>
         <td><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
           ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
-          ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === s.dungeonId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
+          ${renderDungeonOptionsGrouped(AppState.dungeonList, d => d.name, s.dungeonId)}
         </select></div></td>
         <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
         <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
@@ -155,7 +156,7 @@ function forgottenSessionRecoveryPanel() {
       <div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que era</label>
           <select class="inp" id="recoverDgSelect">
-            ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
+            ${renderDungeonOptionsGrouped(AppState.dungeonList)}
           </select></div>
         <div style="width:110px"><label class="lbl">Início (opcional)</label>
           <input class="inp" id="recoverStartTime" type="text" inputmode="numeric" placeholder="${timeHM(suggestion.suggestedStart)}" onfocus="this.value = this.value.replace(/\\D/g,'')" oninput="this.value = maskTimeInputBR(this.value)"></div>
@@ -201,7 +202,7 @@ export function renderSessionsPage() {
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
           <select class="inp" id="dgSessionSelect">
-            ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
+            ${renderDungeonOptionsGrouped(AppState.dungeonList)}
           </select></div>
         <div style="width:150px"><label class="lbl">Tempo por run (min)</label>
           <input class="inp" id="dgSessionRunMinutes" type="number" min="0" step="0.5" placeholder="opcional"></div>

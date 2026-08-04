@@ -2,6 +2,7 @@ import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { formatAlzGamer, formatNumber } from '../utils/formatting.js';
 import { getActiveSessionSummary } from '../features/dg-session.js';
 import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
+import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
 
 const HEADER = `<div class="pg-title"><i class="ti ti-bolt" style="color:var(--gold)"></i>Modo guiado</div>
@@ -103,7 +104,7 @@ function renderRushValores(qm) {
 
 function renderRushDGs(qm) {
   const cart = qm.data.cart || [];
-  const opts = AppState.dungeonList.map(dg => `<option value="${esc(dg.id)}">${esc(dg.name)}</option>`).join('');
+  const opts = renderDungeonOptionsGrouped(AppState.dungeonList);
   const gemHint = formatNumber(getCostPerGem());
   const cartList = cart.length
     ? `<div style="margin-bottom:12px">${cart.map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
@@ -208,7 +209,7 @@ function renderSessao(qm) {
     inner = `<div style="font-size:14px;line-height:1.7;margin-bottom:6px">Você está farmando em <strong>${esc(active.dungeonName)}</strong>.<br>Já são <strong style="color:var(--gold)">${formatAlzGamer(active.totalAlz)}</strong> em ${active.dropCount} drops.</div>
       <button class="btn btn-s" style="margin-top:8px" onclick="quickNext()"><i class="ti ti-player-stop"></i>Encerrar sessão</button>`;
   } else {
-    const opts = AppState.dungeonList.map(dg => `<option value="${esc(dg.id)}">${esc(dg.name)}</option>`).join('');
+    const opts = renderDungeonOptionsGrouped(AppState.dungeonList);
     inner = `<label class="lbl">Em qual DG você vai farmar?</label>
       <select class="inp" id="qm-dg"><option value="">Selecione...</option>${opts}</select>${errLine(qm)}
       <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-player-play"></i>Iniciar sessão</button>`;

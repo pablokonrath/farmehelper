@@ -1,6 +1,7 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
+import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
@@ -188,13 +189,13 @@ ${routesCard}
   <div class="g3" style="margin-bottom:10px">
     <div style="grid-column:span 2"><label class="lbl">DG</label>
       <select class="inp" id="dgS">
-      ${AppState.dungeonList.map(d => {
+      ${renderDungeonOptionsGrouped(AppState.dungeonList, d => {
         const parts = [];
         if (d.alzCost > 0) parts.push(formatAlzGamer(d.alzCost) + '/run');
         if (d.ticketsPerRun > 0) parts.push(d.ticketsPerRun + '× ticket');
         if (d.gemsPerRun > 0) parts.push(d.gemsPerRun + '× gema');
-        return `<option value="${esc(d.id)}">${esc(d.name)}${parts.length ? ' — ' + parts.join(' + ') : ''}</option>`;
-      }).join('')}
+        return `${d.name}${parts.length ? ' — ' + parts.join(' + ') : ''}`;
+      })}
       </select></div>
     <div><label class="lbl">Repetições</label><input class="inp" id="dgRp" type="number" min="1" value="1" oninput="updateCartPreview()"></div>
   </div>
