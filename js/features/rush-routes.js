@@ -145,11 +145,17 @@ export function deleteRushRoute(routeId) {
   renderPage();
 }
 
-// Compara o lucro esperado de cada rota: retorno (Alz/run histórico de cada DG × repetições,
-// via computeDgComparison — mesma conta de "Qual DG rende mais" em Sessões de farme) menos o
-// custo de rodar a rota nos preços ATUAIS (mesma conta do carrinho). DG sem sessão/runs
-// registrados ainda não entra no retorno — fica sinalizado em missingDataCount, pra não fingir
-// que uma rota com DG nunca farmada rende Alz que a gente não tem como saber.
+// Compara o retorno esperado de cada rota: Alz/run histórico de cada DG × repetições (via
+// computeDgComparison — mesma conta de "Qual DG rende mais" em Sessões de farme) menos o custo de
+// rodar a rota nos preços ATUAIS (mesma conta do carrinho). DG sem sessão/runs registrados ainda
+// não entra no retorno — fica sinalizado em missingDataCount, pra não fingir que uma rota com DG
+// nunca farmada rende Alz que a gente não tem como saber.
+//
+// Ordenado por Lucro/hora, não pelo lucro total bruto — uma rota com 6h de DG pode ter lucro total
+// maior que uma de 1h só por ser mais longa, sem ser de fato a melhor forma de gastar seu tempo.
+// Rota sem tempo estimado (hasTimeData falso ou nenhuma DG com msPerRun) não entra nessa
+// comparação — fica no fim, ordenada só pelo lucro bruto entre si, já que não dá pra saber a
+// eficiência dela ainda.
 export function computeRouteComparison() {
   const dgStatsById = {};
   computeDgComparison().forEach(d => { dgStatsById[d.dungeonId] = d; });
@@ -181,6 +187,11 @@ export function computeRouteComparison() {
 
     const cost = calculateRushCartCost(cartItems).total + resetCost;
     const hasTimeData = missingTimeDataDgNames.length === 0;
+    const profit = expectedAlz - cost;
+    // estimatedTimeMs aqui já é a soma PARCIAL (só das DGs com dado) — só vira profitPerHour
+    // quando hasTimeData é true (soma completa), senão a eficiência calculada seria enganosa
+    // (tempo subestimado por faltar DG).
+    const profitPerHour = hasTimeData && estimatedTimeMs > 0 ? profit / (estimatedTimeMs / 3600000) : null;
     return {
       id: route.id,
       name: route.name,
@@ -189,7 +200,7 @@ export function computeRouteComparison() {
       expectedAlz,
       cost,
       needsReset,
-      profit: expectedAlz - cost,
+      profit,
       // Soma parcial: entra o tempo de toda DG que já tem sessão com runs preenchidos, mesmo que
       // outra DG da mesma rota ainda não tenha — hasTimeData (e missingTimeDataDgNames) sinalizam
       // que é parcial em vez de esconder a estimativa inteira. suggestRouteForTime ainda exige
@@ -197,14 +208,22 @@ export function computeRouteComparison() {
       estimatedTimeMs: estimatedTimeMs > 0 ? estimatedTimeMs : null,
       hasTimeData,
       missingTimeDataDgNames,
+      profitPerHour,
     };
-  }).sort((a, b) => b.profit - a.profit);
+  }).sort((a, b) => {
+    if (a.profitPerHour != null && b.profitPerHour != null) return b.profitPerHour - a.profitPerHour;
+    if (a.profitPerHour != null) return -1;
+    if (b.profitPerHour != null) return 1;
+    return b.profit - a.profit;
+  });
 }
 
-// "Hoje tenho N horas, qual rota eu faço?" — primeiro tenta achar a rota SALVA de maior lucro
-// que cabe no tempo (sem estourar); se nenhuma rota salva couber (ou não existir nenhuma ainda),
-// monta um encaixe novo na hora, gulosamente pela DG de melhor Alz/hora, respeitando o limite
-// diário de runs por DG — sobra de tempo de uma DG que bateu o limite passa pra próxima melhor.
+// "Hoje tenho N horas, qual rota eu faço?" — primeiro tenta achar a rota SALVA de melhor
+// Lucro/hora que cabe no tempo (sem estourar) — computeRouteComparison já vem ordenada por
+// eficiência, então a primeira que cabe já é a melhor forma de gastar essas N horas, não só a
+// que mais lucra bruto. Se nenhuma rota salva couber (ou não existir nenhuma ainda), monta um
+// encaixe novo na hora, gulosamente pela DG de melhor Alz/hora, respeitando o limite diário de
+// runs por DG — sobra de tempo de uma DG que bateu o limite passa pra próxima melhor.
 export function suggestRouteForTime(hoursAvailable) {
   const budgetMs = hoursAvailable * 3600000;
   if (!(budgetMs > 0)) return null;
