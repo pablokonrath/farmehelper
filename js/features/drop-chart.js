@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getItemPrice } from './drops.js';
+import { getSalePriceHistory } from './sales.js';
 import { formatAlzGamer, formatDateBR, getChartBarColor } from '../utils/formatting.js';
 
 let dropChartInstance = null;
@@ -12,12 +13,12 @@ export function destroyPriceChart() {
   }
 }
 
-// Linha do preço de um item ao longo do tempo (histórico versionado, ver recordPriceChange) —
-// ajuda a decidir a hora de vender. Renderizada na página de Vendas.
+// Linha do preço de VENDA de um item ao longo do tempo (ver getSalePriceHistory) — o que você
+// realmente vendeu por dia, não o preço cadastrado como meta. Renderizada na página de Vendas.
 export function renderPriceChart() {
   const canvas = document.getElementById('ph');
   if (!canvas) return;
-  const hist = AppState.priceHistory[AppState.priceHistoryItem] || [];
+  const hist = getSalePriceHistory(AppState.priceHistoryItem);
   if (hist.length < 1) return;
 
   priceChartInstance = new Chart(canvas.getContext('2d'), {

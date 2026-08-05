@@ -2,7 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveSalesLog, savePriceHistory } from '../state/persistence.js';
 import { getItemPrice } from './drops.js';
 import { parseAlzInput, parseDateInputBR } from '../utils/formatting.js';
-import { todayISODate } from '../utils/parsing.js';
+import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
 // Registra a mudança de preço de um item no histórico (1 ponto por dia: atualiza se já mexeu
@@ -52,6 +52,33 @@ export function deleteSale(id) {
 export function setPriceHistoryItem(item) {
   AppState.priceHistoryItem = item;
   renderPage();
+}
+
+// Histórico do preço de VENDA de um item (não o preço cadastrado como meta em Cálculo de farme —
+// esse é só uma estimativa; o que importa acompanhar é por quanto você realmente vendeu). Um
+// ponto por dia: média ponderada pela quantidade, pra não espalhar vários pontos no mesmo dia
+// quando você vende o mesmo item mais de uma vez. Começa naturalmente na primeira venda, já que
+// só existe ponto pra dia em que houve venda de verdade.
+export function getSalePriceHistory(itemName) {
+  const itemKey = stripEnhancementSuffix(itemName);
+  const byDate = {};
+  AppState.salesLog
+    .filter(s => stripEnhancementSuffix(s.itemName) === itemKey)
+    .forEach(s => {
+      const d = byDate[s.date] || (byDate[s.date] = { totalValue: 0, totalQty: 0 });
+      d.totalValue += s.unitPrice * s.qty;
+      d.totalQty += s.qty;
+    });
+  return Object.entries(byDate)
+    .map(([date, d]) => ({ date, price: Math.round(d.totalValue / d.totalQty) }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Nomes de item que já foram vendidos ao menos uma vez — pra popular o seletor do gráfico de
+// preço de venda (getSalePriceHistory), já que agora o gráfico é sobre vendas reais, não sobre
+// tudo que já teve preço cadastrado.
+export function getSoldItemNames() {
+  return [...new Set(AppState.salesLog.map(s => stripEnhancementSuffix(s.itemName)))].sort();
 }
 
 // Total vendido (real) e o que valeria pelo preço cadastrado (estimado). Não estima valor "em

@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
-import { computeSalesSummary } from '../features/sales.js';
+import { computeSalesSummary, getSalePriceHistory, getSoldItemNames } from '../features/sales.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -12,7 +12,7 @@ export function renderSalesPage() {
 
   // Sugestões de item: o que você já precificou + o que já dropou.
   const itemNames = [...new Set([...Object.keys(AppState.itemPrices), ...summarizeDropsByItem(getAllDrops()).map(i => i.name)])].sort();
-  const histItems = Object.keys(AppState.priceHistory).sort();
+  const histItems = getSoldItemNames();
 
   const kpis = `
 <div class="g2" style="margin-bottom:12px">
@@ -64,16 +64,16 @@ export function renderSalesPage() {
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-chart-line"></i>Histórico de preço</div>
     <select class="inp" style="width:220px" onchange="setPriceHistoryItem(this.value)">
       <option value="">Escolha um item…</option>
-      ${histItems.map(n => `<option value="${n}"${n === AppState.priceHistoryItem ? ' selected' : ''}>${n}</option>`).join('')}
+      ${histItems.map(n => `<option value="${esc(n)}"${n === AppState.priceHistoryItem ? ' selected' : ''}>${esc(n)}</option>`).join('')}
     </select>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> A variação do preço que você cadastrou pra cada item ao longo do tempo — pra decidir a hora de vender. Um ponto por dia em que você mexeu no preço.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> A variação do preço pelo qual você realmente <strong>vendeu</strong> cada item ao longo do tempo (não o preço cadastrado como meta em Cálculo de farme) — pra decidir a hora de vender. Um ponto por dia com venda, com a média se vendeu mais de uma vez no mesmo dia.</div>
   ${!histItems.length
-    ? '<div class="empty">Ainda sem histórico. Edite o preço de um item em Cálculo de farme pra começar a registrar.</div>'
+    ? '<div class="empty">Ainda sem venda registrada. Registre uma venda acima pra começar.</div>'
     : !AppState.priceHistoryItem
-      ? '<div class="empty">Escolha um item acima para ver a variação do preço.</div>'
-      : (AppState.priceHistory[AppState.priceHistoryItem] || []).length < 2
-        ? '<div class="empty">Só há um registro de preço para este item ainda — mude o preço em outro dia para ver a linha.</div>'
+      ? '<div class="empty">Escolha um item acima para ver a variação do preço de venda.</div>'
+      : getSalePriceHistory(AppState.priceHistoryItem).length < 2
+        ? '<div class="empty">Só há uma venda registrada deste item ainda — venda em outro dia pra ver a linha.</div>'
         : '<div class="chart-wrap" style="height:200px"><canvas id="ph"></canvas></div>'}
 </div>`;
 
