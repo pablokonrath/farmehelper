@@ -25,6 +25,24 @@ function buildResetParamForRepetitions(repetitions) {
   return { used: true, qty: resetBatches * (cfg.resetCostGems || 0), price: cfg.gemValueAlz };
 }
 
+// Soma repetições numa lista de itens de carrinho já montada — dungeonId repetido tem as
+// repetições SOMADAS (recalculando o reset pelo total combinado) em vez de duplicar a linha.
+// Compartilhado entre aplicar rota (soma no que já tem no carrinho) e a sugestão por tempo
+// (completa a sobra de tempo da rota com avulsas, possivelmente na mesma DG da rota).
+function mergeIntoCartItems(cartItems, dungeonId, repetitions) {
+  const existing = cartItems.find(item => item.dungeonId === dungeonId);
+  if (existing) {
+    existing.repetitions += repetitions;
+    const resetParam = buildResetParamForRepetitions(existing.repetitions);
+    existing.usedReset = !!resetParam;
+    existing.resetGemQuantity = resetParam ? resetParam.qty : 0;
+    existing.resetGemUnitPrice = resetParam ? resetParam.price : 0;
+  } else {
+    const cartItem = buildCartItem(dungeonId, repetitions, buildResetParamForRepetitions(repetitions));
+    if (cartItem) cartItems.push(cartItem);
+  }
+}
+
 // Salva o carrinho atual como rota — nova (nome digitado) ou sobrescrevendo a que estiver sendo
 // editada (ver startEditingRushRoute/AppState.editingRouteId). Guarda só dungeonId + repetições
 // (nunca preço), pra aplicar depois sempre com os valores atuais da DG (ver applyRushRoute).
@@ -71,20 +89,8 @@ export function applyRushRoute(routeId) {
 
   let skipped = 0;
   route.items.forEach(it => {
-    const dungeon = AppState.dungeonList.find(d => d.id === it.dungeonId);
-    if (!dungeon) { skipped++; return; }
-
-    const existing = AppState.rushCart.find(item => item.dungeonId === it.dungeonId);
-    if (existing) {
-      existing.repetitions += it.repetitions;
-      const resetParam = buildResetParamForRepetitions(existing.repetitions);
-      existing.usedReset = !!resetParam;
-      existing.resetGemQuantity = resetParam ? resetParam.qty : 0;
-      existing.resetGemUnitPrice = resetParam ? resetParam.price : 0;
-    } else {
-      const cartItem = buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions));
-      if (cartItem) AppState.rushCart.push(cartItem);
-    }
+    if (!AppState.dungeonList.find(d => d.id === it.dungeonId)) { skipped++; return; }
+    mergeIntoCartItems(AppState.rushCart, it.dungeonId, it.repetitions);
   });
 
   if (!AppState.appliedRouteIds.includes(route.id)) AppState.appliedRouteIds.push(route.id);
@@ -167,6 +173,7 @@ export function computeRouteComparison() {
 
     let estimatedTimeMs = 0;
     const missingTimeDataDgNames = [];
+    const timeBreakdown = [];
     let resetCost = 0;
     let needsReset = false;
 
@@ -175,8 +182,13 @@ export function computeRouteComparison() {
       if (stat && stat.alzPerRun != null) expectedAlz += stat.alzPerRun * it.repetitions;
       else missingDataCount++;
 
-      if (stat && stat.msPerRun != null) estimatedTimeMs += stat.msPerRun * it.repetitions;
-      else missingTimeDataDgNames.push(stat?.dungeonName || AppState.dungeonList.find(d => d.id === it.dungeonId)?.name || it.dungeonId);
+      if (stat && stat.msPerRun != null) {
+        const timeMs = stat.msPerRun * it.repetitions;
+        estimatedTimeMs += timeMs;
+        timeBreakdown.push({ dungeonName: stat.dungeonName, repetitions: it.repetitions, msPerRun: stat.msPerRun, timeMs });
+      } else {
+        missingTimeDataDgNames.push(stat?.dungeonName || AppState.dungeonList.find(d => d.id === it.dungeonId)?.name || it.dungeonId);
+      }
 
       const extra = extraResetCostAlz(it.repetitions);
       if (extra > 0) { resetCost += extra; needsReset = true; }
@@ -209,6 +221,9 @@ export function computeRouteComparison() {
       hasTimeData,
       missingTimeDataDgNames,
       profitPerHour,
+      // Detalhe por DG do tempo estimado (tempo/run × repetições) — usado no tooltip do "Tempo
+      // estimado" pra mostrar de onde vem o total, sem precisar abrir a rota pra editar.
+      timeBreakdown,
     };
   }).sort((a, b) => {
     if (a.profitPerHour != null && b.profitPerHour != null) return b.profitPerHour - a.profitPerHour;
@@ -218,62 +233,110 @@ export function computeRouteComparison() {
   });
 }
 
-// "Hoje tenho N horas, qual rota eu faço?" — primeiro tenta achar a rota SALVA de melhor
-// Lucro/hora que cabe no tempo (sem estourar) — computeRouteComparison já vem ordenada por
-// eficiência, então a primeira que cabe já é a melhor forma de gastar essas N horas, não só a
-// que mais lucra bruto. Se nenhuma rota salva couber (ou não existir nenhuma ainda), monta um
-// encaixe novo na hora, gulosamente pela DG de melhor Alz/hora, respeitando o limite diário de
-// runs por DG — sobra de tempo de uma DG que bateu o limite passa pra próxima melhor.
-export function suggestRouteForTime(hoursAvailable) {
-  const budgetMs = hoursAvailable * 3600000;
-  if (!(budgetMs > 0)) return null;
-
-  const savedFitting = computeRouteComparison().filter(r => r.hasTimeData && r.estimatedTimeMs <= budgetMs);
-  if (savedFitting.length) return { type: 'saved', ...savedFitting[0] };
-
-  const dgStats = computeDgComparison();
-  const resetWorth = computeResetWorth();
+// Preenche até `remainingMs` de tempo com DGs avulsas, gulosamente pela melhor Alz/hora,
+// respeitando o limite diário de runs por DG (usedRunsByDgId conta o que já foi "gasto" por
+// outra coisa, ex: uma rota salva, contra esse limite). DG onde resetar compensa (ver "Vale a
+// pena resetar?") não fica travada no limite — sobra de tempo só passa pra próxima DG quando
+// esta já não vale mais a pena resetar (ou o valor da gema não foi configurado).
+function greedyFillTimeWithDgs(remainingMs, dgStats, resetWorth, usedRunsByDgId) {
   const worthResetByDgName = {};
   resetWorth.rows.forEach(r => { worthResetByDgName[r.dungeonName] = r.worth; });
-
   const candidates = [...dgStats].filter(d => d.msPerRun != null && d.alzPerHour != null).sort((a, b) => b.alzPerHour - a.alzPerHour);
 
-  let remainingMs = budgetMs;
   const items = [];
   let anyReset = false;
   candidates.forEach(dg => {
     if (remainingMs <= 0) return;
-    // DG onde resetar compensa (ver "Vale a pena resetar?") não fica travada no limite diário —
-    // sobra de tempo só passa pra próxima DG quando esta já não vale mais a pena resetar (ou o
-    // valor da gema não foi configurado, aí resetWorth nem calcula nada).
     const canExceedCap = resetWorth.gemValueSet && worthResetByDgName[dg.dungeonName];
     const cap = canExceedCap ? Infinity : DAILY_RUN_LIMIT;
-    const runs = Math.min(Math.floor(remainingMs / dg.msPerRun), cap);
+    const alreadyUsed = usedRunsByDgId[dg.dungeonId] || 0;
+    const capRemaining = cap - alreadyUsed;
+    if (capRemaining <= 0) return;
+    const runs = Math.min(Math.floor(remainingMs / dg.msPerRun), capRemaining);
     if (runs <= 0) return;
-    if (runs > DAILY_RUN_LIMIT) anyReset = true;
-    items.push({ dungeonId: dg.dungeonId, dungeonName: dg.dungeonName, repetitions: runs, usedReset: runs > DAILY_RUN_LIMIT });
+    const totalForDg = alreadyUsed + runs;
+    if (totalForDg > DAILY_RUN_LIMIT) anyReset = true;
+    items.push({ dungeonId: dg.dungeonId, dungeonName: dg.dungeonName, repetitions: runs, msPerRun: dg.msPerRun, usedReset: totalForDg > DAILY_RUN_LIMIT });
     remainingMs -= runs * dg.msPerRun;
   });
+  return { items, remainingMs, anyReset };
+}
 
-  if (!items.length) return { type: 'none' };
+// "Hoje tenho N horas, qual rota eu faço?" — primeiro tenta achar a rota SALVA de melhor
+// Lucro/hora que cabe no tempo (sem estourar) — computeRouteComparison já vem ordenada por
+// eficiência, então a primeira que cabe já é a melhor forma de gastar essas N horas, não só a
+// que mais lucra bruto. Se sobrar tempo depois da rota, completa com DGs avulsas (fora da rota,
+// gulosamente pela melhor Alz/hora) em vez de deixar o resto do orçamento sem sugestão nenhuma —
+// pode inclusive ser mais runs da MESMA DG da rota, se ainda houver espaço no limite diário dela.
+// Se nenhuma rota salva couber (ou não existir nenhuma ainda), monta um encaixe novo do zero.
+export function suggestRouteForTime(hoursAvailable) {
+  const budgetMs = hoursAvailable * 3600000;
+  if (!(budgetMs > 0)) return null;
 
-  const expectedAlz = items.reduce((sum, it) => {
+  const dgStats = computeDgComparison();
+  const resetWorth = computeResetWorth();
+
+  const savedFitting = computeRouteComparison().filter(r => r.hasTimeData && r.estimatedTimeMs <= budgetMs);
+  if (savedFitting.length) {
+    const route = savedFitting[0];
+    const savedRouteDef = AppState.rushRoutes.find(r => r.id === route.id);
+    const usedRunsByDgId = {};
+    savedRouteDef?.items.forEach(it => { usedRunsByDgId[it.dungeonId] = (usedRunsByDgId[it.dungeonId] || 0) + it.repetitions; });
+
+    const fill = greedyFillTimeWithDgs(budgetMs - route.estimatedTimeMs, dgStats, resetWorth, usedRunsByDgId);
+    if (!fill.items.length) return { type: 'saved', ...route };
+
+    const extraExpectedAlz = fill.items.reduce((sum, it) => {
+      const stat = dgStats.find(d => d.dungeonId === it.dungeonId);
+      return sum + (stat?.alzPerRun ?? 0) * it.repetitions;
+    }, 0);
+    const extraCartItems = fill.items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
+    // Reset é sobre o total combinado (rota + extra) por DG, não só a parte extra isolada — senão
+    // uma DG que já quase batia o limite na rota escaparia do custo de reset ao completar com avulsas.
+    const extraResetCost = fill.items.reduce((sum, it) => {
+      const alreadyUsed = usedRunsByDgId[it.dungeonId] || 0;
+      return sum + (extraResetCostAlz(alreadyUsed + it.repetitions) - extraResetCostAlz(alreadyUsed));
+    }, 0);
+    const extraCost = calculateRushCartCost(extraCartItems).total + extraResetCost;
+
+    return {
+      type: 'saved+extra',
+      ...route,
+      extraItems: fill.items,
+      estimatedTimeMs: budgetMs - fill.remainingMs,
+      // Breakdown combinado (rota + avulsas) pro tooltip do "Tempo estimado" mostrar tudo, não só
+      // a parte da rota.
+      timeBreakdown: [
+        ...route.timeBreakdown,
+        ...fill.items.map(it => ({ dungeonName: it.dungeonName, repetitions: it.repetitions, msPerRun: it.msPerRun, timeMs: it.msPerRun * it.repetitions })),
+      ],
+      expectedAlz: route.expectedAlz + extraExpectedAlz,
+      cost: route.cost + extraCost,
+      profit: route.profit + extraExpectedAlz - extraCost,
+      needsReset: route.needsReset || fill.anyReset,
+    };
+  }
+
+  const fill = greedyFillTimeWithDgs(budgetMs, dgStats, resetWorth, {});
+  if (!fill.items.length) return { type: 'none' };
+
+  const expectedAlz = fill.items.reduce((sum, it) => {
     const stat = dgStats.find(d => d.dungeonId === it.dungeonId);
     return sum + (stat?.alzPerRun ?? 0) * it.repetitions;
   }, 0);
-  const cartItems = items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
-  const resetCost = items.reduce((sum, it) => sum + extraResetCostAlz(it.repetitions), 0);
+  const cartItems = fill.items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
+  const resetCost = fill.items.reduce((sum, it) => sum + extraResetCostAlz(it.repetitions), 0);
   const cost = calculateRushCartCost(cartItems).total + resetCost;
 
   return {
     type: 'generated',
-    items,
-    dgCount: items.length,
+    items: fill.items,
+    dgCount: fill.items.length,
     expectedAlz,
     cost,
-    needsReset: anyReset,
+    needsReset: fill.anyReset,
     profit: expectedAlz - cost,
-    estimatedTimeMs: budgetMs - remainingMs,
+    estimatedTimeMs: budgetMs - fill.remainingMs,
   };
 }
 
@@ -291,10 +354,15 @@ export function applySuggestedRoute() {
   const suggestion = suggestRouteForTime(hours);
   if (!suggestion || suggestion.type === 'none') return;
 
-  if (suggestion.type === 'saved') {
+  if (suggestion.type === 'saved' || suggestion.type === 'saved+extra') {
     const route = AppState.rushRoutes.find(r => r.id === suggestion.id);
     if (!route) return;
-    AppState.rushCart = route.items.map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions))).filter(Boolean);
+    const cartItems = [];
+    route.items.forEach(it => mergeIntoCartItems(cartItems, it.dungeonId, it.repetitions));
+    // Avulsas que completam a sobra de tempo do orçamento (ver suggestRouteForTime) — podem cair
+    // na MESMA DG da rota, aí soma na mesma linha em vez de duplicar.
+    (suggestion.extraItems || []).forEach(it => mergeIntoCartItems(cartItems, it.dungeonId, it.repetitions));
+    AppState.rushCart = cartItems;
     AppState.appliedRouteIds = [route.id];
     saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
     renderPage();

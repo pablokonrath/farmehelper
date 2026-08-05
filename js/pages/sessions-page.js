@@ -4,7 +4,7 @@ import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
-import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
+import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
@@ -249,8 +249,8 @@ export function renderSessionsPage() {
     <td>${r.dgCount}</td>
     <td>${r.estimatedTimeMs
       ? (r.hasTimeData
-        ? formatDuration(r.estimatedTimeMs)
-        : `<span title="Falta tempo/run farmado de: ${esc(r.missingTimeDataDgNames.join(', '))} — soma só das DGs com dado">≈${formatDuration(r.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
+        ? `<span title="${esc(timeBreakdownTooltip(r.timeBreakdown))}">${formatDuration(r.estimatedTimeMs)}</span>`
+        : `<span title="${esc(timeBreakdownTooltip(r.timeBreakdown) + (r.timeBreakdown.length ? '\n\n' : '') + 'Falta tempo/run farmado de: ' + r.missingTimeDataDgNames.join(', ') + ' — soma só das DGs com dado')}">≈${formatDuration(r.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)">—</span>'}</td>
     <td style="color:${getAlzTierColor(r.expectedAlz)}" title="${formatNumber(r.expectedAlz)} Alz">${formatAlzGamer(r.expectedAlz)}</td>
     <td style="color:var(--muted)" title="${formatNumber(r.cost)} Alz">${formatAlzGamer(r.cost)}</td>
@@ -263,20 +263,24 @@ export function renderSessionsPage() {
   const timeSuggestionCard = `
 <div class="card card-featured">
   <div class="ctitle"><i class="ti ti-clock" style="color:var(--gold)"></i>Quanto tempo você tem hoje?</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Sugere a rota salva de maior lucro que cabe no tempo (tempo/run vem da média real das suas sessões). Se nenhuma rota salva couber, monta um encaixe novo pelas DGs de melhor Alz/hora, respeitando o limite de ${DAILY_RUN_LIMIT} runs/dia por DG.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Sugere a rota salva de melhor Lucro/hora que cabe no tempo (tempo/run vem da média real das suas sessões) e completa a sobra com DGs avulsas pelas de melhor Alz/hora, sem deixar tempo disponível sem uso. Se nenhuma rota salva couber, monta um encaixe novo do zero, respeitando o limite de ${DAILY_RUN_LIMIT} runs/dia por DG.</div>
   <div class="row" style="margin-bottom:14px;align-items:flex-end">
     <div style="width:140px"><label class="lbl">Horas disponíveis</label><input class="inp" id="timeAvailableHoursInput" type="number" min="0" step="0.5" placeholder="ex: 3" value="${AppState.timeAvailableHours || ''}" onchange="setTimeAvailableHours(this.value)"></div>
   </div>
   ${!timeAvailableHours ? '' : !timeSuggestion || timeSuggestion.type === 'none'
     ? '<div class="empty">Ainda não há DG com runs e tempo suficientes farmados pra sugerir algo pro seu tempo.</div>'
-    : timeSuggestion.type === 'saved'
+    : timeSuggestion.type === 'saved' || timeSuggestion.type === 'saved+extra'
       ? `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Rota salva que cabe no seu tempo:</div>
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
             <div style="font-weight:700;font-size:15px;color:var(--gold)">${esc(timeSuggestion.name)}${timeSuggestion.needsReset ? ` <i class="ti ti-sparkles" style="color:var(--warn);font-size:13px" title="Inclui reset por gemas em alguma DG"></i>` : ''}</div>
             <button class="btn btn-p btn-xs" onclick="applySuggestedRoute()"><i class="ti ti-player-play"></i>Aplicar no carrinho</button>
           </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:6px">Tempo estimado: <strong style="color:var(--txt)">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
+          ${timeSuggestion.type === 'saved+extra' ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">A rota sozinha não usa todo seu tempo — completado com avulsas:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+            ${timeSuggestion.extraItems.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ' <i class="ti ti-sparkles" title="Passa dos ' + DAILY_RUN_LIMIT + ' runs/dia — precisa resetar"></i>' : ''}</span>`).join('')}
+          </div>` : ''}
+          <div style="font-size:12px;color:var(--muted);margin-top:8px">Tempo estimado: <strong style="color:var(--txt)" title="${esc(timeBreakdownTooltip(timeSuggestion.timeBreakdown))}">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
         </div>`
       : `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Nenhuma rota salva coube no tempo — encaixe novo montado pelas DGs de melhor Alz/hora:</div>

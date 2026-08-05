@@ -12,6 +12,16 @@ export function formatDuration(ms) {
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
 }
 
+// Texto (não-HTML, pra usar em atributo title=) detalhando de onde vem um "Tempo estimado" de
+// rota — uma linha por DG com tempo/run × repetições = total. Usado no tooltip das tabelas de
+// rota (DGs de rush diário e Sessões de farme), pra não precisar abrir a rota só pra ver o
+// tempo/run de cada DG que compõe o total.
+export function timeBreakdownTooltip(timeBreakdown) {
+  return (timeBreakdown || [])
+    .map(b => `${b.dungeonName}: ${formatDuration(b.msPerRun)}/run × ${b.repetitions} = ${formatDuration(b.timeMs)}`)
+    .join('\n');
+}
+
 // Extrai apenas os dígitos de um valor digitado em campo mascarado (Alz sempre inteiro, sem centavos).
 export function parseAlzInput(rawValue) {
   const digits = String(rawValue ?? '').replace(/\D/g, '');
