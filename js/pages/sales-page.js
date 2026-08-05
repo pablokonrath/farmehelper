@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
 import { computeSalesSummary, getSalePriceHistory, getSoldItemNames } from '../features/sales.js';
+import { computeSalesGoalsProgress, totalAllocatedPercentage } from '../features/sales-goals.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -18,6 +19,34 @@ export function renderSalesPage() {
 <div class="g2" style="margin-bottom:12px">
   <div class="kpi"><div class="kpi-lbl">Total vendido (real)</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(summary.realTotal)}" title="${formatNumber(summary.realTotal)} Alz">${formatAlzGamer(summary.realTotal)}</div><div class="kpi-sub">${summary.count} venda(s)</div></div>
   <div class="kpi"><div class="kpi-lbl">Real vs. estimado</div><div class="kpi-val" style="font-size:22px;color:${summary.diff >= 0 ? 'var(--ok)' : 'var(--err)'}" title="${formatNumber(summary.diff)} Alz">${summary.diff >= 0 ? '+' : ''}${formatAlzGamer(summary.diff)}</div><div class="kpi-sub">vs. ${formatAlzGamer(summary.estimatedTotal)} cadastrado</div></div>
+</div>`;
+
+  const goalsProgress = computeSalesGoalsProgress();
+  const totalPct = totalAllocatedPercentage();
+  const goalsCard = `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-target"></i>Metas de Alz</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada meta reserva uma % fixa de toda venda registrada <strong>a partir de quando ela foi criada</strong> (vendas antigas não contam). Dá pra ter várias ao mesmo tempo — a soma das % não precisa fechar 100, o resto fica livre.</div>
+  ${!goalsProgress.length ? '<div class="empty" style="padding:8px 0;margin-bottom:12px">Nenhuma meta criada ainda.</div>' : `
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
+    ${goalsProgress.map(g => `<div style="padding:12px;background:var(--surf2);border:1px solid ${g.complete ? 'var(--ok-border)' : 'var(--border)'};border-radius:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-weight:700;display:flex;align-items:center;gap:8px">${esc(g.name)} <span class="badge badge-acc">${g.percentage}% das vendas</span>${g.complete ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Batida</span>' : ''}</div>
+        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSalesGoal('${g.id}')" title="Excluir meta"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden"><div style="width:${Math.round(g.progress * 100)}%;height:100%;background:${g.complete ? 'var(--ok)' : 'var(--acc)'}"></div></div>
+        <div style="font-size:12px;font-weight:600;color:${g.complete ? 'var(--ok)' : 'var(--txt)'};white-space:nowrap" title="${formatNumber(g.accumulated)} de ${formatNumber(g.targetAlz)} Alz">${formatAlzGamer(g.accumulated)} / ${formatAlzGamer(g.targetAlz)}</div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div style="font-size:11px;color:${totalPct > 100 ? 'var(--err)' : 'var(--muted)'};margin-bottom:12px">${totalPct > 100 ? `<i class="ti ti-alert-triangle"></i> Suas metas somam ${totalPct}% — passa de 100%, ajuste alguma.` : `${totalPct}% das vendas alocado, ${100 - totalPct}% livre.`}</div>`}
+  <div class="row" style="align-items:flex-end">
+    <div style="flex:1"><label class="lbl">Nome da meta</label><input class="inp" id="newGoalName" placeholder="ex: Set novo"></div>
+    <div style="width:150px"><label class="lbl">Valor alvo (Alz)</label><input class="inp" id="newGoalTarget" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
+    <div style="width:100px"><label class="lbl">% das vendas</label><input class="inp" id="newGoalPct" type="number" min="1" max="100" step="1" placeholder="ex: 30"></div>
+    <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addSalesGoal()"><i class="ti ti-plus"></i>Criar meta</button></div>
+  </div>
 </div>`;
 
   const form = `
@@ -81,6 +110,7 @@ export function renderSalesPage() {
 <div class="pg-title"><i class="ti ti-coin" style="color:var(--acc)"></i>Vendas</div>
 <div class="pg-sub">Registre suas vendas reais e compare com o preço estimado, veja a variação de preço de cada item.</div>
 ${kpis}
+${goalsCard}
 ${form}
 ${list}
 ${priceCard}`;

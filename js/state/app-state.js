@@ -194,6 +194,11 @@ export const AppState = {
   // Data em que a meta de hoje já foi comemorada (in-memory) — evita repetir o parabéns a cada
   // drop depois de bater, e evita comemorar de novo ao recarregar com a meta já batida.
   goalCelebratedForDate: null,
+  // Metas de Alz em Vendas — "envelopes" com % fixa do que você vende: toda venda registrada
+  // DEPOIS que a meta foi criada contribui esse % pro total acumulado dela. Várias metas podem
+  // coexistir (a soma das % não precisa fechar 100 — o resto fica livre, sem meta nenhuma).
+  // [{id, name, targetAlz, percentage, createdAt}]. Ver sales-goals.js.
+  salesGoals: [],
   // Sessão de DG em andamento (opcional): { dungeonId, dungeonName, startAt }. Os drops do log
   // que caem na janela [startAt, agora] são atribuídos a esse DG. Persistida em app_settings pra
   // sobreviver a um reload. null = não está marcando DG (farme normal). Ver dg-session.js.

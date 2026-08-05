@@ -118,6 +118,7 @@ export async function loadPersistedState() {
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
   AppState.salesLog = appSettings.salesLog ?? [];
   AppState.priceHistory = appSettings.priceHistory ?? {};
+  AppState.salesGoals = appSettings.salesGoals ?? [];
   // Sessões de DG vêm da tabela própria agora. Migração transparente: se a tabela ainda está vazia
   // mas há sessões no blob antigo (app_settings.dgSessions), usa o blob e migra pra tabela no fim.
   const legacyDgSessions = appSettings.dgSessions ?? [];
@@ -171,6 +172,10 @@ export function saveRushParams() {
 
 export function saveDailyGoal() {
   return put('app-settings.php', { dailyGoalAlz: AppState.dailyGoalAlz });
+}
+
+export function saveSalesGoals() {
+  return put('app-settings.php', { salesGoals: AppState.salesGoals });
 }
 
 export function saveSalesLog() {

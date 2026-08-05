@@ -1,0 +1,52 @@
+import { AppState } from '../state/app-state.js';
+import { saveSalesGoals } from '../state/persistence.js';
+import { parseAlzInput } from '../utils/formatting.js';
+import { todayISODate } from '../utils/parsing.js';
+import { renderPage } from '../router.js';
+
+export function addSalesGoal() {
+  const name = document.getElementById('newGoalName')?.value.trim();
+  const targetAlz = parseAlzInput(document.getElementById('newGoalTarget')?.value);
+  const percentage = Math.max(0, Math.min(100, parseFloat(document.getElementById('newGoalPct')?.value.replace(',', '.')) || 0));
+  if (!name || !(targetAlz > 0) || !(percentage > 0)) return;
+
+  AppState.salesGoals.push({ id: 'goal' + Date.now(), name, targetAlz, percentage, createdAt: Date.now() });
+  saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
+  document.getElementById('newGoalName').value = '';
+  document.getElementById('newGoalTarget').value = '';
+  document.getElementById('newGoalPct').value = '';
+  renderPage();
+}
+
+export function deleteSalesGoal(id) {
+  const goal = AppState.salesGoals.find(g => g.id === id);
+  if (!goal || !confirm(`Excluir a meta "${goal.name}"?`)) return;
+  AppState.salesGoals = AppState.salesGoals.filter(g => g.id !== id);
+  saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
+  renderPage();
+}
+
+// Progresso de cada meta: soma da % fixa dela sobre toda venda registrada DEPOIS que a meta foi
+// criada (não retroage sobre vendas antigas — a meta só "começa a contar" a partir de quando você
+// a criou, mesma ideia do checkpoint usado no craft removido, mas sem checkpoint móvel: aqui é
+// fixo na criação, já que a meta não "reinicia" sozinha, só é excluída quando quiser.
+export function computeSalesGoalsProgress() {
+  return AppState.salesGoals.map(goal => {
+    const sinceDate = todayISODate(new Date(goal.createdAt));
+    const accumulated = AppState.salesLog
+      .filter(s => s.date >= sinceDate)
+      .reduce((sum, s) => sum + (s.unitPrice * s.qty * goal.percentage) / 100, 0);
+    return {
+      ...goal,
+      accumulated,
+      progress: goal.targetAlz > 0 ? Math.min(1, accumulated / goal.targetAlz) : 0,
+      complete: accumulated >= goal.targetAlz,
+    };
+  });
+}
+
+// Soma das % de todas as metas ativas — mais de 100% não faz sentido (não dá pra alocar mais do
+// que 100% do que você vende), então a UI usa isso pra avisar.
+export function totalAllocatedPercentage() {
+  return AppState.salesGoals.reduce((sum, g) => sum + g.percentage, 0);
+}

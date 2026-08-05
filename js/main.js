@@ -12,6 +12,7 @@ import { addEventTime, removeEventTime, startEventScheduleChecks } from './featu
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
 import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
+import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import {
   toggleCategoryManager,
@@ -195,6 +196,8 @@ Object.assign(window, {
   addSale,
   deleteSale,
   setPriceHistoryItem,
+  addSalesGoal,
+  deleteSalesGoal,
   openQuickMode,
   quickPick,
   quickBackToMenu,
