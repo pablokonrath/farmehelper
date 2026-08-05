@@ -1,8 +1,8 @@
 import { AppState } from '../state/app-state.js';
 import { saveSalesLog, savePriceHistory } from '../state/persistence.js';
-import { getItemPrice, getAllDrops, summarizeDropsByItem } from './drops.js';
+import { getItemPrice } from './drops.js';
 import { parseAlzInput, parseDateInputBR } from '../utils/formatting.js';
-import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
+import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
 // Registra a mudança de preço de um item no histórico (1 ponto por dia: atualiza se já mexeu
@@ -54,24 +54,16 @@ export function setPriceHistoryItem(item) {
   renderPage();
 }
 
-// Total vendido (real), o que valeria pelo preço cadastrado (estimado), a diferença, e o valor
-// ainda parado em estoque (dropado − vendido, por item, valorizado pelo preço cadastrado).
+// Total vendido (real) e o que valeria pelo preço cadastrado (estimado). Não estima valor "em
+// estoque" (dropado − vendido) — nem todo drop é vendido (parte vai pra coleção ou vira insumo
+// de craft), então esse número nunca representou Alz de verdade parado em algum lugar.
 export function computeSalesSummary() {
   let realTotal = 0;
   let estimatedTotal = 0;
-  const soldByItem = {};
   AppState.salesLog.forEach(s => {
     realTotal += s.unitPrice * s.qty;
     estimatedTotal += getItemPrice(s.itemName) * s.qty;
-    const key = stripEnhancementSuffix(s.itemName);
-    soldByItem[key] = (soldByItem[key] || 0) + s.qty;
   });
 
-  let stockValue = 0;
-  summarizeDropsByItem(getAllDrops()).forEach(it => {
-    const remaining = Math.max(0, it.qty - (soldByItem[it.name] || 0));
-    stockValue += remaining * getItemPrice(it.name);
-  });
-
-  return { realTotal, estimatedTotal, diff: realTotal - estimatedTotal, stockValue, count: AppState.salesLog.length };
+  return { realTotal, estimatedTotal, diff: realTotal - estimatedTotal, count: AppState.salesLog.length };
 }

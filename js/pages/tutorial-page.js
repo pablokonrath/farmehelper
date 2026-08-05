@@ -79,7 +79,6 @@ ${topic('ti-cash', 'Vendas', `
   Registre suas vendas reais (item, quantidade, valor) e compare com o preço estimado.
   ${li([
     '<strong>Total vendido</strong> (real) vs. o estimado pelo preço cadastrado, e a diferença.',
-    '<strong>Valor em estoque:</strong> é uma estimativa <em>teórica</em> — muitos itens vão pra coleção ou viram insumo (ex: set de aprimoramento p/ virar ticket especial), então nem tudo vira Alz de verdade.',
     '<strong>Histórico de preço:</strong> cada vez que você muda o preço de um item, vira um ponto no gráfico, pra ver a variação.',
   ])}
 `)}
