@@ -56,7 +56,7 @@ function renderPicker() {
   ${bigChoice("quickPick('rastrear')", '🔔', 'Rastrear um item p/ alerta', 'Receber alerta quando você dropar')}
   ${bigChoice("quickPick('rush')", '⚔️', 'Montar o rush de hoje', 'Escolher DGs e salvar o custo do dia')}
   ${bigChoice("quickPick('rota')", '🗺️', 'Aplicar uma rota salva', 'Soma as DGs dela ao carrinho de hoje')}
-  ${bigChoice("quickPick('meta_venda')", '🐷', 'Criar uma meta de Alz', 'Reserva uma % das suas vendas pra um objetivo')}
+  ${bigChoice("quickPick('meta_venda')", '🐷', 'Criar um cofre de Alz', 'Reserva uma % das suas vendas pra um objetivo')}
   ${bigChoice("quickPick('sessao_recuperar')", '⏱️', 'Recuperar sessão esquecida', 'Esqueceu de marcar a DG? Ainda dá pra contar pelo log')}
 </div>`;
 }
@@ -239,12 +239,12 @@ function renderRota(qm) {
 function renderMetaVenda(qm) {
   const d = qm.data;
   if (qm.step === 'done') {
-    return doneCard('🐷', 'Meta criada!', `"${esc(d.name)}" vai reservar ${d.percentage}% de cada venda registrada daqui pra frente, até juntar ${formatAlzGamer(d.targetAlz)}.`, 'meta_venda');
+    return doneCard('🐷', 'Cofre criado!', `"${esc(d.name)}" vai reservar ${d.percentage}% de cada venda registrada daqui pra frente, até juntar ${formatAlzGamer(d.targetAlz)}.`, 'meta_venda');
   }
   let inner, stepText;
   if (qm.step === 1) {
     stepText = 'Passo 1 de 3';
-    inner = `<label class="lbl">Nome da meta</label>
+    inner = `<label class="lbl">Nome do cofre</label>
       <input class="inp" id="qm-goal-name" placeholder="ex: Set novo" value="${esc(d.name || '')}">${errLine(qm)}
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else if (qm.step === 2) {
@@ -254,10 +254,10 @@ function renderMetaVenda(qm) {
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else {
     stepText = 'Passo 3 de 3';
-    inner = `<label class="lbl">Que % de cada venda reservar pra essa meta?</label>
+    inner = `<label class="lbl">Que % de cada venda reservar pra esse cofre?</label>
       <input class="inp" id="qm-goal-pct" type="number" min="1" max="100" placeholder="ex: 30">
-      <div class="hint">Toda venda que você registrar a partir de agora conta essa % pro total dessa meta.</div>${errLine(qm)}
-      <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-check"></i>Criar meta</button>`;
+      <div class="hint">Toda venda que você registrar a partir de agora conta essa % pro total desse cofre.</div>${errLine(qm)}
+      <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-check"></i>Criar cofre</button>`;
   }
   return stepShell(stepText, inner);
 }

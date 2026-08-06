@@ -28,7 +28,7 @@ export function addSalesGoal() {
 
 export function deleteSalesGoal(id) {
   const goal = AppState.salesGoals.find(g => g.id === id);
-  if (!goal || !confirm(`Excluir a meta "${goal.name}"?`)) return;
+  if (!goal || !confirm(`Excluir o cofre "${goal.name}"?`)) return;
   AppState.salesGoals = AppState.salesGoals.filter(g => g.id !== id);
   saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
   renderPage();

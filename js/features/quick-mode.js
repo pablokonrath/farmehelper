@@ -116,7 +116,7 @@ export function quickNext() {
   } else if (qm.action === 'meta_venda') {
     if (qm.step === 1) {
       const name = val('qm-goal-name');
-      if (!name) return fail('Dê um nome pra meta.');
+      if (!name) return fail('Dê um nome pro cofre.');
       qm.data.name = name; qm.step = 2;
     } else if (qm.step === 2) {
       const target = parseAlzInput(val('qm-goal-target'));
@@ -124,7 +124,7 @@ export function quickNext() {
       qm.data.targetAlz = target; qm.step = 3;
     } else if (qm.step === 3) {
       const pct = Math.max(0, Math.min(100, parseFloat(val('qm-goal-pct').replace(',', '.')) || 0));
-      if (!(pct > 0)) return fail('Informe a % das vendas pra essa meta.');
+      if (!(pct > 0)) return fail('Informe a % das vendas pra esse cofre.');
       createSalesGoal({ name: qm.data.name, targetAlz: qm.data.targetAlz, percentage: pct });
       qm.data.percentage = pct;
       qm.step = 'done';

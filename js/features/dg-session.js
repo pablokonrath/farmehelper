@@ -301,6 +301,43 @@ export function computeDgComparison() {
     .sort((x, y) => (y.alzPerRun ?? -1) - (x.alzPerRun ?? -1));
 }
 
+// Agrupa TODAS as sessões pela hora de início (0-23) e soma Alz/hora de cada faixa — não é só
+// "qual DG rende mais", é "em que horário eu historicamente rendo mais", pra quem tem horários
+// livres pra escolher e quer saber quando vale mais a pena farmar. Só considera faixas com pelo
+// menos 1min de tempo ativo somado (mesmo piso usado no resto do app pra Alz/hora confiável).
+export function computeBestFarmingHours() {
+  const buckets = {};
+  AppState.dgSessions.forEach(s => {
+    const hour = new Date(s.startAt).getHours();
+    const b = buckets[hour] || (buckets[hour] = { hour, activeMs: 0, totalAlz: 0, sessions: 0 });
+    b.activeMs += s.activeDurationMs ?? s.durationMs;
+    b.totalAlz += s.totalAlz;
+    b.sessions++;
+  });
+  return Object.values(buckets)
+    .map(b => ({ ...b, alzPerHour: b.activeMs > 60000 ? b.totalAlz / (b.activeMs / 3600000) : null }))
+    .filter(b => b.alzPerHour != null)
+    .sort((a, b) => b.alzPerHour - a.alzPerHour);
+}
+
+// Melhores marcas pessoais — melhor dia (soma de todas as sessões daquele dia) e melhor sessão
+// única. Não é uma métrica de decisão como o resto desta página, é só um "recorde", pra motivar
+// — mesma lógica de high score de qualquer jogo, olhando pros próprios números de antes.
+export function computePersonalBests() {
+  if (!AppState.dgSessions.length) return null;
+  const byDate = {};
+  let bestSession = null;
+  AppState.dgSessions.forEach(s => {
+    byDate[s.date] = (byDate[s.date] || 0) + s.totalAlz;
+    if (!bestSession || s.totalAlz > bestSession.totalAlz) bestSession = s;
+  });
+  const [bestDate, bestDateTotal] = Object.entries(byDate).sort(([, a], [, b]) => b - a)[0];
+  return {
+    bestDay: { date: bestDate, totalAlz: bestDateTotal },
+    bestSession: { date: bestSession.date, dungeonName: bestSession.dungeonName, totalAlz: bestSession.totalAlz },
+  };
+}
+
 // Parâmetros do "vale a pena resetar?" — todos inteiros não-negativos (valores em Alz ou gemas
 // vêm de inputs mascarados; runs por reset no mínimo 1).
 export function setResetConfig(field, value) {

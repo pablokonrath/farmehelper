@@ -1,9 +1,10 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, DAILY_RUN_LIMIT } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
+import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -50,7 +51,7 @@ function renderRushProgressCard(comparisonByDgId) {
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-checklist"></i>Progresso do rush de hoje</div>
   <span class="badge ${doneCount >= rows.length ? 'badge-ok' : 'badge-acc'}">${doneCount}/${rows.length} feitas</span></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Conta as runs de verdade feitas hoje em cada DG (automático se você informou o tempo por run ao iniciar, ou o que preencher na mão) contra o planejado no rush.</div>
+  ${infoToggle('sessions-rush-progress', 'Conta as runs de verdade feitas hoje em cada DG (automático se você informou o tempo por run ao iniciar, ou o que preencher na mão) contra o planejado no rush.')}
   ${expectedAlz > 0 ? `<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;margin-bottom:12px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
     <span>Esperado hoje (pelo seu Alz/run histórico): <strong style="color:var(--txt)" title="${formatNumber(expectedAlz)} Alz">${formatAlzGamer(expectedAlz)}</strong>${missingData ? ` <span style="color:var(--muted)">(${missingData} DG sem histórico, fora da conta)</span>` : ''}</span>
     <span>Já realizado nessas DGs: <strong style="color:${pct >= 100 ? 'var(--ok)' : 'var(--gold)'}" title="${formatNumber(realizedAlz)} Alz">${formatAlzGamer(realizedAlz)}</strong>${pct != null ? ` <span style="color:var(--muted)">(${pct}%)</span>` : ''}</span>
@@ -169,7 +170,7 @@ function forgottenSessionRecoveryPanel() {
   const suggestion = suggestForgottenSessionWindow();
   const suggestionIsToday = suggestion && todayISODate(new Date(suggestion.suggestedStart)) === todayISODate();
   return `<div style="margin-top:12px;padding:12px;background:var(--surf2);border:1px dashed var(--border);border-radius:8px">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Usa os drops do log que já caíram sem sessão vinculada, do fim da sua última sessão encerrada (mesmo que tenha sido ontem) até agora. Ajuste o início se o log só passou a registrar depois que você já tinha entrado na DG.</div>
+    ${infoToggle('sessions-forgotten-recovery', 'Usa os drops do log que já caíram sem sessão vinculada, do fim da sua última sessão encerrada (mesmo que tenha sido ontem) até agora. Ajuste o início se o log só passou a registrar depois que você já tinha entrado na DG.')}
     ${!suggestion
       ? '<div class="empty" style="padding:8px 0">Nenhum drop fora de sessão desde então — nada pra recuperar.</div>'
       : `<div style="font-size:12px;color:var(--txt);margin-bottom:10px">${suggestion.dropCount} drop(s) encontrados, a partir de <strong>${suggestionIsToday ? '' : formatDateBR(todayISODate(new Date(suggestion.suggestedStart))) + ' '}${timeHM(suggestion.suggestedStart)}</strong>.</div>
@@ -243,7 +244,7 @@ export function renderSessionsPage() {
   const comparisonCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}</div>
+  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
     : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th><th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
@@ -261,10 +262,29 @@ export function renderSessionsPage() {
       </tbody></table>`}
 </div>`;
 
+  // Não é "qual DG", é "que horário" — agrupa toda sessão pela hora de início e mostra onde o
+  // Alz/hora historicamente é maior. Só aparece com pelo menos 3 faixas de horário diferentes já
+  // farmadas — com 1 ou 2 faixas a "comparação" seria só reafirmar o óbvio (é a única hora que
+  // você joga), não uma informação nova.
+  const bestHours = computeBestFarmingHours();
+  const bestHoursCard = bestHours.length < 3 ? '' : `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-clock"></i>Seu horário mais produtivo</div></div>
+  ${infoToggle('sessions-best-hours', 'Agrupa todas as suas sessões pela hora em que começaram e soma o Alz/hora de cada faixa — não é qual DG rende mais, é em que horário do dia o seu farme historicamente rende mais, pra quem tem horários livres pra escolher.')}
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    ${bestHours.slice(0, 3).map((b, i) => `<div style="flex:1;min-width:150px;padding:10px 12px;background:${i === 0 ? 'var(--gold-bg)' : 'var(--surf2)'};border:1px solid ${i === 0 ? 'var(--gold-border)' : 'var(--border)'};border-radius:8px">
+      <div style="font-size:11px;color:var(--muted)">${i === 0 ? '🏆 Melhor faixa' : `#${i + 1}`}</div>
+      <div style="font-weight:700;font-size:15px">${String(b.hour).padStart(2, '0')}h–${String((b.hour + 1) % 24).padStart(2, '0')}h</div>
+      <div style="color:var(--gold);font-weight:600">${formatAlzGamer(b.alzPerHour)}/h</div>
+      <div style="font-size:11px;color:var(--muted)">${b.sessions} sessão${b.sessions > 1 ? 'ões' : ''}</div>
+    </div>`).join('')}
+  </div>
+</div>`;
+
   const routeComparisonCard = !routeComparison.length ? '' : `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Ordenado por <strong style="color:var(--gold)">Lucro/hora</strong> — uma rota mais longa pode ter lucro total maior sem ser a melhor forma de gastar seu tempo, então a comparação é por eficiência, não pelo lucro bruto. Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje (já incluindo reset por gemas quando alguma DG passa de ${DAILY_RUN_LIMIT} runs e vale a pena resetar). Rota sem tempo estimado completo fica no fim, sem eficiência calculável ainda. Crie e edite rotas em DGs de rush diário.</div>
+  ${infoToggle('sessions-route-comparison', `Ordenado por <strong style="color:var(--gold)">Lucro/hora</strong> — uma rota mais longa pode ter lucro total maior sem ser a melhor forma de gastar seu tempo, então a comparação é por eficiência, não pelo lucro bruto. Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje (já incluindo reset por gemas quando alguma DG passa de ${DAILY_RUN_LIMIT} runs e vale a pena resetar). Rota sem tempo estimado completo fica no fim, sem eficiência calculável ainda. Crie e edite rotas em DGs de rush diário.`)}
   <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th><th>Lucro/hora</th></tr></thead><tbody>
   ${routeComparison.map((r, i) => `<tr>
     <td class="rank">${i + 1}</td>
@@ -286,7 +306,7 @@ export function renderSessionsPage() {
   const timeSuggestionCard = `
 <div class="card card-featured">
   <div class="ctitle"><i class="ti ti-clock" style="color:var(--gold)"></i>Quanto tempo você tem hoje?</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Sugere a rota salva de melhor Lucro/hora que cabe no tempo (tempo/run vem da média real das suas sessões) e completa a sobra com DGs avulsas pelas de melhor Alz/hora, sem deixar tempo disponível sem uso. Se nenhuma rota salva couber, monta um encaixe novo do zero, respeitando o limite de ${DAILY_RUN_LIMIT} runs/dia por DG.</div>
+  ${infoToggle('sessions-time-suggestion', `Sugere a rota salva de melhor Lucro/hora que cabe no tempo (tempo/run vem da média real das suas sessões) e completa a sobra com DGs avulsas pelas de melhor Alz/hora, sem deixar tempo disponível sem uso. Se nenhuma rota salva couber, monta um encaixe novo do zero, respeitando o limite de ${DAILY_RUN_LIMIT} runs/dia por DG.`)}
   <div class="row" style="margin-bottom:14px;align-items:flex-end">
     <div style="width:140px"><label class="lbl">Horas disponíveis</label><input class="inp" id="timeAvailableHoursInput" type="number" min="0" step="0.5" placeholder="ex: 3" value="${AppState.timeAvailableHours || ''}" onchange="setTimeAvailableHours(this.value)"></div>
   </div>
@@ -325,7 +345,7 @@ export function renderSessionsPage() {
       ${renderDateInputBR({ id: 'sessHistDate', value: historyDate, onChange: 'setSessionsHistoryDate' })}
     </div>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mostra só o dia selecionado, agrupado por rota quando você iniciou a sessão com uma aplicada no carrinho (farme avulso fica junto em "Avulsas"). A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens. Sessão errada (ex: ficou aberta por horas sem farmar) distorce a média de tempo daquele DG pra sempre — exclua pela lixeira.</div>
+  ${infoToggle('sessions-history', 'Mostra só o dia selecionado, agrupado por rota quando você iniciou a sessão com uma aplicada no carrinho (farme avulso fica junto em "Avulsas"). A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens. Sessão errada (ex: ficou aberta por horas sem farmar) distorce a média de tempo daquele DG pra sempre — exclua pela lixeira.')}
   ${!history.length
     ? `<div class="empty">Nenhuma sessão de DG encerrada em ${formatDateBR(historyDate)}.</div>`
     : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th><th style="width:36px"></th></tr></thead><tbody>
@@ -338,7 +358,7 @@ export function renderSessionsPage() {
   const resetCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-refresh"></i>Vale a pena resetar?</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Resetar o limite do DG custa gemas. Só compensa se o líquido por run (Alz do drop menos o custo de entrada) superar o custo do reset rateado por run.</div>
+  ${infoToggle('sessions-reset-worth', 'Resetar o limite do DG custa gemas. Só compensa se o líquido por run (Alz do drop menos o custo de entrada) superar o custo do reset rateado por run.')}
   <div class="g4" style="margin-bottom:14px">
     <div><label class="lbl">Valor da gema (Alz)</label><input class="inp" type="text" inputmode="numeric" placeholder="ex: 60.000" value="${rc.gemValueAlz ? formatNumber(rc.gemValueAlz) : ''}" oninput="maskAlzInputLive(this)" onchange="setResetConfig('gemValueAlz', this.value)"></div>
     <div><label class="lbl">Valor do ticket (Alz)</label><input class="inp" type="text" inputmode="numeric" placeholder="opcional" value="${rc.ticketValueAlz ? formatNumber(rc.ticketValueAlz) : ''}" oninput="maskAlzInputLive(this)" onchange="setResetConfig('ticketValueAlz', this.value)"></div>
@@ -369,6 +389,7 @@ ${nowFarmingCard}
 ${renderRushProgressCard(comparisonByDgId)}
 ${timeSuggestionCard}
 ${comparisonCard}
+${bestHoursCard}
 ${routeComparisonCard}
 ${resetCard}
 ${historyCard}`;

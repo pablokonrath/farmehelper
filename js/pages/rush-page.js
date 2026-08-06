@@ -3,6 +3,7 @@ import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, compute
 import { computeResetWorth } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
+import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
@@ -71,7 +72,7 @@ export function renderRushPage() {
   const routesCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Minhas rotas</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. Compare o lucro de cada rota em Sessões de farme.</div>
+  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. Compare o lucro de cada rota em Sessões de farme.')}
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
   <table><thead><tr><th>Rota</th><th style="width:320px">DGs</th><th>Tempo estimado</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
@@ -130,7 +131,7 @@ ${routesCard}
     <i class="ti ti-chevron-${AppState.isCreditsManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
   </div>
   ${AppState.isCreditsManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia. A sugestão abaixo cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}</div>
+  ${infoToggle('rush-credits', `Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia. A sugestão abaixo cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}`)}
   <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:150px">Preço de mercado (unidade)</th><th style="width:150px">Custo de fabricar</th><th>Subtotal</th></tr></thead><tbody>
   ${CREDIT_CATEGORIES.map(cat => {
     const { quantity, marketPrice } = AppState.rushCredits[cat.id];
@@ -194,7 +195,7 @@ ${routesCard}
 <!-- ADICIONAR DG AO CARRINHO -->
 <div class="card">
   <div class="ctitle"><i class="ti ti-plus"></i>Adicionar DG ao rush</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada run usa o custo Alz da DG (se houver) + tickets × preço do ticket + gemas de entrada × custo por gema (sugestão: <span id="gemaSuggestion">${formatAlzGamer(getCostPerGem())}</span>, calculado a partir do Card Cash). Reset (opcional) soma gemas por cima disso.</div>
+  ${infoToggle('rush-add-dg', `Cada run usa o custo Alz da DG (se houver) + tickets × preço do ticket + gemas de entrada × custo por gema (sugestão: <span id="gemaSuggestion">${formatAlzGamer(getCostPerGem())}</span>, calculado a partir do Card Cash). Reset (opcional) soma gemas por cima disso.`)}
   <div class="g3" style="margin-bottom:10px">
     <div style="grid-column:span 2"><label class="lbl">DG</label>
       <select class="inp" id="dgS">

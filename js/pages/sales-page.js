@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
 import { computeSalesSummary, getSalePriceHistory, getSoldItemNames } from '../features/sales.js';
 import { computeSalesGoalsProgress, totalAllocatedPercentage, computeTodayGoalsAllocation } from '../features/sales-goals.js';
+import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -26,14 +27,14 @@ export function renderSalesPage() {
   const todayAlloc = goalsProgress.length ? computeTodayGoalsAllocation() : null;
   const goalsCard = `
 <div class="card">
-  <div class="ctitle"><i class="ti ti-target"></i>Metas de Alz</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada meta reserva uma % fixa de toda venda registrada <strong>a partir de quando ela foi criada</strong> (vendas antigas não contam). Dá pra ter várias ao mesmo tempo — a soma das % não precisa fechar 100, o resto fica livre.</div>
-  ${!goalsProgress.length ? '<div class="empty" style="padding:8px 0;margin-bottom:12px">Nenhuma meta criada ainda.</div>' : `
+  <div class="ctitle"><i class="ti ti-target"></i>Cofres de Alz</div>
+  ${infoToggle('sales-goals', 'Cada cofre reserva uma % fixa de toda venda registrada <strong>a partir de quando ele foi criado</strong> (vendas antigas não contam). Dá pra ter vários ao mesmo tempo — a soma das % não precisa fechar 100, o resto fica livre. Não confunda com a "Meta de farme" da Visão geral — são pools diferentes: uma é valor farmado, o cofre é venda de fato.')}
+  ${!goalsProgress.length ? '<div class="empty" style="padding:8px 0;margin-bottom:12px">Nenhum cofre criado ainda.</div>' : `
   <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px">
     ${goalsProgress.map(g => `<div style="padding:12px;background:var(--surf2);border:1px solid ${g.complete ? 'var(--ok-border)' : 'var(--border)'};border-radius:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-weight:700;display:flex;align-items:center;gap:8px">${esc(g.name)} <span class="badge badge-acc">${g.percentage}% das vendas</span>${g.complete ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Batida</span>' : ''}</div>
-        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSalesGoal('${g.id}')" title="Excluir meta"><i class="ti ti-trash"></i></button>
+        <div style="font-weight:700;display:flex;align-items:center;gap:8px">${esc(g.name)} <span class="badge badge-acc">${g.percentage}% das vendas</span>${g.complete ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Cheio</span>' : ''}</div>
+        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSalesGoal('${g.id}')" title="Excluir cofre"><i class="ti ti-trash"></i></button>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden"><div style="width:${Math.round(g.progress * 100)}%;height:100%;background:${g.complete ? 'var(--ok)' : 'var(--acc)'}"></div></div>
@@ -41,13 +42,13 @@ export function renderSalesPage() {
       </div>
     </div>`).join('')}
   </div>
-  <div style="font-size:11px;color:${totalPct > 100 ? 'var(--err)' : 'var(--muted)'};margin-bottom:12px">${totalPct > 100 ? `<i class="ti ti-alert-triangle"></i> Suas metas somam ${totalPct}% — passa de 100%, ajuste alguma.` : `${totalPct}% das vendas alocado, ${100 - totalPct}% livre.`}</div>
-  ${todayAlloc ? `<div style="font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border)"><i class="ti ti-calendar"></i> Hoje você vendeu ${formatAlzGamer(todayAlloc.todayTotal)} — <strong style="color:var(--txt)">${formatAlzGamer(todayAlloc.allocated)}</strong> (${todayAlloc.pct}%) já conta pras metas ativas, ${formatAlzGamer(todayAlloc.free)} livre.</div>` : ''}`}
+  <div style="font-size:11px;color:${totalPct > 100 ? 'var(--err)' : 'var(--muted)'};margin-bottom:12px">${totalPct > 100 ? `<i class="ti ti-alert-triangle"></i> Seus cofres somam ${totalPct}% — passa de 100%, ajuste algum.` : `${totalPct}% das vendas alocado, ${100 - totalPct}% livre.`}</div>
+  ${todayAlloc ? `<div style="font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border)"><i class="ti ti-calendar"></i> Hoje você vendeu ${formatAlzGamer(todayAlloc.todayTotal)} — <strong style="color:var(--txt)">${formatAlzGamer(todayAlloc.allocated)}</strong> (${todayAlloc.pct}%) já cai nos cofres ativos, ${formatAlzGamer(todayAlloc.free)} livre.</div>` : ''}`}
   <div class="row" style="align-items:flex-end">
-    <div style="flex:1"><label class="lbl">Nome da meta</label><input class="inp" id="newGoalName" placeholder="ex: Set novo"></div>
+    <div style="flex:1"><label class="lbl">Nome do cofre</label><input class="inp" id="newGoalName" placeholder="ex: Set novo"></div>
     <div style="width:150px"><label class="lbl">Valor alvo (Alz)</label><input class="inp" id="newGoalTarget" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
     <div style="width:100px"><label class="lbl">% das vendas</label><input class="inp" id="newGoalPct" type="number" min="1" max="100" step="1" placeholder="ex: 30"></div>
-    <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addSalesGoal()"><i class="ti ti-plus"></i>Criar meta</button></div>
+    <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addSalesGoal()"><i class="ti ti-plus"></i>Criar cofre</button></div>
   </div>
 </div>`;
 
@@ -98,7 +99,7 @@ export function renderSalesPage() {
       ${histItems.map(n => `<option value="${esc(n)}"${n === AppState.priceHistoryItem ? ' selected' : ''}>${esc(n)}</option>`).join('')}
     </select>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> A variação do preço pelo qual você realmente <strong>vendeu</strong> cada item ao longo do tempo (não o preço cadastrado como meta em Cálculo de farme) — pra decidir a hora de vender. Um ponto por dia com venda, com a média se vendeu mais de uma vez no mesmo dia.</div>
+  ${infoToggle('sales-price-history', 'A variação do preço pelo qual você realmente <strong>vendeu</strong> cada item ao longo do tempo (não o preço cadastrado como meta em Cálculo de farme) — pra decidir a hora de vender. Um ponto por dia com venda, com a média se vendeu mais de uma vez no mesmo dia.')}
   ${!histItems.length
     ? '<div class="empty">Ainda sem venda registrada. Registre uma venda acima pra começar.</div>'
     : !AppState.priceHistoryItem

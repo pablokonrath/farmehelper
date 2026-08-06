@@ -194,9 +194,11 @@ export const AppState = {
   // Data em que a meta de hoje já foi comemorada (in-memory) — evita repetir o parabéns a cada
   // drop depois de bater, e evita comemorar de novo ao recarregar com a meta já batida.
   goalCelebratedForDate: null,
-  // Metas de Alz em Vendas — "envelopes" com % fixa do que você vende: toda venda registrada
-  // DEPOIS que a meta foi criada contribui esse % pro total acumulado dela. Várias metas podem
-  // coexistir (a soma das % não precisa fechar 100 — o resto fica livre, sem meta nenhuma).
+  // Cofres de Alz em Vendas (nome na UI; campo interno segue "salesGoals") — "envelopes" com %
+  // fixa do que você vende: toda venda registrada DEPOIS que o cofre foi criado contribui esse %
+  // pro total acumulado dele. Vários cofres podem coexistir (a soma das % não precisa fechar
+  // 100 — o resto fica livre, sem cofre nenhum). Renomeado de "Meta de Alz" pra não confundir
+  // com a Meta de farme do dia (pools diferentes: uma é farmado, esta é vendido de fato).
   // [{id, name, targetAlz, percentage, createdAt}]. Ver sales-goals.js.
   salesGoals: [],
   // Sessão de DG em andamento (opcional): { dungeonId, dungeonName, startAt }. Os drops do log
@@ -210,6 +212,9 @@ export const AppState = {
   sessionsHistoryDate: todayISODate(),
   // Quais sessões do histórico estão com a lista de itens expandida (só UI, não persiste).
   expandedDgSessions: {},
+  // Quais textos explicativos de card ("Como funciona") estão abertos — em qualquer página, não
+  // só Sessões. Só UI, não persiste (volta tudo fechado ao recarregar). Ver ui-toggles.js.
+  openInfoBoxes: {},
   // Painel de "recuperar sessão esquecida" (Sessões de farme) aberto ou não — só UI, não persiste.
   forgottenSessionRecoveryOpen: false,
   // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings). Valor de gema/ticket
