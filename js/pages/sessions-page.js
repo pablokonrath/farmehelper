@@ -270,13 +270,13 @@ export function renderSessionsPage() {
   const bestHoursCard = bestHours.length < 3 ? '' : `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-clock"></i>Seu horário mais produtivo</div></div>
-  ${infoToggle('sessions-best-hours', 'Agrupa todas as suas sessões pela hora em que começaram e soma o Alz/hora de cada faixa — não é qual DG rende mais, é em que horário do dia o seu farme historicamente rende mais, pra quem tem horários livres pra escolher.')}
+  ${infoToggle('sessions-best-hours', 'Agrupa todas as suas sessões pela hora em que começaram e soma o Alz/hora de cada faixa — não é qual DG rende mais, é em que horário do dia o seu farme historicamente rende mais, pra quem tem horários livres pra escolher. Mostra também qual(is) DG(s) compõem aquela faixa, já que uma faixa com poucas sessões pode ser só reflexo de qual DG você farmou naquele horário, não do horário em si.')}
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     ${bestHours.slice(0, 3).map((b, i) => `<div style="flex:1;min-width:150px;padding:10px 12px;background:${i === 0 ? 'var(--gold-bg)' : 'var(--surf2)'};border:1px solid ${i === 0 ? 'var(--gold-border)' : 'var(--border)'};border-radius:8px">
       <div style="font-size:11px;color:var(--muted)">${i === 0 ? '🏆 Melhor faixa' : `#${i + 1}`}</div>
       <div style="font-weight:700;font-size:15px">${String(b.hour).padStart(2, '0')}h–${String((b.hour + 1) % 24).padStart(2, '0')}h</div>
       <div style="color:var(--gold);font-weight:600">${formatAlzGamer(b.alzPerHour)}/h</div>
-      <div style="font-size:11px;color:var(--muted)">${b.sessions} sessão${b.sessions > 1 ? 'ões' : ''}</div>
+      <div style="font-size:11px;color:var(--muted)">${b.sessions} sessão${b.sessions > 1 ? 'ões' : ''} · ${b.dungeonNames.map(esc).join(', ')}</div>
     </div>`).join('')}
   </div>
 </div>`;

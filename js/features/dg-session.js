@@ -309,13 +309,14 @@ export function computeBestFarmingHours() {
   const buckets = {};
   AppState.dgSessions.forEach(s => {
     const hour = new Date(s.startAt).getHours();
-    const b = buckets[hour] || (buckets[hour] = { hour, activeMs: 0, totalAlz: 0, sessions: 0 });
+    const b = buckets[hour] || (buckets[hour] = { hour, activeMs: 0, totalAlz: 0, sessions: 0, dungeonNames: new Set() });
     b.activeMs += s.activeDurationMs ?? s.durationMs;
     b.totalAlz += s.totalAlz;
     b.sessions++;
+    b.dungeonNames.add(s.dungeonName);
   });
   return Object.values(buckets)
-    .map(b => ({ ...b, alzPerHour: b.activeMs > 60000 ? b.totalAlz / (b.activeMs / 3600000) : null }))
+    .map(b => ({ ...b, dungeonNames: [...b.dungeonNames], alzPerHour: b.activeMs > 60000 ? b.totalAlz / (b.activeMs / 3600000) : null }))
     .filter(b => b.alzPerHour != null)
     .sort((a, b) => b.alzPerHour - a.alzPerHour);
 }
