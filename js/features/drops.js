@@ -75,7 +75,7 @@ export function getTodayFarmedAlz() {
 // null quando não há base suficiente (menos de 2 drops ou janela menor que 1 min).
 export function getTodayFarmRate() {
   const today = todayISODate();
-  const logDrops = AppState.drops.filter(d => d.date === today && d.timestamp);
+  const logDrops = AppState.drops.filter(d => d.date === today && d.timestamp && !isExcludedGearItem(d.name));
   if (logDrops.length < 2) return null;
   const times = logDrops.map(d => d.timestamp.getTime());
   const activeMs = Math.max(...times) - Math.min(...times);
