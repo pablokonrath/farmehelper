@@ -151,7 +151,10 @@ ${routesCard}
       <td><input class="inp inp-sm" list="creditItemSugg" value="${esc(itemName)}" placeholder="ex: Núcleo Iniciante" onblur="setRushCreditItemName('${cat.id}', this.value)">
         ${itemPriceInfo.linked
           ? `<div style="font-size:var(--fs-2xs);color:var(--ok);margin-top:3px"><i class="ti ti-check"></i> ${formatAlzGamer(itemPriceInfo.price)} — puxado de Cálculo de farme</div>`
-          : `<input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="${itemName ? 'sem preço cadastrado — digite aqui' : 'ou digite o preço na mão'}" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`}</td>
+          : itemName
+            ? `<div style="font-size:var(--fs-2xs);color:var(--warn);margin-top:3px">Sem preço cadastrado pra "${esc(itemName)}" em Cálculo de farme — cadastre lá (o nome precisa bater) ou digite o preço de hoje aqui:</div>
+               <input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="preço manual" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`
+            : `<input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="ou digite o preço na mão" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`}</td>
       <td>${renderAlzValue(subtotal, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${formatAlzGamer(unitCost)}/un.</div></td>
     </tr>`;
   }).join('')}

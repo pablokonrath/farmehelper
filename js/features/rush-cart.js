@@ -1,7 +1,7 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
 import { saveRushHistory, saveRushCredits, saveRushCreditItemNames, saveAppliedRoutes } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
-import { todayISODate } from '../utils/parsing.js';
+import { todayISODate, normalizeForSearch } from '../utils/parsing.js';
 import { updateBalanceSidebar, getItemPrice } from './drops.js';
 import { computeDgComparison, computeResetWorth } from './dg-session.js';
 import { getDungeonDifficulty } from './dungeon-difficulty.js';
@@ -20,7 +20,15 @@ export function getCostPerGem() {
 export function getCreditItemPrice(categoryId) {
   const itemName = AppState.rushCreditItemNames[categoryId];
   if (itemName) {
-    const price = getItemPrice(itemName);
+    let price = getItemPrice(itemName);
+    // Nome batendo exato falha fácil por maiúscula/acento (ex: vinculou "nucleo iniciante" mas
+    // cadastrou "Núcleo Iniciante" em Cálculo de farme) — sem isso o preço some sem avisar por
+    // quê. Cai pra um match tolerante antes de desistir e ir pro preço manual.
+    if (!(price > 0)) {
+      const normalized = normalizeForSearch(itemName);
+      const matchKey = Object.keys(AppState.itemPrices).find(k => normalizeForSearch(k) === normalized);
+      if (matchKey) price = AppState.itemPrices[matchKey];
+    }
     if (price > 0) return { price, linked: true, itemName };
   }
   return { price: AppState.rushCredits[categoryId].marketPrice || 0, linked: false, itemName: itemName || '' };
