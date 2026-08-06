@@ -1,6 +1,6 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
-import { formatAlzGamer, formatNumber } from '../utils/formatting.js';
-import { getActiveSessionSummary } from '../features/dg-session.js';
+import { formatAlzGamer, formatNumber, formatDuration } from '../utils/formatting.js';
+import { getActiveSessionSummary, suggestForgottenSessionWindow } from '../features/dg-session.js';
 import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
@@ -55,6 +55,9 @@ function renderPicker() {
     active ? `Você está em ${esc(active.dungeonName)} agora` : 'Cronometra o farme e liga a vigilância')}
   ${bigChoice("quickPick('rastrear')", '🔔', 'Rastrear um item p/ alerta', 'Receber alerta quando você dropar')}
   ${bigChoice("quickPick('rush')", '⚔️', 'Montar o rush de hoje', 'Escolher DGs e salvar o custo do dia')}
+  ${bigChoice("quickPick('rota')", '🗺️', 'Aplicar uma rota salva', 'Soma as DGs dela ao carrinho de hoje')}
+  ${bigChoice("quickPick('meta_venda')", '🐷', 'Criar uma meta de Alz', 'Reserva uma % das suas vendas pra um objetivo')}
+  ${bigChoice("quickPick('sessao_recuperar')", '⏱️', 'Recuperar sessão esquecida', 'Esqueceu de marcar a DG? Ainda dá pra contar pelo log')}
 </div>`;
 }
 
@@ -217,6 +220,66 @@ function renderSessao(qm) {
   return stepShell(active ? 'Encerrar sessão' : 'Iniciar sessão', inner);
 }
 
+function renderRota(qm) {
+  if (qm.step === 'done') {
+    return doneCard('🗺️', 'Rota aplicada!', `As DGs de "${esc(qm.data.routeName)}" foram somadas ao carrinho de hoje, em "DGs de rush diário".`, 'rota');
+  }
+  if (!AppState.rushRoutes.length) {
+    return stepShell('Aplicar rota', `<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">Você ainda não tem nenhuma rota salva. Monte o carrinho em "DGs de rush diário" e clique em "Salvar como rota" primeiro.</div>
+      <button class="btn btn-d" onclick="navigateTo('rush')"><i class="ti ti-swords"></i>Ir pra DGs de rush diário</button>`);
+  }
+  const opts = AppState.rushRoutes.map(r => `<option value="${esc(r.id)}">${esc(r.name)} — ${r.items.length} DG${r.items.length > 1 ? 's' : ''}</option>`).join('');
+  const inner = `<label class="lbl">Qual rota você quer aplicar?</label>
+    <select class="inp" id="qm-route"><option value="">Selecione...</option>${opts}</select>
+    <div class="hint">Soma as DGs dela ao carrinho de hoje — não substitui o que já estiver lá.</div>${errLine(qm)}
+    <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-player-play"></i>Aplicar rota</button>`;
+  return stepShell('Aplicar rota', inner);
+}
+
+function renderMetaVenda(qm) {
+  const d = qm.data;
+  if (qm.step === 'done') {
+    return doneCard('🐷', 'Meta criada!', `"${esc(d.name)}" vai reservar ${d.percentage}% de cada venda registrada daqui pra frente, até juntar ${formatAlzGamer(d.targetAlz)}.`, 'meta_venda');
+  }
+  let inner, stepText;
+  if (qm.step === 1) {
+    stepText = 'Passo 1 de 3';
+    inner = `<label class="lbl">Nome da meta</label>
+      <input class="inp" id="qm-goal-name" placeholder="ex: Set novo" value="${esc(d.name || '')}">${errLine(qm)}
+      <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
+  } else if (qm.step === 2) {
+    stepText = 'Passo 2 de 3';
+    inner = `<label class="lbl">Valor alvo (Alz)</label>
+      <input class="inp" id="qm-goal-target" type="text" inputmode="numeric" placeholder="ex: 500.000.000" value="${d.targetAlz ? formatNumber(d.targetAlz) : ''}" oninput="maskAlzInputLive(this)">${errLine(qm)}
+      <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
+  } else {
+    stepText = 'Passo 3 de 3';
+    inner = `<label class="lbl">Que % de cada venda reservar pra essa meta?</label>
+      <input class="inp" id="qm-goal-pct" type="number" min="1" max="100" placeholder="ex: 30">
+      <div class="hint">Toda venda que você registrar a partir de agora conta essa % pro total dessa meta.</div>${errLine(qm)}
+      <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-check"></i>Criar meta</button>`;
+  }
+  return stepShell(stepText, inner);
+}
+
+function renderSessaoRecuperar(qm) {
+  if (qm.step === 'done') {
+    return doneCard('⏱️', 'Sessão recuperada!', `Registrei o farme em ${esc(qm.data.dungeonName)} com base no que já tinha caído no log.`, 'sessao_recuperar');
+  }
+  const suggestion = suggestForgottenSessionWindow();
+  if (!suggestion) {
+    return stepShell('Recuperar sessão', `<div style="font-size:13px;color:var(--muted);line-height:1.6">Não achei nenhum drop fora de uma sessão já registrada — nada pra recuperar agora.</div>`);
+  }
+  const startedAgo = formatDuration(Date.now() - suggestion.suggestedStart);
+  const startTime = new Date(suggestion.suggestedStart).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const opts = renderDungeonOptionsGrouped(AppState.dungeonList);
+  const inner = `<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px">Achei <strong style="color:var(--txt)">${suggestion.dropCount} drop(s)</strong> fora de qualquer sessão, desde as <strong style="color:var(--txt)">${startTime}</strong> (${startedAgo} atrás).</div>
+    <label class="lbl">Qual DG era?</label>
+    <select class="inp" id="qm-recover-dg"><option value="">Selecione...</option>${opts}</select>${errLine(qm)}
+    <button class="btn btn-s" style="margin-top:14px" onclick="quickNext()"><i class="ti ti-check"></i>Registrar sessão</button>`;
+  return stepShell('Recuperar sessão', inner);
+}
+
 export function renderQuickPage() {
   const qm = AppState.quickMode;
   if (qm.action === 'venda') return HEADER + renderVenda(qm);
@@ -224,5 +287,8 @@ export function renderQuickPage() {
   if (qm.action === 'sessao') return HEADER + renderSessao(qm);
   if (qm.action === 'rastrear') return HEADER + renderRastrear(qm);
   if (qm.action === 'rush') return HEADER + renderRush(qm);
+  if (qm.action === 'rota') return HEADER + renderRota(qm);
+  if (qm.action === 'meta_venda') return HEADER + renderMetaVenda(qm);
+  if (qm.action === 'sessao_recuperar') return HEADER + renderSessaoRecuperar(qm);
   return HEADER + renderPicker();
 }

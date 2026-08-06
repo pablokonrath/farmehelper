@@ -4,14 +4,22 @@ import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
+// Núcleo sem DOM (reaproveitado pelo Modo guiado, que já acumula os dados do passo a passo em vez
+// de reler input por id). Devolve false se algum campo obrigatório faltar.
+export function createSalesGoal({ name, targetAlz, percentage }) {
+  name = (name || '').trim();
+  if (!name || !(targetAlz > 0) || !(percentage > 0)) return false;
+  AppState.salesGoals.push({ id: 'goal' + Date.now(), name, targetAlz, percentage: Math.min(100, percentage), createdAt: Date.now() });
+  saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
+  return true;
+}
+
 export function addSalesGoal() {
   const name = document.getElementById('newGoalName')?.value.trim();
   const targetAlz = parseAlzInput(document.getElementById('newGoalTarget')?.value);
   const percentage = Math.max(0, Math.min(100, parseFloat(document.getElementById('newGoalPct')?.value.replace(',', '.')) || 0));
-  if (!name || !(targetAlz > 0) || !(percentage > 0)) return;
+  if (!createSalesGoal({ name, targetAlz, percentage })) return;
 
-  AppState.salesGoals.push({ id: 'goal' + Date.now(), name, targetAlz, percentage, createdAt: Date.now() });
-  saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
   document.getElementById('newGoalName').value = '';
   document.getElementById('newGoalTarget').value = '';
   document.getElementById('newGoalPct').value = '';

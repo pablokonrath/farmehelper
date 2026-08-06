@@ -1,9 +1,11 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { recordSale } from './sales.js';
+import { createSalesGoal } from './sales-goals.js';
 import { setDailyGoal } from './farm-goal.js';
-import { startDgSession, endDgSession, getActiveSessionSummary } from './dg-session.js';
+import { startDgSession, endDgSession, getActiveSessionSummary, suggestForgottenSessionWindow, recoverForgottenSession } from './dg-session.js';
 import { addTrackedKeywordByName } from './keywords.js';
 import { buildCartItem, saveRushForDay, calculateRushCartCost } from './rush-cart.js';
+import { applyRushRoute } from './rush-routes.js';
 import { saveRushParams } from '../state/persistence.js';
 import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -100,6 +102,43 @@ export function quickNext() {
       if (!item) return fail('Digite o item pra rastrear.');
       if (!addTrackedKeywordByName(item, true)) return fail('Você já rastreia esse item.');
       qm.data.itemName = item; qm.step = 'done';
+    }
+  } else if (qm.action === 'rota') {
+    if (qm.step === 1) {
+      const id = val('qm-route');
+      if (!id) return fail('Escolha uma rota.');
+      const route = AppState.rushRoutes.find(r => r.id === id);
+      if (!route) return fail('Rota inválida.');
+      applyRushRoute(id);
+      qm.data.routeName = route.name;
+      qm.step = 'done';
+    }
+  } else if (qm.action === 'meta_venda') {
+    if (qm.step === 1) {
+      const name = val('qm-goal-name');
+      if (!name) return fail('Dê um nome pra meta.');
+      qm.data.name = name; qm.step = 2;
+    } else if (qm.step === 2) {
+      const target = parseAlzInput(val('qm-goal-target'));
+      if (!(target > 0)) return fail('Informe o valor alvo (Alz).');
+      qm.data.targetAlz = target; qm.step = 3;
+    } else if (qm.step === 3) {
+      const pct = Math.max(0, Math.min(100, parseFloat(val('qm-goal-pct').replace(',', '.')) || 0));
+      if (!(pct > 0)) return fail('Informe a % das vendas pra essa meta.');
+      createSalesGoal({ name: qm.data.name, targetAlz: qm.data.targetAlz, percentage: pct });
+      qm.data.percentage = pct;
+      qm.step = 'done';
+    }
+  } else if (qm.action === 'sessao_recuperar') {
+    if (qm.step === 1) {
+      const id = val('qm-recover-dg');
+      if (!id) return fail('Escolha a DG.');
+      const dg = AppState.dungeonList.find(d => d.id === id);
+      const countBefore = AppState.dgSessions.length;
+      recoverForgottenSession(id, '');
+      if (AppState.dgSessions.length === countBefore) return fail('Não deu pra recuperar — tente pela página Sessões de farme, lá dá pra ajustar o horário na mão.');
+      qm.data.dungeonName = dg ? dg.name : '';
+      qm.step = 'done';
     }
   } else if (qm.action === 'rush') {
     if (qm.step === 1) { // valores base (ticket/cash) — ficam salvos
