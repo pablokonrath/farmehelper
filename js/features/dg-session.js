@@ -148,6 +148,11 @@ const ACTIVE_IDLE_CAP_MS = 5 * 60 * 1000;
 // mostra a taxa (fica "—" / fora do ranking) em vez de passar confiança que a amostra não tem.
 const MIN_ACTIVE_MS_FOR_RATE = 15 * 60 * 1000;
 
+// Só pra "Seu horário mais produtivo": mesmo com bastante tempo ativo, 1 sessão só pode ter tido
+// sorte com um drop caro e não repetir — não é um "seu horário", é um dia de sorte. Exige pelo
+// menos essa quantidade de sessões (dias diferentes) na faixa antes dela entrar no ranking.
+const MIN_SESSIONS_FOR_HOUR_RANKING = 2;
+
 // Tempo "ativo" da sessão: soma os intervalos entre drops consecutivos, cortando cada gap no teto
 // de inatividade. Continuar farmando (drops seguidos) conta tudo; parar por horas conta só o teto.
 function activeDurationMs(drops) {
@@ -312,8 +317,9 @@ export function computeDgComparison() {
 
 // Agrupa TODAS as sessões pela hora de início (0-23) e soma Alz/hora de cada faixa — não é só
 // "qual DG rende mais", é "em que horário eu historicamente rendo mais", pra quem tem horários
-// livres pra escolher e quer saber quando vale mais a pena farmar. Só considera faixas com pelo
-// menos 1min de tempo ativo somado (mesmo piso usado no resto do app pra Alz/hora confiável).
+// livres pra escolher e quer saber quando vale mais a pena farmar. Exige tempo ativo suficiente
+// (MIN_ACTIVE_MS_FOR_RATE) E mais de uma sessão (MIN_SESSIONS_FOR_HOUR_RANKING) — só uma dessas
+// duas coisas ainda deixa passar um dia de sorte isolado como se fosse um padrão confiável.
 export function computeBestFarmingHours() {
   const buckets = {};
   AppState.dgSessions.forEach(s => {
@@ -326,7 +332,7 @@ export function computeBestFarmingHours() {
   });
   return Object.values(buckets)
     .map(b => ({ ...b, dungeonNames: [...b.dungeonNames], alzPerHour: b.activeMs > MIN_ACTIVE_MS_FOR_RATE ? b.totalAlz / (b.activeMs / 3600000) : null }))
-    .filter(b => b.alzPerHour != null)
+    .filter(b => b.alzPerHour != null && b.sessions >= MIN_SESSIONS_FOR_HOUR_RANKING)
     .sort((a, b) => b.alzPerHour - a.alzPerHour);
 }
 
