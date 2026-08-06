@@ -3,8 +3,9 @@ import { saveRushHistory, saveRushCreditCraftCosts, saveAppliedRoutes } from '..
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
-import { computeDgComparison } from './dg-session.js';
+import { computeDgComparison, computeResetWorth } from './dg-session.js';
 import { getDungeonDifficulty } from './dungeon-difficulty.js';
+import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
 // 1.000 Cash custam AppState.rushCardCashPrice Alz, e 1 gema de reset custa o equivalente a 1 Cash.
@@ -247,9 +248,23 @@ export function updateCartPreview() {
   if (entryGems > 0) lines.push(`<b>${entryGems} gema${entryGems > 1 ? 's' : ''} de entrada × ${formatAlzGamer(getCostPerGem())}</b> = ${formatAlzGamer(entryGemCost)}`);
   if (usedReset) lines.push(`<b>${gemQuantity} gema${gemQuantity !== 1 ? 's' : ''} de reset × ${formatAlzGamer(gemUnitPrice)}</b> = ${formatAlzGamer(resetCost)}`);
 
-  preview.innerHTML = lines.length
+  const costLine = lines.length
     ? `Custo estimado: ${lines.join(' + ')} → <span style="color:${getAlzTierColor(total)};font-weight:700" title="${formatNumber(total)} Alz">${formatAlzGamer(total)}</span>`
     : 'Sem custo configurado para esta DG.';
+
+  // Avisa ANTES de adicionar, se o histórico real dessa DG (mesma conta de "Vale a pena resetar?"
+  // em Sessões de farme) diz que resetar não compensa — evita descobrir isso só depois de já ter
+  // gasto as gemas.
+  let warning = '';
+  if (usedReset) {
+    const resetWorth = computeResetWorth();
+    const row = resetWorth.gemValueSet && resetWorth.rows.find(r => r.dungeonName === dungeon.name);
+    if (row && !row.worth) {
+      warning = `<div style="color:var(--err);font-size:11px;margin-top:6px"><i class="ti ti-alert-triangle"></i> Pelo seu histórico, resetar ${esc(dungeon.name)} não compensa (líquido de ${formatAlzGamer(row.netAlzPerRun)}/run não cobre o custo do reset). Veja "Vale a pena resetar?" em Sessões de farme.</div>`;
+    }
+  }
+
+  preview.innerHTML = costLine + warning;
 }
 
 // Mostra/esconde os campos de detalhe do reset (quantidade e valor da gema) e

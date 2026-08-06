@@ -1,5 +1,6 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds } from '../features/rush-cart.js';
+import { computeResetWorth } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
@@ -59,6 +60,11 @@ export function renderRushPage() {
   const routeTimeById = {};
   computeRouteComparison().forEach(r => { routeTimeById[r.id] = r; });
   const creditNeeds = computeCartCreditNeeds();
+  // Cruza cada DG resetada no carrinho com "vale a pena resetar?" (mesmo cálculo de Sessões de
+  // farme) — se o histórico real diz que não compensa, avisa aqui em vez de só numa página separada.
+  const resetWorth = computeResetWorth();
+  const resetWorthByName = {};
+  if (resetWorth.gemValueSet) resetWorth.rows.forEach(r => { resetWorthByName[r.dungeonName] = r; });
 
   // Rotas ficam logo após os parâmetros do dia — é o caminho rápido do dia a dia (aplicar e
   // pronto), então não faz sentido estar depois de Créditos/Gerenciar DGs/Adicionar/Métricas.
@@ -276,11 +282,15 @@ ${routesCard}
     if (totalTickets > 0) typeBadges.push(`<span class="badge badge-acc">${totalTickets}× Ticket</span>`);
     if (entryGems > 0) typeBadges.push(`<span class="badge badge-warn">${entryGems}× Gema</span>`);
     if (!typeBadges.length) typeBadges.push('<span class="badge badge-muted">Alz</span>');
+    const resetWorthRow = item.usedReset ? resetWorthByName[item.name] : null;
+    const resetWarning = resetWorthRow && !resetWorthRow.worth
+      ? ` <i class="ti ti-alert-triangle" style="color:var(--err)" title="Pelo seu histórico, resetar essa DG não compensa: líquido de ${formatAlzGamer(resetWorthRow.netAlzPerRun)}/run não cobre o custo do reset. Veja 'Vale a pena resetar?' em Sessões de farme."></i>`
+      : '';
     return `<tr>
       <td style="font-weight:500">${esc(item.name)}</td>
       <td>${typeBadges.join(' ')}</td>
       <td>${item.repetitions}×</td>
-      <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}</td>
+      <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}${resetWarning}</td>
       <td>${renderAlzValue(total, true)}<div style="font-size:10px;color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
       <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeDungeonFromCart(${i})"><i class="ti ti-trash"></i></button></td>
     </tr>`;
