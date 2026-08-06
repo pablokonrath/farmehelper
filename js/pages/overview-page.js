@@ -86,6 +86,47 @@ function buildPersonalBestsCard() {
 </div>`;
 }
 
+// Retrospectiva semanal: farmado/vendido/sessões dos últimos 7 dias x os 7 dias anteriores a
+// esses. Diferente do resto da página (tudo focado em HOJE, ou num período que você escolhe na
+// mão), essa é a única visão automática que dá um passo atrás — pra enxergar se a semana tá
+// melhor ou pior que a passada sem precisar lembrar de mexer no filtro de data.
+function buildWeeklyRetrospectiveCard() {
+  const now = new Date();
+  const from = (daysAgo) => todayISODate(new Date(now.getTime() - daysAgo * 86400000));
+  const thisWeekFrom = from(6);
+  const lastWeekFrom = from(13);
+  const lastWeekTo = from(7);
+  const today = todayISODate();
+
+  const farmedIn = (a, b) => getAllDrops().filter(d => d.date >= a && d.date <= b).reduce((sum, d) => sum + getItemPrice(d.name), 0);
+  const soldIn = (a, b) => AppState.salesLog.filter(s => s.date >= a && s.date <= b).reduce((sum, s) => sum + s.unitPrice * s.qty, 0);
+  const sessionsIn = (a, b) => AppState.dgSessions.filter(s => s.date >= a && s.date <= b).length;
+
+  const thisWeek = { farmed: farmedIn(thisWeekFrom, today), sold: soldIn(thisWeekFrom, today), sessions: sessionsIn(thisWeekFrom, today) };
+  const lastWeek = { farmed: farmedIn(lastWeekFrom, lastWeekTo), sold: soldIn(lastWeekFrom, lastWeekTo), sessions: sessionsIn(lastWeekFrom, lastWeekTo) };
+
+  // Sem nada nas duas janelas, não tem retrospectiva pra mostrar ainda.
+  if (!thisWeek.farmed && !thisWeek.sold && !lastWeek.farmed && !lastWeek.sold) return '';
+
+  const deltaBadge = (curr, prev) => {
+    if (prev <= 0) return curr > 0 ? '<span style="font-size:11px;color:var(--muted)">(sem semana anterior pra comparar)</span>' : '';
+    const pct = Math.round(((curr - prev) / prev) * 100);
+    const up = pct >= 0;
+    return `<span style="font-size:11px;font-weight:600;color:${up ? 'var(--ok)' : 'var(--err)'}"><i class="ti ti-chevron-${up ? 'up' : 'down'}"></i> ${up ? '+' : ''}${pct}% vs. semana passada</span>`;
+  };
+
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-chart-bar"></i>Sua semana</div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Últimos 7 dias (${formatDateBR(thisWeekFrom)}–${formatDateBR(today)}) vs. os 7 dias anteriores.</div>
+  <div class="g3">
+    <div class="kpi"><div class="kpi-lbl">Farmado</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.farmed)}" title="${formatNumber(thisWeek.farmed)} Alz">${formatAlzGamer(thisWeek.farmed)}</div><div class="kpi-sub">${deltaBadge(thisWeek.farmed, lastWeek.farmed)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Vendido</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.sold)}" title="${formatNumber(thisWeek.sold)} Alz">${formatAlzGamer(thisWeek.sold)}</div><div class="kpi-sub">${deltaBadge(thisWeek.sold, lastWeek.sold)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Sessões de DG</div><div class="kpi-val">${thisWeek.sessions}</div><div class="kpi-sub">${deltaBadge(thisWeek.sessions, lastWeek.sessions)}</div></div>
+  </div>
+</div>`;
+}
+
 export function setDateFrom(value) {
   AppState.dateFrom = value;
   renderPage();
@@ -159,11 +200,12 @@ export function renderOverviewPage() {
 
   const metaCard = buildMetaCard();
   const personalBestsCard = buildPersonalBestsCard();
+  const weeklyRetrospectiveCard = buildWeeklyRetrospectiveCard();
 
   if (!getAllDrops().length) {
-    // Recorde pessoal vem do histórico de sessões (banco), não do log do dia — pode existir mesmo
-    // sem o arquivo ao vivo reconectado ainda hoje, então aparece mesmo nesse estado "vazio".
-    return metaCard + personalBestsCard + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    // Recorde pessoal e retrospectiva semanal vêm do banco (sessões/vendas), não do log do dia —
+    // podem existir mesmo sem o arquivo ao vivo reconectado ainda hoje.
+    return metaCard + personalBestsCard + weeklyRetrospectiveCard + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
@@ -171,6 +213,7 @@ export function renderOverviewPage() {
 <div class="pg-sub">Métricas consolidadas do seu farme com base nos filtros aplicados.</div>
 ${metaCard}
 ${personalBestsCard}
+${weeklyRetrospectiveCard}
 ${manualDropsCard}
 <div class="card">
   <div class="row">
