@@ -181,6 +181,8 @@ function buildSessionRecord({ dungeonId, dungeonName, routeId, routeName, startA
 }
 
 // Resumo ao vivo da sessão em andamento (ou null). Recalculado sob demanda a partir da janela.
+// Inclui os itens já caídos até agora (mesmo formato do histórico) — não precisa encerrar a
+// sessão pra ver o que já dropou, só esperava até fechar antes.
 export function getActiveSessionSummary() {
   const s = AppState.activeDgSession;
   if (!s) return null;
@@ -195,6 +197,7 @@ export function getActiveSessionSummary() {
     dropCount: drops.length,
     totalAlz,
     alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
+    items: summarizeDropsByItem(drops),
   };
 }
 
@@ -417,6 +420,13 @@ export function startDgSessionTicker() {
     }
     if (pageBox) {
       pageBox.innerHTML = `${clock} · ${summary.dropCount} drops · <strong style="color:var(--gold)">${formatAlzGamer(summary.totalAlz)}</strong>${summary.alzPerHour != null ? ` · ${formatAlzGamer(summary.alzPerHour)}/h` : ''}`;
+    }
+    // Itens já caídos na sessão ativa, ao vivo — sem esperar encerrar pra ver o que dropou.
+    const itemsBox = document.getElementById('dgLiveItemsBox');
+    if (itemsBox) {
+      itemsBox.innerHTML = summary.items.length
+        ? summary.items.map(it => `<span class="badge badge-muted">${esc(it.name)} ×${it.qty}${it.total ? ` · ${formatAlzGamer(it.total)}` : ''}</span>`).join(' ')
+        : '<span style="color:var(--muted);font-size:var(--fs-xs)">Nenhum item ainda.</span>';
     }
   };
   paint();

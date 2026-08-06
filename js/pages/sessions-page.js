@@ -221,6 +221,10 @@ export function renderSessionsPage() {
           <div><label class="lbl" style="margin:0 0 2px">&nbsp;</label>
             <button class="btn" style="background:var(--err-bg);color:var(--err);border:none" onclick="endDgSession()"><i class="ti ti-player-stop"></i>Encerrar</button></div>
         </div>
+      </div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <label class="lbl" style="margin-bottom:6px">Itens caindo agora</label>
+        <div id="dgLiveItemsBox" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>`
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
