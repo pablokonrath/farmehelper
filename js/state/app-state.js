@@ -143,7 +143,10 @@ export const AppState = {
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
   currentPage: 'overview',
-  dateFrom: '',
+  // Piso padrão da Visão geral — dados de antes de 25/07/2026 eram de teste/sujeira (pedido do
+  // jogador, que passou a gerar sessão todo dia a partir daí). Não persiste nem apaga nada do
+  // banco, é só o valor inicial do filtro "De" — o jogador ainda pode limpar na mão e ver tudo.
+  dateFrom: '2026-07-25',
   dateTo: '',
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
