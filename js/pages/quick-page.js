@@ -1,6 +1,7 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { formatAlzGamer, formatNumber, formatDuration } from '../utils/formatting.js';
 import { getActiveSessionSummary, suggestForgottenSessionWindow } from '../features/dg-session.js';
+import { checkSalePriceDrop } from '../features/sales.js';
 import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
@@ -182,7 +183,9 @@ function renderVenda(qm) {
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else {
     stepText = 'Passo 4 de 4 · confirmar';
+    const drop = checkSalePriceDrop(d.itemName, d.unitPrice);
     inner = `<div style="font-size:14px;line-height:1.7">Vender <strong>${d.qty}×</strong> "${esc(d.itemName)}"<br>por <strong style="color:var(--gold)">${formatAlzGamer(d.unitPrice)}</strong> cada<br>= <strong style="color:var(--gold)">${formatAlzGamer(d.unitPrice * d.qty)}</strong> no total.</div>
+      ${drop ? `<div style="color:var(--warn);font-size:12px;margin-top:10px"><i class="ti ti-alert-triangle"></i> ${drop.dropPct}% abaixo da sua média recente (~${formatAlzGamer(drop.avg)}) pra esse item.</div>` : ''}
       <button class="btn btn-s" style="margin-top:16px" onclick="quickNext()"><i class="ti ti-check"></i>Registrar venda</button>`;
   }
   return stepShell(stepText, inner);

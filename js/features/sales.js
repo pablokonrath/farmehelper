@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveSalesLog, savePriceHistory } from '../state/persistence.js';
 import { getItemPrice } from './drops.js';
-import { parseAlzInput, parseDateInputBR } from '../utils/formatting.js';
+import { parseAlzInput, parseDateInputBR, formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
@@ -33,13 +33,34 @@ export function recordSale({ itemName, qty, unitPrice, date }) {
   saveSalesLog();
 }
 
+// Compara um preço de venda com a média das últimas vendas recentes do mesmo item — pra pegar
+// aquela venda apressada por bem menos do que o mercado tem pago ultimamente, antes dela virar
+// histórico e distorcer o "preço de venda real" pra sempre. Olha só as 5 últimas (não a vida
+// toda — preço de mercado muda; o que importa é a tendência recente). Com menos de 2 vendas
+// anteriores não tem base pra comparar, então não avisa (evita falso positivo com amostra de 1).
+const PRICE_DROP_WARNING_THRESHOLD = 0.2; // 20% abaixo da média recente
+export function checkSalePriceDrop(itemName, unitPrice) {
+  const key = stripEnhancementSuffix(itemName);
+  const recent = AppState.salesLog.filter(s => stripEnhancementSuffix(s.itemName) === key).slice(-5);
+  if (recent.length < 2 || !(unitPrice > 0)) return null;
+  const avg = recent.reduce((sum, s) => sum + s.unitPrice, 0) / recent.length;
+  if (avg <= 0) return null;
+  const dropPct = (avg - unitPrice) / avg;
+  return dropPct >= PRICE_DROP_WARNING_THRESHOLD ? { avg, dropPct: Math.round(dropPct * 100) } : null;
+}
+
 export function addSale() {
   const name = document.getElementById('saleItem')?.value.trim();
   const rawPrice = document.getElementById('salePrice')?.value.trim();
   if (!name || !rawPrice) return;
   const qty = Math.max(1, parseInt(document.getElementById('saleQty')?.value) || 1);
+  const unitPrice = parseAlzInput(rawPrice);
   const date = parseDateInputBR(document.getElementById('saleDate')?.value) || todayISODate();
-  recordSale({ itemName: name, qty, unitPrice: parseAlzInput(rawPrice), date });
+
+  const drop = checkSalePriceDrop(name, unitPrice);
+  if (drop && !confirm(`Você tá vendendo "${name}" ${drop.dropPct}% abaixo da sua média recente (~${formatAlzGamer(drop.avg)}). Confirma mesmo assim?`)) return;
+
+  recordSale({ itemName: name, qty, unitPrice, date });
   renderPage();
 }
 
