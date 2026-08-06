@@ -15,8 +15,8 @@ export function getItemCategory(itemName) {
 // precisam aparecer em lugar nenhum do app (pedido explícito do jogador).
 const EXCLUDED_ITEM_KEYWORDS = [
   'greva', 'manopla', 'armadura', 'elmo', 'punho', 'luva', 'quimono', 'traje', 'coturno',
-  'sapatilha', 'mascara', 'visor', 'montante', 'espada', 'katana', 'orb', 'cristal', 'disco',
-  'chakram',
+  'sapatilha', 'sapato', 'mascara', 'visor', 'montante', 'espada', 'katana', 'orb', 'cristal',
+  'disco', 'chakram',
 ].map(kw => normalizeForSearch(kw));
 
 export function isExcludedGearItem(name) {
