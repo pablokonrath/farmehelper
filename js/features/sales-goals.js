@@ -58,3 +58,21 @@ export function computeSalesGoalsProgress() {
 export function totalAllocatedPercentage() {
   return AppState.salesGoals.reduce((sum, g) => sum + g.percentage, 0);
 }
+
+// Quanto das vendas de HOJE já tem destino certo nas metas ativas — não é uma conta nova, só
+// aplica a mesma % de cada meta (ver computeSalesGoalsProgress) só nas vendas de hoje, pra dar
+// noção imediata (sem precisar comparar "Meta do dia" farmada com o total acumulado de cada meta,
+// que são pools diferentes: uma é valor farmado, a outra é venda de fato). null se não vendeu nada
+// hoje ainda.
+export function computeTodayGoalsAllocation() {
+  const today = todayISODate();
+  const todayTotal = AppState.salesLog
+    .filter(s => s.date === today)
+    .reduce((sum, s) => sum + s.unitPrice * s.qty, 0);
+  if (!todayTotal) return null;
+  const activePct = Math.min(100, AppState.salesGoals
+    .filter(g => todayISODate(new Date(g.createdAt)) <= today)
+    .reduce((sum, g) => sum + g.percentage, 0));
+  const allocated = Math.round(todayTotal * activePct / 100);
+  return { todayTotal, allocated, free: todayTotal - allocated, pct: activePct };
+}

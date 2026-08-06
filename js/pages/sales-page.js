@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
 import { computeSalesSummary, getSalePriceHistory, getSoldItemNames } from '../features/sales.js';
-import { computeSalesGoalsProgress, totalAllocatedPercentage } from '../features/sales-goals.js';
+import { computeSalesGoalsProgress, totalAllocatedPercentage, computeTodayGoalsAllocation } from '../features/sales-goals.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -23,6 +23,7 @@ export function renderSalesPage() {
 
   const goalsProgress = computeSalesGoalsProgress();
   const totalPct = totalAllocatedPercentage();
+  const todayAlloc = goalsProgress.length ? computeTodayGoalsAllocation() : null;
   const goalsCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-target"></i>Metas de Alz</div>
@@ -40,7 +41,8 @@ export function renderSalesPage() {
       </div>
     </div>`).join('')}
   </div>
-  <div style="font-size:11px;color:${totalPct > 100 ? 'var(--err)' : 'var(--muted)'};margin-bottom:12px">${totalPct > 100 ? `<i class="ti ti-alert-triangle"></i> Suas metas somam ${totalPct}% — passa de 100%, ajuste alguma.` : `${totalPct}% das vendas alocado, ${100 - totalPct}% livre.`}</div>`}
+  <div style="font-size:11px;color:${totalPct > 100 ? 'var(--err)' : 'var(--muted)'};margin-bottom:12px">${totalPct > 100 ? `<i class="ti ti-alert-triangle"></i> Suas metas somam ${totalPct}% — passa de 100%, ajuste alguma.` : `${totalPct}% das vendas alocado, ${100 - totalPct}% livre.`}</div>
+  ${todayAlloc ? `<div style="font-size:11px;color:var(--muted);padding-top:8px;border-top:1px solid var(--border)"><i class="ti ti-calendar"></i> Hoje você vendeu ${formatAlzGamer(todayAlloc.todayTotal)} — <strong style="color:var(--txt)">${formatAlzGamer(todayAlloc.allocated)}</strong> (${todayAlloc.pct}%) já conta pras metas ativas, ${formatAlzGamer(todayAlloc.free)} livre.</div>` : ''}`}
   <div class="row" style="align-items:flex-end">
     <div style="flex:1"><label class="lbl">Nome da meta</label><input class="inp" id="newGoalName" placeholder="ex: Set novo"></div>
     <div style="width:150px"><label class="lbl">Valor alvo (Alz)</label><input class="inp" id="newGoalTarget" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
