@@ -51,17 +51,24 @@ a lista do que importa fica curta e a média de farme não é distorcida por lix
 Um assistente passo a passo (uma pergunta por tela, botão grande) cobre as ações mais comuns
 sem precisar caçar em qual página cada coisa fica: registrar venda, definir meta do dia,
 iniciar/encerrar sessão de DG, rastrear item pra alerta, montar o rush do dia, aplicar uma
-rota salva, criar meta de Alz, recuperar uma sessão que esqueceu de marcar. Pensado pra quem
-é leigo, tem pressa, ou só não quer decorar onde cada botão fica.
+rota salva, criar um cofre de Alz, recuperar uma sessão que esqueceu de marcar. Pensado pra
+quem é leigo, tem pressa, ou só não quer decorar onde cada botão fica. O menu lateral em si
+também é organizado por frequência de uso (o que se mexe todo dia x configuração ocasional),
+não uma lista plana — e cada card que antes despejava um parágrafo de explicação agora esconde
+esse texto atrás de um "Como funciona", pra a tela mostrar o número primeiro, não o manual.
 
 ## 5. Metas com dinheiro real, não estimativa
 
 - **Meta do dia** — quanto de Alz farmar hoje, acompanhado ao vivo pelo log.
-- **Metas de Alz (vendas)** — reserva uma % fixa de cada venda registrada pra um objetivo
+- **Cofres de Alz (vendas)** — reserva uma % fixa de cada venda registrada pra um objetivo
   (ex: "30% de tudo que eu vender vai pro set novo"), com progresso visível e aviso de quanto
-  das vendas de hoje já tem destino certo.
+  das vendas de hoje já caiu em cada cofre. Nome separado de propósito de "Meta do dia" —
+  são dois totais sem relação (um é farmado, o outro é vendido de verdade), então não competem.
 - **Gráfico de preço de venda** — mostra por quanto você realmente vendeu cada item ao longo
   do tempo, pra decidir a melhor hora de vender — não o preço que você cadastrou como meta.
+- **Aviso de preço esquecido** — sinaliza quando um item cadastrado passa de 2 semanas sem
+  ter o preço revisto, porque economia de servidor privado varia e uma estimativa velha vira
+  errada silenciosamente se ninguém for lembrado de checar.
 
 ## 6. Alertas que funcionam mesmo longe da tela
 
@@ -77,6 +84,14 @@ rota salva, criar meta de Alz, recuperar uma sessão que esqueceu de marcar. Pen
 Sem dado cruzado entre jogadores, sem conta compartilhada — preços, sessões, alertas e
 histórico de cada conta são isolados. Criar conta só pede usuário e senha, nenhum dado
 pessoal.
+
+## 8. Não é só planilha — também te mostra quando você tá indo bem
+
+- **Seu horário mais produtivo** — cruza todas as suas sessões pela hora em que começaram e
+  mostra em que faixa do dia seu Alz/hora historicamente é maior, pra quem tem horário livre
+  pra escolher quando jogar.
+- **Recorde pessoal** — melhor dia e melhor sessão única já farmados, sempre visível na Visão
+  geral. Não ajuda a decidir nada, é só o "high score" — motivação de jogador, não de planilha.
 
 ---
 
