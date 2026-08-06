@@ -81,6 +81,18 @@ export function getSoldItemNames() {
   return [...new Set(AppState.salesLog.map(s => stripEnhancementSuffix(s.itemName)))].sort();
 }
 
+// Há quantos dias o preço cadastrado de um item foi mexido pela última vez (null = nunca teve
+// histórico, ex: cadastrado antes do priceHistory existir). Economia de servidor privado varia —
+// um preço nunca revisto vira estimativa cada vez menos confiável sem avisar em lugar nenhum;
+// usado em Cálculo de farme só pra sinalizar isso, não é um erro nem bloqueia nada.
+export function daysSincePriceUpdate(itemName) {
+  const hist = AppState.priceHistory[itemName];
+  if (!hist || !hist.length) return null;
+  const lastDate = hist[hist.length - 1].date;
+  const diffMs = Date.now() - new Date(lastDate + 'T00:00:00').getTime();
+  return Math.max(0, Math.floor(diffMs / 86400000));
+}
+
 // Total vendido (real) e o que valeria pelo preço cadastrado (estimado). Não estima valor "em
 // estoque" (dropado − vendido) — nem todo drop é vendido (parte vai pra coleção ou vira insumo
 // de craft), então esse número nunca representou Alz de verdade parado em algum lugar.

@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveFilterKeywordsFlag } from '../state/persistence.js';
 import { summarizeDropsByItem, getAllDrops } from '../features/drops.js';
+import { daysSincePriceUpdate } from '../features/sales.js';
 import { renderAlzValue, formatNumber } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
@@ -11,6 +12,17 @@ export function toggleFilterByKeywords(checked) {
   AppState.filterByTrackedKeywords = checked;
   saveFilterKeywordsFlag();
   renderPage();
+}
+
+// Coluna "Atualizado" da lista de preços: sinaliza (sem bloquear nada) quando um preço não é
+// revisto há mais de 2 semanas — o único jeito de "confirmar" é editando (mesmo que pelo mesmo
+// valor só muda o número), já que é a mesma ação que qualquer atualização de preço de verdade.
+const STALE_PRICE_DAYS = 14;
+function priceAgeCell(name) {
+  const days = daysSincePriceUpdate(name);
+  const stale = days != null && days > STALE_PRICE_DAYS;
+  const label = days == null ? '—' : days === 0 ? 'hoje' : days === 1 ? 'ontem' : `há ${days} dias`;
+  return `<td style="font-size:12px;color:${stale ? 'var(--warn)' : 'var(--muted)'}">${label}${stale ? ` <i class="ti ti-alert-triangle" title="Sem atualizar há mais de ${STALE_PRICE_DAYS} dias — confira se ainda bate com o mercado"></i>` : ''}</td>`;
 }
 
 export function renderPricingPage() {
@@ -39,13 +51,15 @@ export function renderPricingPage() {
 ${itemsWithoutPrice.length ? `<div class="notice"><i class="ti ti-alert-circle" style="flex-shrink:0;margin-top:1px"></i><div><strong>${itemsWithoutPrice.length} itens sem preço</strong> no FarmHub.<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${itemsWithoutPrice.slice(0, 6).map(i => `<span style="cursor:pointer;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:20px;padding:2px 9px;font-size:11px;color:var(--warn)" onclick="document.getElementById('cN').value='${escAttr(i.name)}'">${esc(i.name)} (${i.qty}×)</span>`).join('')}</div></div></div>` : ''}
 <div class="card"><div class="ctitle"><i class="ti ti-list"></i>Itens cadastrados <span style="color:var(--muted);font-size:12px;font-weight:400">${Object.keys(AppState.itemPrices).length} itens</span></div>
 ${!Object.keys(AppState.itemPrices).length ? '<div class="empty">Nenhum item cadastrado ainda.</div>' : `
-<table><thead><tr><th>Item</th><th>Valor</th><th style="width:90px">Ações</th></tr></thead><tbody>
+<table><thead><tr><th>Item</th><th>Valor</th><th>Atualizado</th><th style="width:90px">Ações</th></tr></thead><tbody>
 ${Object.entries(AppState.itemPrices).sort(([a], [b]) => a.localeCompare(b)).map(([name, price]) => AppState.editingItemPriceName === name ? `<tr style="background:var(--acc-bg)">
   <td>${esc(name)}</td>
   <td><input class="inp inp-sm" id="editItemPriceInput" type="text" inputmode="numeric" value="${price ? formatNumber(price) : ''}" style="width:140px" oninput="maskAlzInputLive(this)"></td>
+  ${priceAgeCell(name)}
   <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveItemPriceEdit('${escAttr(name)}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingItemPrice()">✕</button></div></td>
 </tr>` : `<tr>
   <td>${esc(name)}</td><td>${renderAlzValue(price)}</td>
+  ${priceAgeCell(name)}
   <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" onclick="startEditingItemPrice('${escAttr(name)}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${escAttr(name)}')"><i class="ti ti-trash"></i></button></div></td>
 </tr>`).join('')}
 </tbody></table>`}

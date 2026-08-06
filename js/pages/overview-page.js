@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
+import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -62,6 +63,29 @@ function buildMetaCard() {
 </div>`;
 }
 
+// Recorde pessoal: melhor dia e melhor sessão única já farmados. Não ajuda a decidir nada — é só
+// um "high score", igual qualquer jogo, pra motivar olhando pros próprios números de antes.
+function buildPersonalBestsCard() {
+  const bests = computePersonalBests();
+  if (!bests) return '';
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-trophy" style="color:var(--gold)"></i>Recorde pessoal</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div style="flex:1;min-width:180px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:11px;color:var(--muted)">🏆 Melhor dia</div>
+      <div style="color:var(--gold);font-weight:700;font-size:16px" title="${formatNumber(bests.bestDay.totalAlz)} Alz">${formatAlzGamer(bests.bestDay.totalAlz)}</div>
+      <div style="font-size:11px;color:var(--muted)">${formatDateBR(bests.bestDay.date)}</div>
+    </div>
+    <div style="flex:1;min-width:180px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:11px;color:var(--muted)">⚔️ Melhor sessão única</div>
+      <div style="color:var(--gold);font-weight:700;font-size:16px" title="${formatNumber(bests.bestSession.totalAlz)} Alz">${formatAlzGamer(bests.bestSession.totalAlz)}</div>
+      <div style="font-size:11px;color:var(--muted)">${esc(bests.bestSession.dungeonName)} · ${formatDateBR(bests.bestSession.date)}</div>
+    </div>
+  </div>
+</div>`;
+}
+
 export function setDateFrom(value) {
   AppState.dateFrom = value;
   renderPage();
@@ -114,7 +138,7 @@ export function renderOverviewPage() {
     <div class="row" style="margin-bottom:12px">
       <div style="flex:1"><label class="lbl">Nome do item</label>
         <input class="inp" id="mdName" placeholder="ex: Nucleo de Aprimoramento" list="mdSugg">
-        <datalist id="mdSugg">${manualSuggestions.map(name => `<option value="${name}">`).join('')}</datalist></div>
+        <datalist id="mdSugg">${manualSuggestions.map(name => `<option value="${esc(name)}">`).join('')}</datalist></div>
       <div style="width:140px"><label class="lbl">Valor unitário (Alz)</label><input class="inp" id="mdPrice" type="text" inputmode="numeric" placeholder="opcional" oninput="maskAlzInputLive(this)"></div>
       <div style="width:100px"><label class="lbl">Quantidade</label><input class="inp" id="mdQty" type="number" min="1" value="1"></div>
       <div style="width:150px"><label class="lbl">Data</label>${renderDateInputBR({ id: 'mdDate', value: todayISODate() })}</div>
@@ -134,15 +158,19 @@ export function renderOverviewPage() {
 </div>`;
 
   const metaCard = buildMetaCard();
+  const personalBestsCard = buildPersonalBestsCard();
 
   if (!getAllDrops().length) {
-    return metaCard + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    // Recorde pessoal vem do histórico de sessões (banco), não do log do dia — pode existir mesmo
+    // sem o arquivo ao vivo reconectado ainda hoje, então aparece mesmo nesse estado "vazio".
+    return metaCard + personalBestsCard + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
 <div class="pg-title"><i class="ti ti-map" style="color:var(--acc)"></i>Visão geral</div>
 <div class="pg-sub">Métricas consolidadas do seu farme com base nos filtros aplicados.</div>
 ${metaCard}
+${personalBestsCard}
 ${manualDropsCard}
 <div class="card">
   <div class="row">
