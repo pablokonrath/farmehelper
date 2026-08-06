@@ -126,6 +126,7 @@ export async function loadPersistedState() {
       AppState.rushCredits[cat.id].marketPrice = appSettings.rushCreditCraftCosts[cat.id] || 0;
     });
   }
+  AppState.rushCreditItemNames = { ...AppState.rushCreditItemNames, ...(appSettings.rushCreditItemNames || {}) };
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
@@ -172,6 +173,10 @@ export function saveFilterKeywordsFlag() {
 
 export function saveRushCredits() {
   return put('app-settings.php', { rushCredits: AppState.rushCredits });
+}
+
+export function saveRushCreditItemNames() {
+  return put('app-settings.php', { rushCreditItemNames: AppState.rushCreditItemNames });
 }
 
 // Preço do ticket e do Card Cash — parâmetros do rush que o jogador digita uma vez e valem pra

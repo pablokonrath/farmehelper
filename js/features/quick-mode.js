@@ -149,10 +149,10 @@ export function quickNext() {
     } else if (qm.step === 2) { // DGs adicionadas
       if (!qm.data.cart || !qm.data.cart.length) return fail('Adicione ao menos uma DG.');
       qm.step = 3;
-    } else if (qm.step === 3) { // créditos de macro (opcional)
+    } else if (qm.step === 3) { // créditos de macro (opcional) — só quantidade; o preço (fixo do
+      // jogo + item do dia vinculado) já vem calculado sozinho, ver getCreditUnitCost.
       CREDIT_CATEGORIES.forEach(cat => {
         AppState.rushCredits[cat.id].quantity = Math.max(0, parseInt(val('qm-cred-qty-' + cat.id), 10) || 0);
-        AppState.rushCredits[cat.id].marketPrice = parseAlzInput(val('qm-cred-price-' + cat.id));
       });
       saveRushCredits().catch(err => console.error('Falha ao salvar créditos:', err));
       qm.step = 4;

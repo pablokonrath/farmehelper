@@ -2,7 +2,7 @@ import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { formatAlzGamer, formatNumber, formatDuration } from '../utils/formatting.js';
 import { getActiveSessionSummary, suggestForgottenSessionWindow } from '../features/dg-session.js';
 import { checkSalePriceDrop } from '../features/sales.js';
-import { getCostPerGem, calculateRushCartCost } from '../features/rush-cart.js';
+import { getCostPerGem, calculateRushCartCost, getCreditUnitCost, getCreditItemPrice } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
 
@@ -132,14 +132,14 @@ function renderRushDGs(qm) {
 }
 
 function renderRushCreditos(qm) {
-  const inner = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Comprou créditos de macro pra usar o helper hoje? (opcional — deixe 0 se não usou)</div>
+  const inner = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Vai comprar créditos de macro hoje? (opcional — deixe 0 se não vai usar). O preço de cada um já vem calculado sozinho — configure o item vinculado de cada categoria em "DGs de rush diário" se ainda não fez.</div>
     ${CREDIT_CATEGORIES.map(cat => {
       const c = AppState.rushCredits[cat.id];
-      return `<div style="margin-bottom:10px"><label class="lbl">${cat.name}</label>
-        <div style="display:flex;gap:8px">
-          <input class="inp" id="qm-cred-qty-${cat.id}" type="number" min="0" value="${c.quantity || 0}" style="width:90px" title="Quantos">
-          <input class="inp" id="qm-cred-price-${cat.id}" type="text" inputmode="numeric" placeholder="preço de mercado (Alz)" value="${c.marketPrice ? formatNumber(c.marketPrice) : ''}" oninput="maskAlzInputLive(this)" style="flex:1">
-        </div></div>`;
+      const unitCost = getCreditUnitCost(cat.id);
+      const linked = getCreditItemPrice(cat.id).linked;
+      return `<div style="margin-bottom:10px"><label class="lbl">${cat.name} <span style="font-weight:400;text-transform:none;color:var(--muted)">— ${formatAlzGamer(unitCost)}/un.${!linked ? ' (item do dia sem preço — vai custar só a parte fixa)' : ''}</span></label>
+        <input class="inp" id="qm-cred-qty-${cat.id}" type="number" min="0" value="${c.quantity || 0}" style="width:110px" title="Quantos">
+        </div>`;
     }).join('')}
     <button class="btn btn-p" style="margin-top:6px;width:100%" onclick="quickNext()">Próximo · panorama <i class="ti ti-arrow-right"></i></button>`;
   return stepShell('Passo 3 de 4 · créditos', inner);

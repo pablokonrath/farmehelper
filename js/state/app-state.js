@@ -83,16 +83,28 @@ export const DEFAULT_ALERT_SETTINGS = {
   telegramWatchdogRelayEnabled: false,
 };
 
-// Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
-// fabricação por cima, dá 1h de uso de macro cada, usável em qualquer DG (não é por-DG como
-// tickets/gemas). Preço do crédito (mercado + fabricar, um campo só — antes eram dois campos
-// separados, sem necessidade real de guardar em partes) e quantidade comprada, salvos no
-// app_settings junto com o preço do ticket e o Card Cash.
+// Créditos de macro: dá 1h de uso de macro cada, usável em qualquer DG (não é por-DG como
+// tickets/gemas). Custo de cada unidade tem duas partes bem diferentes:
+// - Fixa (Alz + tickets) — regra do jogo, só muda se a equipe do servidor decidir. Não é algo
+//   que o jogador digita: é constante (ver CREDIT_TIER_COSTS).
+// - Variável — 1 unidade de um item específico por categoria, comprado em Alz, com preço que
+//   muda todo dia (mercado dos jogadores). Esse sim precisa de dado fresco — mas se o item
+//   estiver vinculado (rushCreditItemNames) E já tiver preço cadastrado em Cálculo de farme,
+//   o preço é puxado sozinho em vez de digitado nesta tela (ver getCreditItemPrice em rush-cart).
 export const CREDIT_CATEGORIES = [
   { id: 'iniciante', name: 'Iniciante' },
   { id: 'intermediario', name: 'Intermediário' },
   { id: 'avancado', name: 'Avançado' },
 ];
+
+export const CREDIT_TIER_COSTS = {
+  iniciante: { fixedAlz: 3000000, fixedTickets: 3 },
+  intermediario: { fixedAlz: 5000000, fixedTickets: 5 },
+  avancado: { fixedAlz: 10000000, fixedTickets: 10 },
+};
+
+// Limite de compra por categoria, por dia — igual pras 3 faixas.
+export const CREDIT_DAILY_LIMIT = 8;
 
 export function buildDefaultRushCredits() {
   const credits = {};
@@ -145,6 +157,9 @@ export const AppState = {
   rushCardCashPrice: '',
   rushCart: [],
   rushCredits: buildDefaultRushCredits(),
+  // Nome do item vinculado a cada categoria, pra puxar o preço sozinho de Cálculo de farme em
+  // vez de digitar todo dia (vazio = ainda não configurado, cai no preço manual de rushCredits).
+  rushCreditItemNames: { iniciante: '', intermediario: '', avancado: '' },
   isCreditsManagerOpen: false,
   dungeonList: DEFAULT_DUNGEONS.map(dg => ({ ...dg })),
   isDungeonManagerOpen: false,

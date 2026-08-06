@@ -1,8 +1,8 @@
-import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
-import { saveRushHistory, saveRushCredits, saveAppliedRoutes } from '../state/persistence.js';
+import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
+import { saveRushHistory, saveRushCredits, saveRushCreditItemNames, saveAppliedRoutes } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
-import { updateBalanceSidebar } from './drops.js';
+import { updateBalanceSidebar, getItemPrice } from './drops.js';
 import { computeDgComparison, computeResetWorth } from './dg-session.js';
 import { getDungeonDifficulty } from './dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
@@ -13,15 +13,32 @@ export function getCostPerGem() {
   return Math.round((+AppState.rushCardCashPrice || 0) / 1000);
 }
 
-// Crédito de macro = preço do crédito (por categoria, configurável — inclui mercado + qualquer
-// custo de fabricar, é um valor só). Não é consumido por DG específica — dá 1h de uso do macro
-// em qualquer DG, então entra no total do dia como um custo à parte, não vinculado a nenhum
-// item do carrinho.
+// A parte variável do preço de um crédito: 1 unidade do item específico daquela categoria,
+// comprado em Alz, preço que muda todo dia. Se o item estiver vinculado (rushCreditItemNames) E
+// já tiver preço cadastrado em Cálculo de farme, puxa sozinho (linked:true) — senão cai no preço
+// manual guardado em rushCredits[cat].marketPrice, pra continuar funcionando sem a vinculação.
+export function getCreditItemPrice(categoryId) {
+  const itemName = AppState.rushCreditItemNames[categoryId];
+  if (itemName) {
+    const price = getItemPrice(itemName);
+    if (price > 0) return { price, linked: true, itemName };
+  }
+  return { price: AppState.rushCredits[categoryId].marketPrice || 0, linked: false, itemName: itemName || '' };
+}
+
+// Custo de 1 crédito = parte fixa (Alz + tickets, regra do jogo — CREDIT_TIER_COSTS, só muda se
+// a equipe do servidor mexer no preço) + a parte variável de hoje (getCreditItemPrice). Os
+// tickets usam o mesmo preço de ticket já cadastrado em "Parâmetros do dia", não um campo à parte.
+export function getCreditUnitCost(categoryId) {
+  const fixed = CREDIT_TIER_COSTS[categoryId];
+  const ticketPrice = +AppState.rushTicketPrice || 0;
+  return fixed.fixedAlz + fixed.fixedTickets * ticketPrice + getCreditItemPrice(categoryId).price;
+}
+
+// Não é consumido por DG específica — dá 1h de uso do macro em qualquer DG, então entra no total
+// do dia como um custo à parte, não vinculado a nenhum item do carrinho.
 export function calculateCreditsCost() {
-  return CREDIT_CATEGORIES.reduce((sum, cat) => {
-    const { quantity, marketPrice } = AppState.rushCredits[cat.id];
-    return sum + quantity * marketPrice;
-  }, 0);
+  return CREDIT_CATEGORIES.reduce((sum, cat) => sum + AppState.rushCredits[cat.id].quantity * getCreditUnitCost(cat.id), 0);
 }
 
 // Quantos créditos de cada faixa (Iniciante/Intermediário/Avançado) o carrinho de hoje
@@ -49,6 +66,12 @@ export function computeCartCreditNeeds(cart = AppState.rushCart) {
     iniciante: Math.ceil(msByTier.iniciante / 3600000),
     missingDataCount,
   };
+}
+
+// Créditos têm limite de compra por dia (CREDIT_DAILY_LIMIT, igual pras 3 faixas) — sugerir mais
+// que isso não é um erro de conta, é o carrinho pedindo mais do que dá pra comprar num dia só.
+export function isOverDailyCreditLimit(quantity) {
+  return quantity > CREDIT_DAILY_LIMIT;
 }
 
 // Preenche "Qtd. comprada" de cada categoria de crédito com a sugestão calculada pro carrinho
@@ -183,9 +206,20 @@ export function setRushCreditQuantity(categoryId, value) {
   renderPage();
 }
 
+// Preço manual — só usado quando a categoria ainda não tem item vinculado (ou o item vinculado
+// não tem preço cadastrado ainda). Com item vinculado e precificado, esse valor fica ignorado
+// (ver getCreditItemPrice), mas continua salvo pra não perder o número se o vínculo for removido.
 export function setRushCreditMarketPrice(categoryId, value) {
   AppState.rushCredits[categoryId].marketPrice = parseAlzInput(value);
   saveRushCredits().catch(err => console.error('Falha ao salvar créditos:', err));
+  renderPage();
+}
+
+// Vincula o item específico da categoria (ex: "Núcleo Iniciante") — a partir daí o preço vem
+// sozinho de Cálculo de farme (ver getCreditItemPrice), sem precisar digitar todo dia.
+export function setRushCreditItemName(categoryId, value) {
+  AppState.rushCreditItemNames[categoryId] = value.trim();
+  saveRushCreditItemNames().catch(err => console.error('Falha ao salvar item do crédito:', err));
   renderPage();
 }
 

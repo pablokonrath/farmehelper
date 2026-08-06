@@ -1,5 +1,5 @@
-import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
-import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds } from '../features/rush-cart.js';
+import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
+import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
 import { computeResetWorth } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
@@ -131,18 +131,28 @@ ${routesCard}
     <i class="ti ti-chevron-${AppState.isCreditsManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
   </div>
   ${AppState.isCreditsManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-  ${infoToggle('rush-credits', `Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia. A sugestão abaixo cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}`)}
-  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:170px">Preço do crédito (unidade)</th><th>Subtotal</th></tr></thead><tbody>
+  ${infoToggle('rush-credits', `Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). O custo de cada categoria tem uma parte fixa (Alz + tickets, regra do jogo — só muda se a equipe do servidor mexer no preço, por isso não é campo pra digitar) e uma parte variável: 1 unidade de um item específico, que muda de preço todo dia. Vincule o item de cada categoria abaixo e o preço vem sozinho de Cálculo de farme — sem vínculo (ou sem preço cadastrado ainda), cai num campo manual. Limite de compra: ${CREDIT_DAILY_LIMIT} por dia, pra cada categoria. A sugestão de quantidade cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}`)}
+  <datalist id="creditItemSugg">${AppState.knownItemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:220px">Item do dia (preço variável)</th><th>Subtotal</th></tr></thead><tbody>
   ${CREDIT_CATEGORIES.map(cat => {
-    const { quantity, marketPrice } = AppState.rushCredits[cat.id];
-    const subtotal = quantity * marketPrice;
+    const { quantity } = AppState.rushCredits[cat.id];
+    const itemName = AppState.rushCreditItemNames[cat.id];
+    const itemPriceInfo = getCreditItemPrice(cat.id);
+    const unitCost = getCreditUnitCost(cat.id);
+    const subtotal = quantity * unitCost;
     const needed = creditNeeds[cat.id] || 0;
+    const fixed = CREDIT_TIER_COSTS[cat.id];
+    const overLimit = isOverDailyCreditLimit(quantity);
     return `<tr>
-      <td style="font-weight:500">${cat.name}${needed > 0 ? ` <span style="font-size:10px;font-weight:400;color:var(--gold)" title="Baseado no tempo/run real das DGs dessa faixa no carrinho de hoje">≈${needed} sugerido${needed > 1 ? 's' : ''}</span>` : ''}</td>
-      <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)"></td>
-      <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${marketPrice ? formatNumber(marketPrice) : ''}" placeholder="Ex: 30.000.000"
-        oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)"></td>
-      <td>${renderAlzValue(subtotal, true)}</td>
+      <td style="font-weight:500">${cat.name}${needed > 0 ? ` <span style="font-size:var(--fs-2xs);font-weight:400;color:${needed > CREDIT_DAILY_LIMIT ? 'var(--warn)' : 'var(--gold)'}" title="Baseado no tempo/run real das DGs dessa faixa no carrinho de hoje${needed > CREDIT_DAILY_LIMIT ? ` — passa do limite de ${CREDIT_DAILY_LIMIT}/dia` : ''}">≈${needed} sugerido${needed > 1 ? 's' : ''}${needed > CREDIT_DAILY_LIMIT ? ' ⚠' : ''}</span>` : ''}
+        <div style="font-size:var(--fs-2xs);color:var(--muted);font-weight:400;margin-top:2px">${formatAlzGamer(fixed.fixedAlz)} + ${fixed.fixedTickets}× ticket <span style="opacity:.7">(fixo)</span></div></td>
+      <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)">
+        ${overLimit ? `<div style="font-size:var(--fs-2xs);color:var(--warn);margin-top:3px"><i class="ti ti-alert-triangle"></i> máx. ${CREDIT_DAILY_LIMIT}/dia</div>` : ''}</td>
+      <td><input class="inp inp-sm" list="creditItemSugg" value="${esc(itemName)}" placeholder="ex: Núcleo Iniciante" onblur="setRushCreditItemName('${cat.id}', this.value)">
+        ${itemPriceInfo.linked
+          ? `<div style="font-size:var(--fs-2xs);color:var(--ok);margin-top:3px"><i class="ti ti-check"></i> ${formatAlzGamer(itemPriceInfo.price)} — puxado de Cálculo de farme</div>`
+          : `<input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="${itemName ? 'sem preço cadastrado — digite aqui' : 'ou digite o preço na mão'}" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`}</td>
+      <td>${renderAlzValue(subtotal, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${formatAlzGamer(unitCost)}/un.</div></td>
     </tr>`;
   }).join('')}
   </tbody></table>
