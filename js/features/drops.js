@@ -19,9 +19,21 @@ const EXCLUDED_ITEM_KEYWORDS = [
   'disco', 'chakram',
 ].map(kw => normalizeForSearch(kw));
 
+// Cache nome -> é equipamento genérico? O log tem dezenas de milhares de drops mas pouquíssimos
+// nomes DISTINTOS (o mesmo item cai centenas de vezes), e essa checagem roda por drop em toda
+// varredura (getAllDrops é chamado ~5x por render da Visão geral, que re-renderiza a cada lote
+// de drops ao vivo). Sem cache, a normalização Unicode do mesmo nome era refeita milhares de
+// vezes — medido: 15x mais lento num log de 96 mil drops.
+const excludedGearCache = new Map();
+
 export function isExcludedGearItem(name) {
-  const normalized = normalizeForSearch(name);
-  return EXCLUDED_ITEM_KEYWORDS.some(kw => normalized.includes(kw));
+  let cached = excludedGearCache.get(name);
+  if (cached === undefined) {
+    const normalized = normalizeForSearch(name);
+    cached = EXCLUDED_ITEM_KEYWORDS.some(kw => normalized.includes(kw));
+    excludedGearCache.set(name, cached);
+  }
+  return cached;
 }
 
 // Drops vêm do log do jogo (AppState.drops, recarregado por inteiro a cada upload/conexão
