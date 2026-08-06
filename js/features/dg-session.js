@@ -142,6 +142,12 @@ export function toggleSessionItems(startAt) {
 // e o Alz/hora não fica achatado por horas paradas.
 const ACTIVE_IDLE_CAP_MS = 5 * 60 * 1000;
 
+// Piso de tempo ativo pra confiar num Alz/hora extrapolado. Com pouco tempo ativo, um único drop
+// de valor alto (ou dois drops próximos) infla a extrapolação pra um número absurdo — ex: 2 drops
+// com 30s de intervalo e valor alto vira "Alz/hora" multiplicado por 120x. Abaixo desse piso, não
+// mostra a taxa (fica "—" / fora do ranking) em vez de passar confiança que a amostra não tem.
+const MIN_ACTIVE_MS_FOR_RATE = 15 * 60 * 1000;
+
 // Tempo "ativo" da sessão: soma os intervalos entre drops consecutivos, cortando cada gap no teto
 // de inatividade. Continuar farmando (drops seguidos) conta tudo; parar por horas conta só o teto.
 function activeDurationMs(drops) {
@@ -174,7 +180,7 @@ function buildSessionRecord({ dungeonId, dungeonName, routeId, routeName, startA
     dropCount: drops.length,
     uniqueItems: Object.keys(items).length,
     totalAlz,
-    alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
+    alzPerHour: activeMs > MIN_ACTIVE_MS_FOR_RATE ? totalAlz / (activeMs / 3600000) : null,
     bestItem,
     items,
   };
@@ -196,7 +202,7 @@ export function getActiveSessionSummary() {
     activeMs,                    // tempo farmando, sem inatividade
     dropCount: drops.length,
     totalAlz,
-    alzPerHour: activeMs > 60000 ? totalAlz / (activeMs / 3600000) : null,
+    alzPerHour: activeMs > MIN_ACTIVE_MS_FOR_RATE ? totalAlz / (activeMs / 3600000) : null,
     items: summarizeDropsByItem(drops),
   };
 }
@@ -293,7 +299,7 @@ export function computeDgComparison() {
     .map(a => ({
       ...a,
       durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
-      alzPerHour: a.activeMs > 60000 ? a.totalAlz / (a.activeMs / 3600000) : null,
+      alzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? a.totalAlz / (a.activeMs / 3600000) : null,
       alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
       // Tempo médio por run = tempo ativo somado ÷ runs somadas — mesma ideia do Alz/run, sem
       // precisar de nenhum campo novo (usado pra sugerir rota pelo tempo disponível do jogador).
@@ -319,7 +325,7 @@ export function computeBestFarmingHours() {
     b.dungeonNames.add(s.dungeonName);
   });
   return Object.values(buckets)
-    .map(b => ({ ...b, dungeonNames: [...b.dungeonNames], alzPerHour: b.activeMs > 60000 ? b.totalAlz / (b.activeMs / 3600000) : null }))
+    .map(b => ({ ...b, dungeonNames: [...b.dungeonNames], alzPerHour: b.activeMs > MIN_ACTIVE_MS_FOR_RATE ? b.totalAlz / (b.activeMs / 3600000) : null }))
     .filter(b => b.alzPerHour != null)
     .sort((a, b) => b.alzPerHour - a.alzPerHour);
 }
