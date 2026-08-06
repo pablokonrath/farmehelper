@@ -19,7 +19,9 @@ export function setSessionsHistoryDate(value) {
 // Progresso do rush de hoje: cruza o rush salvo do dia com as runs de fato feitas hoje em cada DG
 // (computeRunsDoneToday soma sessões encerradas + a ativa) contra o planejado — fração real, não
 // um booleano "existe sessão" (isso marcava uma DG de 20 repetições como feita com só 1 run).
-function renderRushProgressCard() {
+// comparisonByDgId (Alz/run real de computeDgComparison) também dá o "Esperado x Já realizado" em
+// Alz — não só contagem de runs, pra saber se o dia tá rendendo o que o plano previa.
+function renderRushProgressCard(comparisonByDgId) {
   const today = todayISODate();
   const rush = AppState.rushHistory[today];
   if (!rush || !rush.items || !rush.items.length) return '';
@@ -30,11 +32,29 @@ function renderRushProgressCard() {
     return { it, runsToday, complete, partial };
   });
   const doneCount = rows.filter(r => r.complete).length;
+
+  let expectedAlz = 0;
+  let missingData = 0;
+  rush.items.forEach(it => {
+    const stat = comparisonByDgId[it.dungeonId];
+    if (stat?.alzPerRun != null) expectedAlz += stat.alzPerRun * it.repetitions;
+    else missingData++;
+  });
+  const plannedDgIds = new Set(rush.items.map(it => it.dungeonId));
+  const realizedAlz = AppState.dgSessions
+    .filter(s => s.date === today && plannedDgIds.has(s.dungeonId))
+    .reduce((sum, s) => sum + s.totalAlz, 0);
+  const pct = expectedAlz > 0 ? Math.round((realizedAlz / expectedAlz) * 100) : null;
+
   return `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-checklist"></i>Progresso do rush de hoje</div>
   <span class="badge ${doneCount >= rows.length ? 'badge-ok' : 'badge-acc'}">${doneCount}/${rows.length} feitas</span></div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Conta as runs de verdade feitas hoje em cada DG (automático se você informou o tempo por run ao iniciar, ou o que preencher na mão) contra o planejado no rush.</div>
+  ${expectedAlz > 0 ? `<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;margin-bottom:12px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
+    <span>Esperado hoje (pelo seu Alz/run histórico): <strong style="color:var(--txt)" title="${formatNumber(expectedAlz)} Alz">${formatAlzGamer(expectedAlz)}</strong>${missingData ? ` <span style="color:var(--muted)">(${missingData} DG sem histórico, fora da conta)</span>` : ''}</span>
+    <span>Já realizado nessas DGs: <strong style="color:${pct >= 100 ? 'var(--ok)' : 'var(--gold)'}" title="${formatNumber(realizedAlz)} Alz">${formatAlzGamer(realizedAlz)}</strong>${pct != null ? ` <span style="color:var(--muted)">(${pct}%)</span>` : ''}</span>
+  </div>` : ''}
   <div style="display:flex;flex-direction:column;gap:6px">
     ${rows.map(({ it, runsToday, complete, partial }) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px${complete ? ';opacity:.65' : ''}">
       <i class="ti ti-${complete ? 'circle-check' : partial ? 'circle-half-2' : 'circle'}" style="font-size:18px;color:${complete ? 'var(--ok)' : partial ? 'var(--warn)' : 'var(--muted)'}"></i>
@@ -168,6 +188,8 @@ function forgottenSessionRecoveryPanel() {
 export function renderSessionsPage() {
   const active = getActiveSessionSummary();
   const comparison = computeDgComparison();
+  const comparisonByDgId = {};
+  comparison.forEach(c => { comparisonByDgId[c.dungeonId] = c; });
   const routeComparison = computeRouteComparison();
   const timeAvailableHours = Number(AppState.timeAvailableHours) || 0;
   const timeSuggestion = timeAvailableHours > 0 ? suggestRouteForTime(timeAvailableHours) : null;
@@ -344,7 +366,7 @@ export function renderSessionsPage() {
 <div class="pg-title"><i class="ti ti-shield" style="color:var(--acc)"></i>Sessões de farme</div>
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
-${renderRushProgressCard()}
+${renderRushProgressCard(comparisonByDgId)}
 ${timeSuggestionCard}
 ${comparisonCard}
 ${routeComparisonCard}
