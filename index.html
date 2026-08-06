@@ -448,7 +448,7 @@
           <div class="sb-sub">Central de Farme</div>
         </div>
         <div class="sb-sec">
-          <div class="sec-lbl">Menu</div>
+          <div class="sec-lbl">Uso diário</div>
           <button class="nav-btn" onclick="openQuickMode()" id="nb-rapido">
             <i class="ti ti-bolt" style="color: var(--gold)"></i>Modo guiado
           </button>
@@ -458,13 +458,6 @@
             id="nb-overview"
           >
             <i class="ti ti-map"></i>Visão geral
-          </button>
-          <button
-            class="nav-btn"
-            onclick="navigateTo('calculo')"
-            id="nb-calculo"
-          >
-            <i class="ti ti-coins"></i>Cálculo de farme
           </button>
           <button class="nav-btn" onclick="navigateTo('rush')" id="nb-rush">
             <i class="ti ti-swords"></i>DGs de rush diário
@@ -476,11 +469,21 @@
           >
             <i class="ti ti-shield"></i>Sessões de farme
           </button>
-          <button class="nav-btn" onclick="navigateTo('origem')" id="nb-origem">
-            <i class="ti ti-compass"></i>Onde dropa
-          </button>
           <button class="nav-btn" onclick="navigateTo('vendas')" id="nb-vendas">
             <i class="ti ti-cash"></i>Vendas
+          </button>
+        </div>
+        <div class="sb-sec" style="border-top: 1px solid var(--border)">
+          <div class="sec-lbl">Configuração &amp; consulta</div>
+          <button
+            class="nav-btn"
+            onclick="navigateTo('calculo')"
+            id="nb-calculo"
+          >
+            <i class="ti ti-coins"></i>Cálculo de farme
+          </button>
+          <button class="nav-btn" onclick="navigateTo('origem')" id="nb-origem">
+            <i class="ti ti-compass"></i>Onde dropa
           </button>
           <button
             class="nav-btn"
