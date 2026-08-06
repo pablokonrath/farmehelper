@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
-import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay } from '../features/rush-cart.js';
+import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds } from '../features/rush-cart.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
@@ -58,6 +58,7 @@ export function renderRushPage() {
   const appliedRoutes = appliedRoutesToday();
   const routeTimeById = {};
   computeRouteComparison().forEach(r => { routeTimeById[r.id] = r; });
+  const creditNeeds = computeCartCreditNeeds();
 
   // Rotas ficam logo após os parâmetros do dia — é o caminho rápido do dia a dia (aplicar e
   // pronto), então não faz sentido estar depois de Créditos/Gerenciar DGs/Adicionar/Métricas.
@@ -123,14 +124,15 @@ ${routesCard}
     <i class="ti ti-chevron-${AppState.isCreditsManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
   </div>
   ${AppState.isCreditsManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia. A sugestão abaixo cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}</div>
   <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:150px">Preço de mercado (unidade)</th><th style="width:150px">Custo de fabricar</th><th>Subtotal</th></tr></thead><tbody>
   ${CREDIT_CATEGORIES.map(cat => {
     const { quantity, marketPrice } = AppState.rushCredits[cat.id];
     const craftCost = AppState.rushCreditCraftCosts[cat.id] || 0;
     const subtotal = quantity * (marketPrice + craftCost);
+    const needed = creditNeeds[cat.id] || 0;
     return `<tr>
-      <td style="font-weight:500">${cat.name}</td>
+      <td style="font-weight:500">${cat.name}${needed > 0 ? ` <span style="font-size:10px;font-weight:400;color:var(--gold)" title="Baseado no tempo/run real das DGs dessa faixa no carrinho de hoje">≈${needed} sugerido${needed > 1 ? 's' : ''}</span>` : ''}</td>
       <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)"></td>
       <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${marketPrice ? formatNumber(marketPrice) : ''}" placeholder="Ex: 30.000.000"
         oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)"></td>
@@ -140,6 +142,7 @@ ${routesCard}
     </tr>`;
   }).join('')}
   </tbody></table>
+  ${creditNeeds.avancado + creditNeeds.intermediario + creditNeeds.iniciante > 0 ? `<button class="btn btn-d btn-xs" style="margin-top:10px" onclick="applySuggestedCreditQuantities()"><i class="ti ti-refresh"></i>Preencher com a sugestão</button>` : ''}
   </div>` : ''}
 </div>
 

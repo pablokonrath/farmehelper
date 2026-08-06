@@ -73,6 +73,7 @@ import {
   setRushCreditCraftCost,
   clearRushCart,
   toggleCreditsManager,
+  applySuggestedCreditQuantities,
 } from './features/rush-cart.js';
 import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute } from './features/rush-routes.js';
 import { exportDropsToCSV } from './features/export.js';
@@ -143,6 +144,7 @@ Object.assign(window, {
   removeDungeonFromCart,
   clearRushCart,
   toggleCreditsManager,
+  applySuggestedCreditQuantities,
   saveRushForDay,
   deleteRushForDay,
   editSavedRush,

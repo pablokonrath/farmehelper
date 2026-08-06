@@ -3,6 +3,8 @@ import { saveRushHistory, saveRushCreditCraftCosts, saveAppliedRoutes } from '..
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
+import { computeDgComparison } from './dg-session.js';
+import { getDungeonDifficulty } from './dungeon-difficulty.js';
 import { renderPage } from '../router.js';
 
 // 1.000 Cash custam AppState.rushCardCashPrice Alz, e 1 gema de reset custa o equivalente a 1 Cash.
@@ -20,6 +22,43 @@ export function calculateCreditsCost() {
     const craftCost = AppState.rushCreditCraftCosts[cat.id] || 0;
     return sum + quantity * (marketPrice + craftCost);
   }, 0);
+}
+
+// Quantos créditos de cada faixa (Iniciante/Intermediário/Avançado) o carrinho de hoje
+// provavelmente vai precisar — soma o tempo/run real (média das suas sessões, ver
+// computeDgComparison) × repetições de cada DG do carrinho, agrupado pela dificuldade dela (ver
+// dungeon-difficulty.js), e arredonda pra cima já que cada crédito só dá horas inteiras de uso.
+// Antes disso o jogador tinha que fazer essa conta de cabeça — o app já tem os dois dados
+// separados (dificuldade da DG + tempo/run), só faltava juntar.
+export function computeCartCreditNeeds(cart = AppState.rushCart) {
+  const statsByDgId = {};
+  computeDgComparison().forEach(d => { statsByDgId[d.dungeonId] = d; });
+
+  const msByTier = { avancado: 0, intermediario: 0, iniciante: 0 };
+  let missingDataCount = 0;
+  cart.forEach(item => {
+    const stat = item.dungeonId ? statsByDgId[item.dungeonId] : null;
+    if (!stat || stat.msPerRun == null) { missingDataCount++; return; }
+    const tierId = getDungeonDifficulty(item.name).id;
+    msByTier[tierId] += stat.msPerRun * item.repetitions;
+  });
+
+  return {
+    avancado: Math.ceil(msByTier.avancado / 3600000),
+    intermediario: Math.ceil(msByTier.intermediario / 3600000),
+    iniciante: Math.ceil(msByTier.iniciante / 3600000),
+    missingDataCount,
+  };
+}
+
+// Preenche "Qtd. comprada" de cada categoria de crédito com a sugestão calculada pro carrinho
+// atual — o jogador ainda pode ajustar na mão depois, é só um ponto de partida.
+export function applySuggestedCreditQuantities() {
+  const needs = computeCartCreditNeeds();
+  CREDIT_CATEGORIES.forEach(cat => {
+    if (needs[cat.id] > 0) AppState.rushCredits[cat.id].quantity = needs[cat.id];
+  });
+  renderPage();
 }
 
 // Custo de cada repetição de uma DG = alzCost/run + (ticketsPerRun × preço do ticket, para DGs que
