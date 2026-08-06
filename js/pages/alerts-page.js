@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredAlertHistory } from '../features/alerts.js';
 import { formatDateTimeBR } from '../utils/formatting.js';
-import { esc } from '../utils/escape.js';
+import { esc, escAttr } from '../utils/escape.js';
 
 // Uma linha "toggle" padrão (título + descrição à esquerda, interruptor à direita). `extra` entra
 // no style do container (ex: borda, opacidade quando desabilitado).
@@ -123,8 +123,31 @@ export function renderAlertsPage() {
   </div>
   <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
     <button class="btn btn-d" onclick="testNotification()"><i class="ti ti-player-play"></i>Testar notificação</button>
-    <span style="font-size:12px;color:var(--muted)">Palavras com alerta ativo: <strong>${activeAlertCount}</strong> — <a href="#" onclick="navigateTo('calculo');return false" style="color:var(--acc)">gerenciar em Cálculo de farme</a></span>
+    <span style="font-size:12px;color:var(--muted)">Palavras com alerta ativo: <strong>${activeAlertCount}</strong> de ${AppState.trackedKeywords.length}</span>
   </div>
+</div>`;
+
+  // 1.5) Palavras rastreadas — gerenciar direto aqui, sem precisar ir em Cálculo de farme só
+  // pra adicionar uma palavra nova (o filtro "mostrar só rastreados" continua lá, é sobre a
+  // lista de drops daquela página, não sobre alerta).
+  const trackedWordsCard = `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-tags"></i>Palavras rastreadas</div>
+  <div class="pg-sub" style="margin:-4px 0 10px">O que aciona os alertas acima — liga o sininho de uma palavra pra ser avisado quando um item com esse nome cair.</div>
+  ${!AppState.trackedKeywords.length ? '<div class="empty" style="padding:14px 0">Nenhuma palavra rastreada ainda.</div>' : `
+  <table style="margin-bottom:12px"><thead><tr><th>Palavra rastreada</th><th style="width:110px"><i class="ti ti-bell"></i> Alerta</th><th style="width:40px">Ações</th></tr></thead><tbody>
+  ${AppState.trackedKeywords.map(kw => `<tr>
+    <td style="font-weight:500">${esc(kw.word)}</td>
+    <td><label class="tgl"><input type="checkbox" ${kw.alertEnabled ? 'checked' : ''} onchange="toggleKeywordAlert('${escAttr(kw.word)}')"><div class="tgl-track"></div><div class="tgl-thumb"></div></label> <span style="font-size:11px;color:var(--muted)">${kw.alertEnabled ? 'ON' : 'OFF'}</span></td>
+    <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeTrackedKeyword('${escAttr(kw.word)}')"><i class="ti ti-x"></i></button></td>
+  </tr>`).join('')}
+  </tbody></table>`}
+  <div class="row">
+    <div style="flex:1"><label class="lbl">Adicionar palavra</label><input class="inp" id="nKw" placeholder="ex: Fatal"></div>
+    <button class="btn btn-p" onclick="addTrackedKeyword()"><i class="ti ti-plus"></i>Adicionar</button>
+    <button class="btn btn-d" onclick="resetTrackedKeywords()">Restaurar padrão</button>
+  </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Pra ver só os drops rastreados na lista de itens (sem mexer no alerta), tem um filtro separado em <a href="#" onclick="navigateTo('calculo');return false" style="color:var(--acc)">Cálculo de farme</a>.</div>
 </div>`;
 
   // 2) Watchdog — agora 100% automático com a sessão de DG (sem interruptor manual). Aqui ficam
@@ -201,6 +224,7 @@ export function renderAlertsPage() {
 <div class="pg-sub">Notificação em tempo real dos seus itens rastreados, vigilância do helper e eventos de TG/World Boss.</div>
 ${permissionBanner}
 ${coreCard}
+${trackedWordsCard}
 ${watchdogCard}
 ${eventsCard}
 ${outsideCard}
