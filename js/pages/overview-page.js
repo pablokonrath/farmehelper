@@ -98,12 +98,19 @@ function buildWeeklyRetrospectiveCard() {
   const lastWeekTo = from(7);
   const today = todayISODate();
 
+  // "Farmado" é bruto (só o valor estimado dos drops) — igual ao "Total de farme" da Visão geral,
+  // que também é separado do líquido. rushSpentIn soma o custo do rush salvo em cada dia do
+  // período (mesma conta do "Total gasto em rush" logo abaixo), pra dar o líquido da semana.
   const farmedIn = (a, b) => getAllDrops().filter(d => d.date >= a && d.date <= b).reduce((sum, d) => sum + getItemPrice(d.name), 0);
   const soldIn = (a, b) => AppState.salesLog.filter(s => s.date >= a && s.date <= b).reduce((sum, s) => sum + s.unitPrice * s.qty, 0);
   const sessionsIn = (a, b) => AppState.dgSessions.filter(s => s.date >= a && s.date <= b).length;
+  const rushSpentIn = (a, b) => Object.entries(AppState.rushHistory)
+    .filter(([date]) => date >= a && date <= b)
+    .reduce((sum, [, rush]) => sum + rush.total, 0);
 
-  const thisWeek = { farmed: farmedIn(thisWeekFrom, today), sold: soldIn(thisWeekFrom, today), sessions: sessionsIn(thisWeekFrom, today) };
-  const lastWeek = { farmed: farmedIn(lastWeekFrom, lastWeekTo), sold: soldIn(lastWeekFrom, lastWeekTo), sessions: sessionsIn(lastWeekFrom, lastWeekTo) };
+  const thisWeek = { farmed: farmedIn(thisWeekFrom, today), sold: soldIn(thisWeekFrom, today), sessions: sessionsIn(thisWeekFrom, today), rushSpent: rushSpentIn(thisWeekFrom, today) };
+  const lastWeek = { farmed: farmedIn(lastWeekFrom, lastWeekTo), sold: soldIn(lastWeekFrom, lastWeekTo), sessions: sessionsIn(lastWeekFrom, lastWeekTo), rushSpent: rushSpentIn(lastWeekFrom, lastWeekTo) };
+  const thisWeekNet = thisWeek.farmed - thisWeek.rushSpent;
 
   // Sem nada nas duas janelas, não tem retrospectiva pra mostrar ainda.
   if (!thisWeek.farmed && !thisWeek.sold && !lastWeek.farmed && !lastWeek.sold) return '';
@@ -120,7 +127,7 @@ function buildWeeklyRetrospectiveCard() {
   <div class="ctitle"><i class="ti ti-chart-bar"></i>Sua semana</div>
   <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Últimos 7 dias (${formatDateBR(thisWeekFrom)}–${formatDateBR(today)}) vs. os 7 dias anteriores.</div>
   <div class="g3">
-    <div class="kpi"><div class="kpi-lbl">Farmado</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.farmed)}" title="${formatNumber(thisWeek.farmed)} Alz">${formatAlzGamer(thisWeek.farmed)}</div><div class="kpi-sub">${deltaBadge(thisWeek.farmed, lastWeek.farmed)}</div></div>
+    <div class="kpi"><div class="kpi-lbl">Farmado (bruto)</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.farmed)}" title="${formatNumber(thisWeek.farmed)} Alz">${formatAlzGamer(thisWeek.farmed)}</div><div class="kpi-sub">${deltaBadge(thisWeek.farmed, lastWeek.farmed)}${thisWeek.rushSpent > 0 ? `<br>líquido: <strong style="color:${getAlzTierColor(thisWeekNet)}">${formatAlzGamer(thisWeekNet)}</strong> <span title="${formatNumber(thisWeek.farmed)} farmado − ${formatNumber(thisWeek.rushSpent)} gasto em rush">(farmado − rush)</span>` : ''}</div></div>
     <div class="kpi"><div class="kpi-lbl">Vendido</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.sold)}" title="${formatNumber(thisWeek.sold)} Alz">${formatAlzGamer(thisWeek.sold)}</div><div class="kpi-sub">${deltaBadge(thisWeek.sold, lastWeek.sold)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Sessões de DG</div><div class="kpi-val">${thisWeek.sessions}</div><div class="kpi-sub">${deltaBadge(thisWeek.sessions, lastWeek.sessions)}</div></div>
   </div>
