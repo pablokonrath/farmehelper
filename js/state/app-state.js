@@ -85,17 +85,16 @@ export const DEFAULT_ALERT_SETTINGS = {
 
 // Créditos de macro: item comprado no mercado (preço varia por categoria) + custo fixo de
 // fabricação por cima, dá 1h de uso de macro cada, usável em qualquer DG (não é por-DG como
-// tickets/gemas). Preço de mercado e quantidade comprada são inputs do dia (não persistem); já o
-// custo de fabricar por categoria, o preço do ticket e o Card Cash são salvos no app_settings.
+// tickets/gemas). Preço do crédito (mercado + fabricar, um campo só — antes eram dois campos
+// separados, sem necessidade real de guardar em partes) e quantidade comprada, salvos no
+// app_settings junto com o preço do ticket e o Card Cash.
 export const CREDIT_CATEGORIES = [
   { id: 'iniciante', name: 'Iniciante' },
   { id: 'intermediario', name: 'Intermediário' },
   { id: 'avancado', name: 'Avançado' },
 ];
 
-export const DEFAULT_CREDIT_CRAFT_COSTS = { iniciante: 3000000, intermediario: 0, avancado: 0 };
-
-function buildDefaultRushCredits() {
+export function buildDefaultRushCredits() {
   const credits = {};
   CREDIT_CATEGORIES.forEach(cat => (credits[cat.id] = { quantity: 0, marketPrice: 0 }));
   return credits;
@@ -146,7 +145,6 @@ export const AppState = {
   rushCardCashPrice: '',
   rushCart: [],
   rushCredits: buildDefaultRushCredits(),
-  rushCreditCraftCosts: { ...DEFAULT_CREDIT_CRAFT_COSTS },
   isCreditsManagerOpen: false,
   dungeonList: DEFAULT_DUNGEONS.map(dg => ({ ...dg })),
   isDungeonManagerOpen: false,

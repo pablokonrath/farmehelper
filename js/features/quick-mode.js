@@ -6,7 +6,7 @@ import { startDgSession, endDgSession, getActiveSessionSummary, suggestForgotten
 import { addTrackedKeywordByName } from './keywords.js';
 import { buildCartItem, saveRushForDay, calculateRushCartCost } from './rush-cart.js';
 import { applyRushRoute } from './rush-routes.js';
-import { saveRushParams } from '../state/persistence.js';
+import { saveRushParams, saveRushCredits } from '../state/persistence.js';
 import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { navigateTo, renderPage } from '../router.js';
@@ -154,6 +154,7 @@ export function quickNext() {
         AppState.rushCredits[cat.id].quantity = Math.max(0, parseInt(val('qm-cred-qty-' + cat.id), 10) || 0);
         AppState.rushCredits[cat.id].marketPrice = parseAlzInput(val('qm-cred-price-' + cat.id));
       });
+      saveRushCredits().catch(err => console.error('Falha ao salvar créditos:', err));
       qm.step = 4;
     } else if (qm.step === 4) { // panorama -> salvar
       AppState.rushCart = qm.data.cart;

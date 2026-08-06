@@ -1,4 +1,4 @@
-import { AppState, DEFAULT_DUNGEONS, DEFAULT_CREDIT_CRAFT_COSTS } from './app-state.js';
+import { AppState, DEFAULT_DUNGEONS, CREDIT_CATEGORIES, buildDefaultRushCredits } from './app-state.js';
 import { hasLegacyData, buildLegacyStatePayload, manualDropForApi } from '../utils/legacy-migration.js';
 
 // Agora que existe backend (PHP/MySQL na Hostinger), este arquivo é a única ponte entre
@@ -112,7 +112,20 @@ export async function loadPersistedState() {
   AppState.rushRoutes = rushRoutes;
   AppState.trackedKeywords = trackedKeywords.length ? trackedKeywords : AppState.trackedKeywords;
   AppState.filterByTrackedKeywords = appSettings.filterByTrackedKeywords ?? false;
-  AppState.rushCreditCraftCosts = { ...DEFAULT_CREDIT_CRAFT_COSTS, ...(appSettings.rushCreditCraftCosts || {}) };
+  // rushCredits (quantidade + preço) nunca tinha sido salvo de verdade antes — resetava a cada
+  // reload, mesmo no mesmo dia. Migração única: se ainda não existe no formato novo mas havia um
+  // "custo de fabricar" salvo à parte (rushCreditCraftCosts, campo removido), esse valor vira o
+  // ponto de partida do campo único — assim ninguém perde o número que já tinha configurado.
+  AppState.rushCredits = buildDefaultRushCredits();
+  if (appSettings.rushCredits) {
+    CREDIT_CATEGORIES.forEach(cat => {
+      if (appSettings.rushCredits[cat.id]) Object.assign(AppState.rushCredits[cat.id], appSettings.rushCredits[cat.id]);
+    });
+  } else if (appSettings.rushCreditCraftCosts) {
+    CREDIT_CATEGORIES.forEach(cat => {
+      AppState.rushCredits[cat.id].marketPrice = appSettings.rushCreditCraftCosts[cat.id] || 0;
+    });
+  }
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
@@ -157,8 +170,8 @@ export function saveFilterKeywordsFlag() {
   return put('app-settings.php', { filterByTrackedKeywords: AppState.filterByTrackedKeywords });
 }
 
-export function saveRushCreditCraftCosts() {
-  return put('app-settings.php', { rushCreditCraftCosts: AppState.rushCreditCraftCosts });
+export function saveRushCredits() {
+  return put('app-settings.php', { rushCredits: AppState.rushCredits });
 }
 
 // Preço do ticket e do Card Cash — parâmetros do rush que o jogador digita uma vez e valem pra

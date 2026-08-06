@@ -132,19 +132,16 @@ ${routesCard}
   </div>
   ${AppState.isCreditsManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
   ${infoToggle('rush-credits', `Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). Limite de compra: 8 por dia. A sugestão abaixo cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}`)}
-  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:150px">Preço de mercado (unidade)</th><th style="width:150px">Custo de fabricar</th><th>Subtotal</th></tr></thead><tbody>
+  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:170px">Preço do crédito (unidade)</th><th>Subtotal</th></tr></thead><tbody>
   ${CREDIT_CATEGORIES.map(cat => {
     const { quantity, marketPrice } = AppState.rushCredits[cat.id];
-    const craftCost = AppState.rushCreditCraftCosts[cat.id] || 0;
-    const subtotal = quantity * (marketPrice + craftCost);
+    const subtotal = quantity * marketPrice;
     const needed = creditNeeds[cat.id] || 0;
     return `<tr>
       <td style="font-weight:500">${cat.name}${needed > 0 ? ` <span style="font-size:10px;font-weight:400;color:var(--gold)" title="Baseado no tempo/run real das DGs dessa faixa no carrinho de hoje">≈${needed} sugerido${needed > 1 ? 's' : ''}</span>` : ''}</td>
       <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)"></td>
       <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${marketPrice ? formatNumber(marketPrice) : ''}" placeholder="Ex: 30.000.000"
         oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)"></td>
-      <td><input class="inp inp-sm" type="text" inputmode="numeric" value="${craftCost ? formatNumber(craftCost) : ''}" placeholder="Ex: 3.000.000"
-        oninput="maskAlzInputLive(this)" onblur="setRushCreditCraftCost('${cat.id}', this.value)"></td>
       <td>${renderAlzValue(subtotal, true)}</td>
     </tr>`;
   }).join('')}

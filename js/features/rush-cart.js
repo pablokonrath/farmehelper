@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
-import { saveRushHistory, saveRushCreditCraftCosts, saveAppliedRoutes } from '../state/persistence.js';
+import { saveRushHistory, saveRushCredits, saveAppliedRoutes } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { updateBalanceSidebar } from './drops.js';
@@ -13,15 +13,14 @@ export function getCostPerGem() {
   return Math.round((+AppState.rushCardCashPrice || 0) / 1000);
 }
 
-// Crédito de macro = preço de mercado do item base (varia por categoria e por dia, comprado
-// direto no dia) + custo fixo de fabricar por cima (por categoria, configurável). Não é
-// consumido por DG específica — dá 1h de uso do macro em qualquer DG, então entra no total
-// do dia como um custo à parte, não vinculado a nenhum item do carrinho.
+// Crédito de macro = preço do crédito (por categoria, configurável — inclui mercado + qualquer
+// custo de fabricar, é um valor só). Não é consumido por DG específica — dá 1h de uso do macro
+// em qualquer DG, então entra no total do dia como um custo à parte, não vinculado a nenhum
+// item do carrinho.
 export function calculateCreditsCost() {
   return CREDIT_CATEGORIES.reduce((sum, cat) => {
     const { quantity, marketPrice } = AppState.rushCredits[cat.id];
-    const craftCost = AppState.rushCreditCraftCosts[cat.id] || 0;
-    return sum + quantity * (marketPrice + craftCost);
+    return sum + quantity * marketPrice;
   }, 0);
 }
 
@@ -59,6 +58,7 @@ export function applySuggestedCreditQuantities() {
   CREDIT_CATEGORIES.forEach(cat => {
     if (needs[cat.id] > 0) AppState.rushCredits[cat.id].quantity = needs[cat.id];
   });
+  saveRushCredits().catch(err => console.error('Falha ao salvar créditos:', err));
   renderPage();
 }
 
@@ -174,20 +174,18 @@ export function toggleCreditsManager() {
 }
 
 // Chama renderPage() (não só updateRushMetricsDisplay) porque a tabela de créditos mostra um
-// subtotal por linha que também precisa refletir a mudança, não só as métricas do topo.
+// subtotal por linha que também precisa refletir a mudança, não só as métricas do topo. Salva
+// no backend igual ao resto do carrinho — antes esses dois campos não persistiam de verdade e
+// resetavam a cada reload, mesmo no mesmo dia.
 export function setRushCreditQuantity(categoryId, value) {
   AppState.rushCredits[categoryId].quantity = Math.max(0, parseInt(value) || 0);
+  saveRushCredits().catch(err => console.error('Falha ao salvar créditos:', err));
   renderPage();
 }
 
 export function setRushCreditMarketPrice(categoryId, value) {
   AppState.rushCredits[categoryId].marketPrice = parseAlzInput(value);
-  renderPage();
-}
-
-export function setRushCreditCraftCost(categoryId, value) {
-  AppState.rushCreditCraftCosts[categoryId] = parseAlzInput(value);
-  saveRushCreditCraftCosts();
+  saveRushCredits().catch(err => console.error('Falha ao salvar créditos:', err));
   renderPage();
 }
 
