@@ -2,6 +2,8 @@ import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
 import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
 import { infoToggle } from '../features/ui-toggles.js';
+import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
+import { RARE_MAX_DROPS_PER_RUN, MIN_RUNS_TO_JUDGE_RARITY } from '../features/item-dungeon-sources.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
@@ -167,6 +169,60 @@ function buildTrendCard() {
 </div>`;
 }
 
+// Raridades têm lugar próprio porque se perdem no volume: no meio de milhares de drops comuns,
+// o item que você caça vira uma linha igual às outras nas listas gerais. Duas perguntas que só
+// aqui têm resposta: "o que de bom já veio?" e "há quanto tempo o que eu caço não cai?".
+function buildRareDropsCard() {
+  const historico = getRareDropHistory(12);
+  const secas = getRarityDroughts();
+  if (!historico.total && !secas.length) return '';
+
+  const quandoTexto = at => {
+    const dias = Math.floor((Date.now() - at) / 86400000);
+    if (dias <= 0) return 'hoje';
+    if (dias === 1) return 'ontem';
+    return `há ${dias} dias`;
+  };
+
+  const criterio = `Um item entra aqui de duas formas: <strong>você cadastrou</strong> ele em Onde dropa, ou <strong>o seu próprio histórico</strong> mostra que ele cai em no máximo ${RARE_MAX_DROPS_PER_RUN} por run naquela DG (~1 a cada ${Math.round(1 / RARE_MAX_DROPS_PER_RUN)} runs), com pelo menos ${MIN_RUNS_TO_JUDGE_RARITY} runs de amostra pra não julgar no chute.<br><br>Os dois caminhos existem porque nenhum cobre tudo: a estatística só enxerga item que <strong>já caiu</strong> — um item raro demais, que você ainda não tirou, tem quantidade zero e é invisível pra ela. Esse só aparece se você cadastrar. Por isso o cadastro manual continua valendo a pena mesmo com a detecção automática ligada.`;
+
+  const listaSecas = secas.length ? `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <label class="lbl" style="margin-bottom:6px">O que você caça</label>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        ${secas.slice(0, 6).map(d => `<div style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);flex-wrap:wrap">
+          <span style="color:var(--epic);font-weight:600">${esc(d.name)}</span>
+          <span style="color:var(--muted)">${esc(d.dungeonName)}</span>
+          <span style="margin-left:auto;color:${d.diasSem === null ? 'var(--muted)' : d.diasSem > 14 ? 'var(--warn)' : 'var(--txt2)'}">
+            ${d.diasSem === null ? 'ainda não caiu pra você' : `última vez ${quandoTexto(d.ultimaVezAt)}`}
+          </span>
+          ${d.taxa && d.taxa.runs ? `<span style="color:var(--muted);font-size:var(--fs-2xs)" title="${d.taxa.qty} em ${d.taxa.runs} runs registradas">(${d.taxa.qty}/${d.taxa.runs} runs)</span>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  return `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-star" style="color:var(--epic)"></i>Raridades</div>
+    ${historico.total ? `<span class="badge" style="background:var(--epic-bg);color:var(--epic);border:1px solid var(--epic-border)">${historico.total} no total</span>` : ''}</div>
+  ${infoToggle('overview-rare', criterio)}
+  ${!historico.total
+    ? '<div class="empty" style="padding:14px 0">Nenhuma raridade registrada ainda — elas aparecem aqui conforme caem nas suas sessões.</div>'
+    : `<div style="display:flex;flex-direction:column;gap:6px">
+      ${historico.itens.map(i => `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--epic-bg);border:1px solid var(--epic-border);border-radius:8px;flex-wrap:wrap">
+        <i class="ti ti-star" style="color:var(--epic)"></i>
+        <strong style="color:var(--epic)">${esc(i.name)}</strong>${i.qty > 1 ? `<span style="color:var(--muted)">×${i.qty}</span>` : ''}
+        <span style="color:var(--muted);font-size:var(--fs-sm)">${esc(i.dungeonName)}</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
+          ${i.value ? `<strong style="color:${getAlzTierColor(i.value)}" title="${formatNumber(i.value)} Alz">${formatAlzGamer(i.value)}</strong>` : ''}
+          <span style="color:var(--muted);font-size:var(--fs-xs)">${quandoTexto(i.at)}</span>
+        </span>
+      </div>`).join('')}
+    </div>`}
+  ${listaSecas}
+</div>`;
+}
+
 export function setDateFrom(value) {
   AppState.dateFrom = value;
   renderPage();
@@ -300,6 +356,7 @@ ${coverageNotice}
   <div class="kpi"><div class="kpi-lbl">Drops / hora</div><div class="kpi-val">${dropsPerHour}</div></div>
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub">itens com valor cadastrado</div></div>
 </div>
+${buildRareDropsCard()}
 ${weeklyRetrospectiveCard}
 ${buildTrendCard()}
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}

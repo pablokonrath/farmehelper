@@ -42,9 +42,23 @@ export function getManualExpectedItemNames(dungeonId) {
 }
 
 // Raro = cai em poucas runs daquela DG. Acima dessa taxa é item de rotina, não raridade.
-const RARE_MAX_DROPS_PER_RUN = 0.15; // ~1 a cada 7 runs ou menos
+// Exportados porque a UI explica o critério pro jogador em vez de deixar como número mágico.
+export const RARE_MAX_DROPS_PER_RUN = 0.15; // ~1 a cada 7 runs ou menos
 // Piso de amostra: com poucas runs, qualquer item parece raro só por não ter caído ainda.
-const MIN_RUNS_TO_JUDGE_RARITY = 30;
+export const MIN_RUNS_TO_JUDGE_RARITY = 30;
+
+// Taxa real de um item numa DG, pelo seu histórico ({ perRun, runs, qty } ou null sem amostra).
+// Serve pra UI mostrar POR QUE um item foi considerado raro, em vez de só afirmar que é.
+export function getItemRateInDungeon(dungeonId, itemName) {
+  let runs = 0;
+  let qty = 0;
+  for (const session of AppState.dgSessions) {
+    if (session.dungeonId !== dungeonId || !session.runs) continue;
+    runs += session.runs;
+    qty += session.items?.[itemName] || 0;
+  }
+  return runs > 0 ? { perRun: qty / runs, runs, qty } : null;
+}
 
 // Itens que o SEU histórico mostra serem raros nesta DG — derivado das sessões já encerradas
 // (quantidade ÷ runs), sem depender de cadastro nenhum. Existe porque o cadastro manual de
