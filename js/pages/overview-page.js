@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
-import { getHistoricalSummary, countUncoveredDays } from '../features/drop-history.js';
+import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
+import { infoToggle } from '../features/ui-toggles.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
@@ -131,6 +132,37 @@ function buildWeeklyRetrospectiveCard() {
     <div class="kpi"><div class="kpi-lbl">Farmado (bruto)</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.farmed)}" title="${formatNumber(thisWeek.farmed)} Alz">${formatAlzGamer(thisWeek.farmed)}</div><div class="kpi-sub">${deltaBadge(thisWeek.farmed, lastWeek.farmed)}${thisWeek.rushSpent > 0 ? `<br>líquido: <strong style="color:${getAlzTierColor(thisWeekNet)}">${formatAlzGamer(thisWeekNet)}</strong> <span title="${formatNumber(thisWeek.farmed)} farmado − ${formatNumber(thisWeek.rushSpent)} gasto em rush">(farmado − rush)</span>` : ''}</div></div>
     <div class="kpi"><div class="kpi-lbl">Vendido</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.sold)}" title="${formatNumber(thisWeek.sold)} Alz">${formatAlzGamer(thisWeek.sold)}</div><div class="kpi-sub">${deltaBadge(thisWeek.sold, lastWeek.sold)}</div></div>
     <div class="kpi"><div class="kpi-lbl">Sessões de DG</div><div class="kpi-val">${thisWeek.sessions}</div><div class="kpi-sub">${deltaBadge(thisWeek.sessions, lastWeek.sessions)}</div></div>
+  </div>
+</div>`;
+}
+
+// Tendência de meses — só é possível por causa do histórico arquivado (drop-history.js); antes,
+// qualquer janela maior que o log do jogo virava zero. Compara a média por DIA FARMADO de blocos
+// de 30 dias: comparar pelo total puro diria mais sobre quantos dias você jogou do que sobre o
+// quanto rendeu. Só aparece com pelo menos 2 blocos tendo farme — senão não há tendência nenhuma.
+function buildTrendCard() {
+  const blocos = getPeriodTrend(30, 3);
+  const comFarme = blocos.filter(b => b.diasComFarme > 0);
+  if (comFarme.length < 2) return '';
+
+  const [atual, anterior] = blocos;
+  const variacao = anterior?.alzPorDiaFarmado > 0
+    ? Math.round((atual.alzPorDiaFarmado / anterior.alzPorDiaFarmado - 1) * 100)
+    : null;
+  const subiu = variacao != null && variacao >= 0;
+  const rotulo = ['Últimos 30 dias', '30 dias antes', '30 dias antes disso'];
+
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-chart-bar"></i>Sua evolução</div>
+  ${infoToggle('overview-trend', 'Compara blocos de 30 dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num mês você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso.')}
+  ${variacao == null ? '' : `<div style="font-size:13px;margin-bottom:12px">Nos últimos 30 dias você rendeu <strong style="color:${subiu ? 'var(--ok)' : 'var(--err)'}">${subiu ? '+' : ''}${variacao}%</strong> por dia farmado, comparado com os 30 dias anteriores.</div>`}
+  <div class="g3">
+    ${blocos.map((b, i) => `<div class="kpi">
+      <div class="kpi-lbl">${rotulo[i]}</div>
+      <div class="kpi-val" style="font-size:18px;color:${getAlzTierColor(b.alzPorDiaFarmado)}" title="${formatNumber(Math.round(b.alzPorDiaFarmado))} Alz por dia farmado">${b.diasComFarme ? formatAlzGamer(b.alzPorDiaFarmado) : '—'}</div>
+      <div class="kpi-sub">${b.diasComFarme ? `por dia farmado · ${b.diasComFarme} dia(s)` : 'sem farme registrado'}</div>
+    </div>`).join('')}
   </div>
 </div>`;
 }
@@ -269,6 +301,7 @@ ${coverageNotice}
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub">itens com valor cadastrado</div></div>
 </div>
 ${weeklyRetrospectiveCard}
+${buildTrendCard()}
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Top itens <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${items.length} itens</span></div></div>
