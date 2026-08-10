@@ -91,75 +91,57 @@ function buildPersonalBestsCard() {
 </div>`;
 }
 
-// Retrospectiva semanal: farmado/vendido/sessões dos últimos 7 dias x os 7 dias anteriores a
-// esses. Diferente do resto da página (tudo focado em HOJE, ou num período que você escolhe na
-// mão), essa é a única visão automática que dá um passo atrás — pra enxergar se a semana tá
-// melhor ou pior que a passada sem precisar lembrar de mexer no filtro de data.
-function buildWeeklyRetrospectiveCard() {
-  const now = new Date();
-  const from = (daysAgo) => todayISODate(new Date(now.getTime() - daysAgo * 86400000));
-  const thisWeekFrom = from(6);
-  const lastWeekFrom = from(13);
-  const lastWeekTo = from(7);
-  const today = todayISODate();
-
-  // "Farmado" é bruto (só o valor estimado dos drops) — igual ao "Total de farme" da Visão geral,
-  // que também é separado do líquido. rushSpentIn soma o custo do rush salvo em cada dia do
-  // período (mesma conta do "Total gasto em rush" logo abaixo), pra dar o líquido da semana.
-  const farmedIn = (a, b) => getAllDrops().filter(d => d.date >= a && d.date <= b).reduce((sum, d) => sum + getItemPrice(d.name), 0);
-  const soldIn = (a, b) => AppState.salesLog.filter(s => s.date >= a && s.date <= b).reduce((sum, s) => sum + s.unitPrice * s.qty, 0);
-  const sessionsIn = (a, b) => AppState.dgSessions.filter(s => s.date >= a && s.date <= b).length;
-  const rushSpentIn = (a, b) => Object.entries(AppState.rushHistory)
-    .filter(([date]) => date >= a && date <= b)
-    .reduce((sum, [, rush]) => sum + rush.total, 0);
-
-  const thisWeek = { farmed: farmedIn(thisWeekFrom, today), sold: soldIn(thisWeekFrom, today), sessions: sessionsIn(thisWeekFrom, today), rushSpent: rushSpentIn(thisWeekFrom, today) };
-  const lastWeek = { farmed: farmedIn(lastWeekFrom, lastWeekTo), sold: soldIn(lastWeekFrom, lastWeekTo), sessions: sessionsIn(lastWeekFrom, lastWeekTo), rushSpent: rushSpentIn(lastWeekFrom, lastWeekTo) };
-  const thisWeekNet = thisWeek.farmed - thisWeek.rushSpent;
-
-  // Sem nada nas duas janelas, não tem retrospectiva pra mostrar ainda.
-  if (!thisWeek.farmed && !thisWeek.sold && !lastWeek.farmed && !lastWeek.sold) return '';
-
-  const deltaBadge = (curr, prev) => {
-    if (prev <= 0) return curr > 0 ? '<span style="font-size:11px;color:var(--muted)">(sem semana anterior pra comparar)</span>' : '';
-    const pct = Math.round(((curr - prev) / prev) * 100);
-    const up = pct >= 0;
-    return `<span style="font-size:11px;font-weight:600;color:${up ? 'var(--ok)' : 'var(--err)'}"><i class="ti ti-chevron-${up ? 'up' : 'down'}"></i> ${up ? '+' : ''}${pct}% vs. semana passada</span>`;
-  };
-
-  return `
-<div class="card">
-  <div class="ctitle"><i class="ti ti-chart-bar"></i>Sua semana</div>
-  <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Últimos 7 dias (${formatDateBR(thisWeekFrom)}–${formatDateBR(today)}) vs. os 7 dias anteriores.</div>
-  <div class="g3">
-    <div class="kpi"><div class="kpi-lbl">Farmado (bruto)</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.farmed)}" title="${formatNumber(thisWeek.farmed)} Alz">${formatAlzGamer(thisWeek.farmed)}</div><div class="kpi-sub">${deltaBadge(thisWeek.farmed, lastWeek.farmed)}${thisWeek.rushSpent > 0 ? `<br>líquido: <strong style="color:${getAlzTierColor(thisWeekNet)}">${formatAlzGamer(thisWeekNet)}</strong> <span title="${formatNumber(thisWeek.farmed)} farmado − ${formatNumber(thisWeek.rushSpent)} gasto em rush">(farmado − rush)</span>` : ''}</div></div>
-    <div class="kpi"><div class="kpi-lbl">Vendido</div><div class="kpi-val" style="color:${getAlzTierColor(thisWeek.sold)}" title="${formatNumber(thisWeek.sold)} Alz">${formatAlzGamer(thisWeek.sold)}</div><div class="kpi-sub">${deltaBadge(thisWeek.sold, lastWeek.sold)}</div></div>
-    <div class="kpi"><div class="kpi-lbl">Sessões de DG</div><div class="kpi-val">${thisWeek.sessions}</div><div class="kpi-sub">${deltaBadge(thisWeek.sessions, lastWeek.sessions)}</div></div>
-  </div>
-</div>`;
+export function setTrendPeriod(dias) {
+  AppState.trendPeriodDays = parseInt(dias, 10) === 7 ? 7 : 30;
+  renderPage();
 }
 
-// Tendência de meses — só é possível por causa do histórico arquivado (drop-history.js); antes,
-// qualquer janela maior que o log do jogo virava zero. Compara a média por DIA FARMADO de blocos
-// de 30 dias: comparar pelo total puro diria mais sobre quantos dias você jogou do que sobre o
-// quanto rendeu. Só aparece com pelo menos 2 blocos tendo farme — senão não há tendência nenhuma.
+// Card único de comparação temporal. Antes eram dois ("Sua semana" 7d×7d e "Sua evolução" 30d×30d)
+// dizendo a mesma coisa em janelas diferentes e ocupando quase uma tela de celular cada. Agora é
+// um card com seletor de período — mesma informação, um terço do espaço.
+//
+// Compara pela média por DIA FARMADO, não pelo total: se num período você jogou 20 dias e no outro
+// 5, o total falaria mais sobre presença do que sobre o quanto o farme rende.
 function buildTrendCard() {
-  const blocos = getPeriodTrend(30, 3);
-  const comFarme = blocos.filter(b => b.diasComFarme > 0);
-  if (comFarme.length < 2) return '';
+  const dias = AppState.trendPeriodDays === 7 ? 7 : 30;
+  const blocos = getPeriodTrend(dias, 3);
+  if (blocos.filter(b => b.diasComFarme > 0).length < 2) return '';
 
   const [atual, anterior] = blocos;
-  const variacao = anterior?.alzPorDiaFarmado > 0
+  // Exige farme nos DOIS blocos comparados, não só "2 blocos com farme em algum lugar": se você
+  // parou de farmar no período atual, a frase dizia "rendeu -100%" enquanto o quadro ao lado
+  // dizia "sem farme registrado" — duas afirmações contraditórias na mesma tela.
+  const variacao = atual.diasComFarme > 0 && anterior?.diasComFarme > 0 && anterior.alzPorDiaFarmado > 0
     ? Math.round((atual.alzPorDiaFarmado / anterior.alzPorDiaFarmado - 1) * 100)
     : null;
   const subiu = variacao != null && variacao >= 0;
-  const rotulo = ['Últimos 30 dias', '30 dias antes', '30 dias antes disso'];
+  const rotulo = dias === 7
+    ? ['Últimos 7 dias', '7 dias antes', '7 dias antes disso']
+    : ['Últimos 30 dias', '30 dias antes', '30 dias antes disso'];
+
+  // Projeção: no ritmo atual, onde você fecha o período corrente. Só faz sentido com o período
+  // em andamento — por isso usa dias FARMADOS até agora, não dias corridos (quem farma 3x por
+  // semana não deve ser projetado como se farmasse todo dia).
+  const hoje = new Date();
+  const diaDoPeriodo = dias === 30 ? hoje.getDate() : (hoje.getDay() || 7);
+  const totalDoPeriodo = dias === 30 ? new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate() : 7;
+  const ritmoPorDiaCorrido = diaDoPeriodo > 0 ? atual.totalAlz / Math.min(diaDoPeriodo, dias) : 0;
+  const projecao = ritmoPorDiaCorrido * totalDoPeriodo;
+  const projecaoTexto = atual.diasComFarme < 2 ? '' : `
+    <div style="font-size:var(--fs-sm);color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <i class="ti ti-target" style="color:var(--gold)"></i> No seu ritmo atual, ${dias === 30 ? 'este mês' : 'esta semana'} fecha em
+      <strong style="color:${getAlzTierColor(projecao)}" title="${formatNumber(Math.round(projecao))} Alz">${formatAlzGamer(projecao)}</strong>
+      <span style="font-size:var(--fs-2xs)">(${formatAlzGamer(atual.totalAlz)} até agora, em ${atual.diasComFarme} dia(s) de farme)</span>
+    </div>`;
+
+  const botao = (v, txt) => `<button class="btn btn-xs ${dias === v ? 'btn-p' : 'btn-d'}" onclick="setTrendPeriod(${v})">${txt}</button>`;
 
   return `
 <div class="card">
-  <div class="ctitle"><i class="ti ti-chart-bar"></i>Sua evolução</div>
-  ${infoToggle('overview-trend', 'Compara blocos de 30 dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num mês você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso.')}
-  ${variacao == null ? '' : `<div style="font-size:13px;margin-bottom:12px">Nos últimos 30 dias você rendeu <strong style="color:${subiu ? 'var(--ok)' : 'var(--err)'}">${subiu ? '+' : ''}${variacao}%</strong> por dia farmado, comparado com os 30 dias anteriores.</div>`}
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-chart-bar"></i>Sua evolução</div>
+    <div style="display:flex;gap:6px">${botao(7, 'Semana')}${botao(30, 'Mês')}</div></div>
+  ${infoToggle('overview-trend', `Compara blocos de ${dias} dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num período você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso. Ignora o filtro de data acima de propósito: a janela deste card é a dele.`)}
+  ${variacao == null ? '' : `<div style="font-size:13px;margin-bottom:12px">Nos últimos ${dias} dias você rendeu <strong style="color:${subiu ? 'var(--ok)' : 'var(--err)'}">${subiu ? '+' : ''}${variacao}%</strong> por dia farmado, comparado com os ${dias} dias anteriores.</div>`}
   <div class="g3">
     ${blocos.map((b, i) => `<div class="kpi">
       <div class="kpi-lbl">${rotulo[i]}</div>
@@ -167,6 +149,7 @@ function buildTrendCard() {
       <div class="kpi-sub">${b.diasComFarme ? `por dia farmado · ${b.diasComFarme} dia(s)` : 'sem farme registrado'}</div>
     </div>`).join('')}
   </div>
+  ${projecaoTexto}
 </div>`;
 }
 
@@ -294,7 +277,15 @@ export function renderOverviewPage() {
   const net = totalFarmed - totalRushSpent;
   // Drops/hora precisa de horário exato de cada drop, que só o log ao vivo tem (o histórico
   // agregado guarda o dia, não a hora) — por isso essa métrica continua só sobre o log.
-  const elapsedHours = drops.length >= 2 ? (drops[drops.length - 1].timestamp - drops[0].timestamp) / 3600000 : 0;
+  //
+  // Usa MIN/MAX em vez de primeiro/último item: getAllDrops concatena os drops manuais no fim da
+  // lista com data qualquer, então a ordem do array não é cronológica. Assumir que era dava
+  // números absurdos em silêncio — medido: 1 drop manual de outro dia derrubava 11,1 pra 0,09
+  // drops/h, e um drop manual antigo zerava a métrica (tempo negativo).
+  const comHorario = drops.filter(d => d.timestamp).map(d => d.timestamp.getTime());
+  const elapsedHours = comHorario.length >= 2
+    ? (Math.max(...comHorario) - Math.min(...comHorario)) / 3600000
+    : 0;
   const dropsPerHour = elapsedHours > 0.1 ? (drops.length / elapsedHours).toFixed(1) : '—';
 
   // Dias do período pedido sem nenhuma fonte de dado (nem log, nem histórico) — normalmente
@@ -307,7 +298,28 @@ export function renderOverviewPage() {
   O log do jogo guarda cerca de 30 dias; o FarmHub arquiva o resto conforme você usa, então dias
   anteriores ao início do arquivamento não entram nos totais abaixo.${history.snapshotOnlyDays ? ` (${history.snapshotOnlyDays} dia(s) deste período vieram do histórico arquivado.)` : ''}
 </div></div>`;
-  const priceCoverage = items.length ? Math.round(items.filter(i => i.price > 0).length / items.length * 100) : 0;
+  // Cobertura por VOLUME, não por itens distintos. Contando itens distintos, um item caro
+  // precificado + um item sem preço que caiu 500x dava "50% coberto" — quando 99,6% do que caiu
+  // não tinha preço. A métrica tranquilizava justamente quando devia alarmar.
+  const semPreco = items.filter(i => !i.price);
+  const volumeSemPreco = semPreco.reduce((sum, i) => sum + i.qty, 0);
+  const priceCoverage = history.dropCount ? Math.round((1 - volumeSemPreco / history.dropCount) * 100) : 100;
+  const piorSemPreco = semPreco.sort((a, b) => b.qty - a.qty)[0];
+
+  // Aviso acionável em vez de um % decorativo: aponta o item que mais pesa no volume sem preço e
+  // manda direto pra tela onde se resolve. Todo Alz do app depende desses preços — item sem preço
+  // não é "cobertura menor", é farme sendo contado como zero.
+  //
+  // O gatilho é a QUANTIDADE do pior item, não a % do total: com meses de histórico acumulado, um
+  // item novo caindo às centenas fica diluído a 3% e o aviso nunca apareceria — justamente quando
+  // é fácil de resolver (um preço a cadastrar).
+  const MIN_DROPS_PRA_AVISAR_SEM_PRECO = 50;
+  const avisoSemPreco = !piorSemPreco || piorSemPreco.qty < MIN_DROPS_PRA_AVISAR_SEM_PRECO ? '' : `
+<div class="notice"><i class="ti ti-alert-circle" style="flex-shrink:0;margin-top:1px"></i><div>
+  <strong>${Math.round(volumeSemPreco / history.dropCount * 100)}% do que você dropou está sendo contado como 0 Alz</strong> — falta preço cadastrado.
+  O que mais pesa: <strong>${esc(piorSemPreco.name)}</strong> (${piorSemPreco.qty.toLocaleString('pt-BR')} unidades)${semPreco.length > 1 ? ` e mais ${semPreco.length - 1} item(ns)` : ''}.
+  <a href="#" onclick="navigateTo('calculo');return false" style="color:var(--acc);text-decoration:underline">Cadastrar preços</a>
+</div></div>`;
 
   const totalsByDate = history.totalsByDate;
   const datesWithData = Object.keys(totalsByDate).sort();
@@ -346,13 +358,12 @@ export function renderOverviewPage() {
 
   const metaCard = buildMetaCard();
   const personalBestsCard = buildPersonalBestsCard();
-  const weeklyRetrospectiveCard = buildWeeklyRetrospectiveCard();
 
   if (!getAllDrops().length) {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return metaCard + buildRareDropsCard() + personalBestsCard + weeklyRetrospectiveCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    return metaCard + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
@@ -380,6 +391,7 @@ ${metaCard}
   </div>
 </div>
 ${coverageNotice}
+${avisoSemPreco}
 <div class="g3" style="margin-bottom:10px">
   <div class="kpi"><div class="kpi-lbl">Total de farme</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(totalFarmed)}" title="${formatNumber(totalFarmed)} Alz">${formatAlzGamer(totalFarmed)}</div></div>
   <div class="kpi"><div class="kpi-lbl">Total gasto em rush</div><div class="kpi-val" style="color:${getAlzTierColor(totalRushSpent)}" title="${formatNumber(totalRushSpent)} Alz">${formatAlzGamer(totalRushSpent)}</div><div class="kpi-sub">deduzido por dia dentro do período filtrado</div></div>
@@ -389,10 +401,9 @@ ${coverageNotice}
   <div class="kpi"><div class="kpi-lbl">Total de drops</div><div class="kpi-val">${history.dropCount.toLocaleString('pt-BR')}</div></div>
   <div class="kpi"><div class="kpi-lbl">Itens únicos</div><div class="kpi-val">${items.length.toLocaleString('pt-BR')}</div></div>
   <div class="kpi"><div class="kpi-lbl">Drops / hora</div><div class="kpi-val">${dropsPerHour}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub">itens com valor cadastrado</div></div>
+  <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub" title="${volumeSemPreco.toLocaleString('pt-BR')} de ${history.dropCount.toLocaleString('pt-BR')} drops sem preço cadastrado">do que caiu já tem preço</div></div>
 </div>
 ${buildRareDropsCard()}
-${weeklyRetrospectiveCard}
 ${buildTrendCard()}
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}
 <div class="card">

@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, DAILY_RUN_LIMIT } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, sessionTotalAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
@@ -44,7 +44,7 @@ function renderRushProgressCard(comparisonByDgId) {
   const plannedDgIds = new Set(rush.items.map(it => it.dungeonId));
   const realizedAlz = AppState.dgSessions
     .filter(s => s.date === today && plannedDgIds.has(s.dungeonId))
-    .reduce((sum, s) => sum + s.totalAlz, 0);
+    .reduce((sum, s) => sum + sessionTotalAlz(s), 0);
   const pct = expectedAlz > 0 ? Math.round((realizedAlz / expectedAlz) * 100) : null;
 
   return `
@@ -87,7 +87,7 @@ function sessionItemsRow(s) {
     .filter(([name]) => !isExcludedGearItem(name))
     .map(([name, qty]) => ({ name, qty, value: getItemPrice(name) * qty, expected: expectedNames.has(name) }))
     .sort((a, b) => b.value - a.value);
-  const alzPerRun = s.runs > 0 ? s.totalAlz / s.runs : null;
+  const alzPerRun = s.runs > 0 ? sessionTotalAlz(s) / s.runs : null;
   const activeMs = s.activeDurationMs ?? s.durationMs;
   return `<tr><td colspan="10" style="background:var(--surf2);padding:14px 16px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px">
@@ -122,15 +122,15 @@ function sessionHistoryRow(s) {
         <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
         <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
         <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
-        <td style="color:${getAlzTierColor(s.totalAlz)};font-weight:600" title="${formatNumber(s.totalAlz)} Alz">${formatAlzGamer(s.totalAlz)}</td>
-        <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(s.totalAlz / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
+        <td style="color:${getAlzTierColor(sessionTotalAlz(s))};font-weight:600" title="${formatNumber(sessionTotalAlz(s))} Alz">${formatAlzGamer(sessionTotalAlz(s))}</td>
+        <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(sessionTotalAlz(s) / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
         <td><button title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
         <td><button title="Remover esta sessão (ex: ficou aberta por engano e distorce a média de tempo)" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSession(${s.startAt})"><i class="ti ti-trash"></i></button></td>
       </tr>${expanded ? sessionItemsRow(s) : ''}`;
 }
 
 function sessionHistoryGroupHeader(label, sessions, isRoute) {
-  const totalAlz = sessions.reduce((sum, s) => sum + s.totalAlz, 0);
+  const totalAlz = sessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0);
   return `<tr><td colspan="10" style="background:${isRoute ? 'var(--gold-bg)' : 'var(--surf2)'};padding:7px 16px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:${isRoute ? 'var(--gold)' : 'var(--muted)'}">
     ${isRoute ? '<i class="ti ti-route"></i> ' : ''}${esc(label)} <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.85">— ${sessions.length} sessão${sessions.length > 1 ? 'ões' : ''}${totalAlz ? ', ' + formatAlzGamer(totalAlz) : ''}</span>
   </td></tr>`;

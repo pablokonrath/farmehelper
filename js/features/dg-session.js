@@ -298,6 +298,25 @@ export function recoverForgottenSession(dungeonId, startTimeInput) {
   renderPage();
 }
 
+// Valor de uma sessão pelos preços de HOJE, recalculado a partir dos itens guardados nela.
+//
+// O campo session.totalAlz é congelado no fechamento (valor da época). Isso criava duas
+// valorizações do mesmo farme na mesma tela: atualizar o preço de um item mudava o "Total de
+// farme" da Visão geral mas não mexia em Recorde pessoal, "Qual DG rende mais" nem "Vale a pena
+// resetar" — e esses três são ferramentas de COMPARAÇÃO entre períodos. Comparar um mês avaliado
+// a preço velho com outro a preço novo não responde nada.
+//
+// Cai de volta no valor congelado quando a sessão não tem o mapa de itens (registro antigo).
+export function sessionTotalAlz(session) {
+  if (!session.items) return session.totalAlz || 0;
+  let total = 0;
+  for (const [name, qty] of Object.entries(session.items)) {
+    if (isExcludedGearItem(name)) continue;
+    total += getItemPrice(name) * qty;
+  }
+  return total;
+}
+
 // Agrega as sessões salvas por DG, ordenado por Alz/hora (qual DG rende mais). É a ferramenta de
 // decisão: "onde meu tempo de macro rende melhor".
 export function computeDgComparison() {
@@ -311,7 +330,7 @@ export function computeDgComparison() {
     agg.activeMs += s.activeDurationMs ?? s.durationMs;
     agg.runs += s.runs || 0;
     agg.dropCount += s.dropCount;
-    agg.totalAlz += s.totalAlz;
+    agg.totalAlz += sessionTotalAlz(s);
   });
   return Object.values(byDg)
     .map(a => ({
@@ -339,7 +358,7 @@ export function computeBestFarmingHours() {
     const hour = new Date(s.startAt).getHours();
     const b = buckets[hour] || (buckets[hour] = { hour, activeMs: 0, totalAlz: 0, sessions: 0, dungeonNames: new Set() });
     b.activeMs += s.activeDurationMs ?? s.durationMs;
-    b.totalAlz += s.totalAlz;
+    b.totalAlz += sessionTotalAlz(s);
     b.sessions++;
     b.dungeonNames.add(s.dungeonName);
   });
@@ -357,13 +376,14 @@ export function computePersonalBests() {
   const byDate = {};
   let bestSession = null;
   AppState.dgSessions.forEach(s => {
-    byDate[s.date] = (byDate[s.date] || 0) + s.totalAlz;
-    if (!bestSession || s.totalAlz > bestSession.totalAlz) bestSession = s;
+    const valor = sessionTotalAlz(s);
+    byDate[s.date] = (byDate[s.date] || 0) + valor;
+    if (!bestSession || valor > bestSession.valor) bestSession = { ...s, valor };
   });
   const [bestDate, bestDateTotal] = Object.entries(byDate).sort(([, a], [, b]) => b - a)[0];
   return {
     bestDay: { date: bestDate, totalAlz: bestDateTotal },
-    bestSession: { date: bestSession.date, dungeonName: bestSession.dungeonName, totalAlz: bestSession.totalAlz },
+    bestSession: { date: bestSession.date, dungeonName: bestSession.dungeonName, totalAlz: bestSession.valor },
   };
 }
 

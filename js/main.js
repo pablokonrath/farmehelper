@@ -23,7 +23,7 @@ import {
   setItemCategoryAssignment,
 } from './features/admin.js';
 
-import { setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, toggleManualDropsManager, setTrendPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty } from './features/drop-source.js';
@@ -97,6 +97,7 @@ Object.assign(window, {
   setDateFrom,
   setDateTo,
   toggleManualDropsManager,
+  setTrendPeriod,
   addManualDrop,
   deleteManualDropBatch,
   searchDropSource,
