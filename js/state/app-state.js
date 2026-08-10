@@ -151,6 +151,9 @@ export const AppState = {
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
   dropSourceTargetQty: '',
+  // Histórico permanente de drops, agregado por dia+item ([{date, name, qty}]) — o log do jogo
+  // só guarda ~30 dias, então sem isso todo farme mais antigo sumia. Ver drop-history.js.
+  dropSnapshot: [],
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,

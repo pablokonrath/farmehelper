@@ -94,7 +94,7 @@ export async function loadPersistedState() {
   }
   localStorage.setItem(MIGRATION_FLAG_KEY, '1');
 
-  const [itemPrices, rushHistory, rushRoutes, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows] = await Promise.all([
+  const [itemPrices, rushHistory, rushRoutes, trackedKeywords, appSettings, dungeonList, manualDrops, alertSettings, alertHistory, dgSessionsRows, dropSnapshot] = await Promise.all([
     get('item-prices.php'),
     get('rush-history.php'),
     get('rush-routes.php'),
@@ -105,6 +105,9 @@ export async function loadPersistedState() {
     get('alert-settings.php'),
     get('alert-history.php'),
     get('dg-sessions.php'),
+    // Tolera a tabela drop_snapshots ainda não existir (migração pendente) — o app inteiro
+    // continua funcionando, só sem o histórico de drops além da janela do log.
+    get('drop-snapshots.php').catch(() => []),
   ]);
 
   AppState.itemPrices = itemPrices;
@@ -142,6 +145,7 @@ export async function loadPersistedState() {
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
+  AppState.dropSnapshot = dropSnapshot;
   AppState.alertSettings = alertSettings;
   AppState.alertHistory = alertHistory;
   await loadGlobalOnlyState();
@@ -173,6 +177,13 @@ export function saveFilterKeywordsFlag() {
 
 export function saveRushCredits() {
   return put('app-settings.php', { rushCredits: AppState.rushCredits });
+}
+
+// Upsert por (dia, item) no servidor — NÃO é replace-all como os outros save*(), porque o
+// cliente só enxerga a janela do log (~30 dias) e apagar o resto destruiria justamente o
+// histórico antigo que essa tabela existe pra guardar. Ver api/drop-snapshots.php.
+export function saveDropSnapshot(rows) {
+  return put('drop-snapshots.php', rows);
 }
 
 export function saveRushCreditItemNames() {

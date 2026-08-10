@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
+import { getHistoricalSummary, countUncoveredDays } from '../features/drop-history.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
@@ -151,8 +152,12 @@ export function toggleManualDropsManager() {
 
 export function renderOverviewPage() {
   const drops = getFilteredDrops();
-  const items = summarizeDropsByItem(drops);
-  const totalFarmed = drops.reduce((sum, d) => sum + getItemPrice(d.name), 0);
+  // Costura log ao vivo (últimos ~30 dias, exato) com o histórico agregado do banco (o resto) —
+  // sem isso, qualquer período mais antigo que a janela do log mostrava um total incompleto sem
+  // avisar. Ver drop-history.js.
+  const history = getHistoricalSummary(AppState.dateFrom, AppState.dateTo);
+  const items = history.items;
+  const totalFarmed = history.totalAlz;
 
   const totalRushSpent = (() => {
     let total = 0;
@@ -165,12 +170,24 @@ export function renderOverviewPage() {
   })();
 
   const net = totalFarmed - totalRushSpent;
+  // Drops/hora precisa de horário exato de cada drop, que só o log ao vivo tem (o histórico
+  // agregado guarda o dia, não a hora) — por isso essa métrica continua só sobre o log.
   const elapsedHours = drops.length >= 2 ? (drops[drops.length - 1].timestamp - drops[0].timestamp) / 3600000 : 0;
   const dropsPerHour = elapsedHours > 0.1 ? (drops.length / elapsedHours).toFixed(1) : '—';
+
+  // Dias do período pedido sem nenhuma fonte de dado (nem log, nem histórico) — normalmente
+  // porque são anteriores ao dia em que o FarmHub começou a guardar. Avisar é o que impede o
+  // "Total de farme" de parecer completo quando não é.
+  const uncoveredDays = countUncoveredDays(AppState.dateFrom, AppState.dateTo);
+  const coverageNotice = !uncoveredDays ? '' : `
+<div class="notice"><i class="ti ti-info-circle" style="flex-shrink:0;margin-top:1px"></i><div>
+  <strong>${uncoveredDays} dia(s) do período sem dado registrado.</strong>
+  O log do jogo guarda cerca de 30 dias; o FarmHub arquiva o resto conforme você usa, então dias
+  anteriores ao início do arquivamento não entram nos totais abaixo.${history.snapshotOnlyDays ? ` (${history.snapshotOnlyDays} dia(s) deste período vieram do histórico arquivado.)` : ''}
+</div></div>`;
   const priceCoverage = items.length ? Math.round(items.filter(i => i.price > 0).length / items.length * 100) : 0;
 
-  const totalsByDate = {};
-  drops.forEach(d => { totalsByDate[d.date] = (totalsByDate[d.date] || 0) + getItemPrice(d.name); });
+  const totalsByDate = history.totalsByDate;
   const datesWithData = Object.keys(totalsByDate).sort();
 
   const manualBatches = summarizeManualDropBatches();
@@ -238,13 +255,14 @@ ${manualDropsCard}
     <span><span class="alz-dot" style="background:#f472b6"></span>100B+</span>
   </div>
 </div>
+${coverageNotice}
 <div class="g3" style="margin-bottom:10px">
   <div class="kpi"><div class="kpi-lbl">Total de farme</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(totalFarmed)}" title="${formatNumber(totalFarmed)} Alz">${formatAlzGamer(totalFarmed)}</div></div>
   <div class="kpi"><div class="kpi-lbl">Total gasto em rush</div><div class="kpi-val" style="color:${getAlzTierColor(totalRushSpent)}" title="${formatNumber(totalRushSpent)} Alz">${formatAlzGamer(totalRushSpent)}</div><div class="kpi-sub">deduzido por dia dentro do período filtrado</div></div>
   <div class="kpi"><div class="kpi-lbl">Total líquido</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(net)}" title="${formatNumber(net)} Alz">${formatAlzGamer(net)}</div><div class="kpi-sub">farme − gastos</div></div>
 </div>
 <div class="g4" style="margin-bottom:12px">
-  <div class="kpi"><div class="kpi-lbl">Total de drops</div><div class="kpi-val">${drops.length.toLocaleString('pt-BR')}</div></div>
+  <div class="kpi"><div class="kpi-lbl">Total de drops</div><div class="kpi-val">${history.dropCount.toLocaleString('pt-BR')}</div></div>
   <div class="kpi"><div class="kpi-lbl">Itens únicos</div><div class="kpi-val">${items.length.toLocaleString('pt-BR')}</div></div>
   <div class="kpi"><div class="kpi-lbl">Drops / hora</div><div class="kpi-val">${dropsPerHour}</div></div>
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub">itens com valor cadastrado</div></div>

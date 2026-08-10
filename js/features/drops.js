@@ -48,10 +48,17 @@ export function getAllDrops() {
 // Aplica o filtro "Filtrar apenas itens rastreados" (Cálculo de farme) quando ativo — usado
 // tanto pela lista principal de drops quanto pelo comparador de dias, pra manter os dois
 // consistentes com a mesma lista de palavras rastreadas.
+// Predicado por NOME (não pelo objeto de drop) — o histórico agregado (drop-history.js) guarda
+// só nome+quantidade, então precisa do mesmo critério sem ter um drop inteiro em mãos.
+export function matchesTrackedKeywordFilter(name) {
+  if (!AppState.filterByTrackedKeywords || !AppState.trackedKeywords.length) return true;
+  const normalized = normalizeForSearch(name);
+  return AppState.trackedKeywords.some(kw => normalized.includes(normalizeForSearch(kw.word)));
+}
+
 export function applyTrackedKeywordFilter(drops) {
   if (!AppState.filterByTrackedKeywords || !AppState.trackedKeywords.length) return drops;
-  const keywords = AppState.trackedKeywords.map(kw => normalizeForSearch(kw.word));
-  return drops.filter(d => keywords.some(k => normalizeForSearch(d.name).includes(k)));
+  return drops.filter(d => matchesTrackedKeywordFilter(d.name));
 }
 
 export function getFilteredDrops() {

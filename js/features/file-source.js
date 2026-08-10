@@ -5,6 +5,7 @@ import { processNewDropsForAlerts, recordDropActivity, checkDropWatchdog, showRe
 import { relayWatchdogToTelegram } from './telegram.js';
 import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './tracked-drop-sync.js';
+import { syncDropSnapshot } from './drop-history.js';
 import { renderPage } from '../router.js';
 
 // Os arquivos de drop do Cabal Neo são gerados em windows-1252, não UTF-8.
@@ -72,6 +73,7 @@ function handleWorkerMessage(event) {
     AppState.drops = parsedDrops;
     updateBalanceSidebar();
     syncTrackedDropCounts();
+    syncDropSnapshot({ force: true });
     if (AppState.currentPage === 'overview') renderPage();
     return;
   }
@@ -80,6 +82,7 @@ function handleWorkerMessage(event) {
     AppState.drops = [...AppState.drops, ...parsedDrops];
     updateBalanceSidebar();
     syncTrackedDropCounts();
+    syncDropSnapshot(); // com throttle — o upsert é idempotente, não precisa ser a cada lote
     recordDropActivity(parsedDrops);
     processNewDropsForAlerts(parsedDrops);
     checkFarmGoalReached();
@@ -123,6 +126,7 @@ async function startLiveFilePolling(fileHandle) {
   document.getElementById('liveRow').className = 'file-btn active';
   updateBalanceSidebar();
   syncTrackedDropCounts();
+  syncDropSnapshot({ force: true });
   renderPage();
 }
 
@@ -145,6 +149,7 @@ export function initFileInputListener() {
     document.getElementById('upRow').className = 'file-btn active';
     updateBalanceSidebar();
     syncTrackedDropCounts();
+    syncDropSnapshot({ force: true });
     renderPage();
   });
 }
