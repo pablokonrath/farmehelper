@@ -3,6 +3,7 @@ import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getT
 import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
+import { getEventConfig, computeEventProgress } from '../features/event-tracker.js';
 import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
@@ -88,6 +89,65 @@ function buildPersonalBestsCard() {
       <div style="font-size:11px;color:var(--muted)">${esc(bests.bestSession.dungeonName)} · ${formatDateBR(bests.bestSession.date)}</div>
     </div>
   </div>
+</div>`;
+}
+
+// Painel do evento: conta o item de evento aplicando o multiplicador de cada DG. Isolado do resto
+// da página porque evento é temporário — desligou, some, e nenhum número permanente muda.
+function buildEventCard() {
+  const cfg = getEventConfig();
+  const progresso = computeEventProgress();
+  const aberto = cfg.enabled;
+
+  const configuracao = !aberto ? '' : `
+    <div class="row" style="align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px"><label class="lbl">Item do evento</label>
+        <input class="inp" list="eventItemSugg" value="${esc(cfg.itemName)}" placeholder="ex: Fragmento Prismático" onblur="setEventItemName(this.value)">
+        <datalist id="eventItemSugg">${[...new Set(AppState.knownItemNames || [])].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        <div class="hint">Casa por trecho do nome — não precisa ser exato.</div></div>
+      <div style="width:150px"><label class="lbl">Contar a partir de</label>
+        ${renderDateInputBR({ id: 'eventSince', value: cfg.since, onChange: 'setEventSince' })}</div>
+    </div>
+    <label class="lbl">Quanto cada DG vale por drop</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      ${AppState.dungeonList.filter(d => cfg.multipliers[d.id]).map(d => `<span style="display:flex;align-items:center;gap:6px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:var(--fs-sm)">
+        ${esc(d.name)} <span style="color:var(--muted)">×</span>
+        <input class="inp inp-sm" type="number" min="0" value="${cfg.multipliers[d.id]}" style="width:56px" onchange="setEventMultiplier('${escAttr(d.id)}', this.value)">
+      </span>`).join('')}
+    </div>
+    <div class="row" style="align-items:flex-end;margin-bottom:12px">
+      <div style="flex:1"><label class="lbl">Adicionar DG ao evento</label>
+        <select class="inp" onchange="if(this.value){setEventMultiplier(this.value, 1);this.value=''}">
+          <option value="">Escolher DG…</option>
+          ${AppState.dungeonList.filter(d => !cfg.multipliers[d.id]).map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
+        </select></div>
+    </div>`;
+
+  const resultado = !progresso ? '' : !progresso.totalBruto ? `
+    <div class="empty" style="padding:12px 0">Nenhum "${esc(progresso.itemName)}" registrado em sessão ainda${cfg.since ? ` desde ${formatDateBR(cfg.since)}` : ''}.</div>`
+    : `
+    <div class="kpi" style="margin-bottom:12px">
+      <div class="kpi-lbl">Total do evento</div>
+      <div class="kpi-val" style="color:var(--gold)">${progresso.totalContado.toLocaleString('pt-BR')}</div>
+      <div class="kpi-sub">de ${progresso.totalBruto.toLocaleString('pt-BR')} drops registrados${progresso.brutoForaDeMultiplicador ? ` · ${progresso.brutoForaDeMultiplicador} caíram em DG sem multiplicador (não contados)` : ''}</div>
+    </div>
+    <table><thead><tr><th>DG</th><th>Drops</th><th>Vale</th><th>Conta como</th></tr></thead><tbody>
+      ${progresso.porDg.map(l => `<tr>
+        <td style="font-weight:500">${esc(l.dungeonName)}</td>
+        <td>${l.bruto.toLocaleString('pt-BR')}×</td>
+        <td style="color:var(--muted)">×${l.mult}</td>
+        <td style="color:var(--gold);font-weight:700">${l.contado.toLocaleString('pt-BR')}</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+
+  return `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-gift" style="color:var(--gold)"></i>Evento</div>
+    <label class="tgl"><input type="checkbox" ${aberto ? 'checked' : ''} onchange="setEventEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label></div>
+  ${!aberto
+    ? '<div style="font-size:var(--fs-sm);color:var(--muted)">Ligue quando houver evento em que um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa DG e 5 em outra). O FarmHub faz a conta pra você.</div>'
+    : `${infoToggle('overview-event', 'O log do jogo registra só "caiu 1 item" — ele não sabe em qual DG. Quem sabe é o histórico de sessões, então a contagem aqui usa as sessões: um drop só entra com o multiplicador se caiu dentro de uma sessão marcada naquela DG. Como o FarmHub abre e encerra sessão sozinho, na prática cobre quase tudo — e o que ficou de fora aparece declarado abaixo, em vez de ser omitido. Fica num painel próprio porque evento é temporário: nada disso mexe no Total de farme, Top itens ou Relatório.')}
+      ${configuracao}${resultado}`}
 </div>`;
 }
 
@@ -363,7 +423,7 @@ export function renderOverviewPage() {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return metaCard + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    return metaCard + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
@@ -403,6 +463,7 @@ ${avisoSemPreco}
   <div class="kpi"><div class="kpi-lbl">Drops / hora</div><div class="kpi-val">${dropsPerHour}</div></div>
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub" title="${volumeSemPreco.toLocaleString('pt-BR')} de ${history.dropCount.toLocaleString('pt-BR')} drops sem preço cadastrado">do que caiu já tem preço</div></div>
 </div>
+${buildEventCard()}
 ${buildRareDropsCard()}
 ${buildTrendCard()}
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}

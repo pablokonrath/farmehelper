@@ -167,6 +167,9 @@ export const AppState = {
   // Período do card "Sua evolução" (7 ou 30 dias). Só UI, não persiste — volta pro mês ao
   // recarregar, que é a visão mais útil no dia a dia.
   trendPeriodDays: 30,
+  // Evento temporário do servidor: item que vale quantidade diferente por DG. Fica isolado num
+  // painel próprio pra não contaminar os números permanentes. Ver event-tracker.js.
+  eventConfig: { enabled: false, itemName: '', since: '', multipliers: {} },
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,

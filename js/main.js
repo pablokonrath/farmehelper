@@ -16,6 +16,7 @@ import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox } from './features/ui-toggles.js';
 import { toggleAutoSessionStart } from './features/session-autostart.js';
+import { setEventEnabled, setEventItemName, setEventSince, setEventMultiplier } from './features/event-tracker.js';
 import {
   toggleCategoryManager,
   addItemCategory,
@@ -98,6 +99,10 @@ Object.assign(window, {
   setDateTo,
   toggleManualDropsManager,
   setTrendPeriod,
+  setEventEnabled,
+  setEventItemName,
+  setEventSince,
+  setEventMultiplier,
   addManualDrop,
   deleteManualDropBatch,
   searchDropSource,

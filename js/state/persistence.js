@@ -148,6 +148,7 @@ export async function loadPersistedState() {
   AppState.rarityMaxPercent = appSettings.rarityMaxPercent
     ?? (appSettings.rarityOneInRuns ? 100 / appSettings.rarityOneInRuns : AppState.rarityMaxPercent);
   AppState.rarityDismissed = appSettings.rarityDismissed ?? [];
+  AppState.eventConfig = appSettings.eventConfig ?? AppState.eventConfig;
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -190,6 +191,10 @@ export function saveRushCredits() {
 // histórico antigo que essa tabela existe pra guardar. Ver api/drop-snapshots.php.
 export function saveDropSnapshot(rows) {
   return put('drop-snapshots.php', rows);
+}
+
+export function saveEventConfig() {
+  return put('app-settings.php', { eventConfig: AppState.eventConfig });
 }
 
 export function saveRarityDismissed() {
