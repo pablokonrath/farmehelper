@@ -61,16 +61,19 @@ converter de cabeça pra comparar as duas telas.
 **Ajuste na própria Visão geral**, no card Raridades: *"Considero raro o que cai em até ___% das
 runs da DG"*. O valor fica salvo na sua conta (`AppState.rarityMaxPercent`).
 
-### A amostra mínima é derivada, não escolhida
+### A amostra mínima é FIXA (50 runs) — e por quê
 
-Pra afirmar que algo cai em menos de P% das runs, o item precisa ter tido **ao menos 100/P
-chances** de cair naquela DG — antes disso, *"não caiu ainda"* não é evidência de raridade. Por
-isso a amostra mínima acompanha o limiar automaticamente, em vez de ser um segundo número solto.
+Uma versão derivava a amostra mínima do limiar (100/P runs). Parecia elegante e estava errado:
+mudar o limiar mudava quais DGs eram elegíveis, então **apertar** o limiar de 2% pra 1% subia a
+exigência de 50 pra 100 runs e derrubava DGs inteiras — fazendo *sumir* item de 0,5%, que é mais
+raro que os dois limiares.
 
-O piso é 50 runs, o mesmo que "Onde dropa" já usa pra considerar uma taxa confiável
-(`MIN_RUNS_FOR_CONFIDENT_RATE`).
+A regra que isso violava: **um limiar mais frouxo tem que ser sempre um superconjunto do mais
+apertado.** Se 1% mostra um item, 2% também tem que mostrar. Com a exigência variando junto, isso
+deixava de valer.
 
-Sessões sem o campo "runs" preenchido não entram na conta (sem denominador, não há taxa).
+Hoje a amostra mínima é fixa em 50 runs — o mesmo piso que "Onde dropa" já usa
+(`MIN_RUNS_FOR_CONFIDENT_RATE`). Sessões sem o campo "runs" preenchido não entram na conta.
 
 ### Por que o padrão é exigente (e por que já foi frouxo demais)
 
@@ -94,6 +97,42 @@ O bloco "O que você caça" (Visão geral → Raridades) mostra a **taxa real** 
 cadastrado, em % e na forma bruta (ex: `0.83% · 1/120 runs`). É por ali que dá pra ver se a % escolhida bate com a
 realidade do servidor — e a regra prática está na própria tela: *se ainda vier coisa que cai todo
 dia, baixe a %*.
+
+---
+
+## A taxa medida não é a taxa verdadeira
+
+Uma taxa vinda de poucas ocorrências é uma estimativa ruim, e o app não deve exibi-la como fato.
+Todos os casos abaixo têm a **mesma taxa estimada** (0,1%) — muda só quantos drops já foram vistos:
+
+| Drops vistos | Faixa provável da taxa real (95%) |
+|---|---|
+| 1 | 1/179 a 1/39.526 |
+| 3 | 1/342 a 1/4.847 |
+| 10 | 1/544 a 1/2.086 |
+| 30 | 1/700 a 1/1.482 |
+
+O que dá precisão é a **quantidade de drops observados**, não o número de runs — e a incerteza cai
+com a raiz quadrada, então dobrar a precisão exige **4× mais ocorrências**. Item muito raro
+simplesmente demora: não há atalho.
+
+Por isso o card mostra `0.50% (0.10%–1.5%) · 3/600 runs` em vez de só `0.50%`, com a cor indicando
+a confiança pelo nº de drops (`rateConfidence` em `js/utils/stats.js`): abaixo de 3 drops o número
+é fraco; a partir de ~10 dá pra confiar na ordem de grandeza.
+
+Cálculo: intervalo de Poisson pela aproximação de Byar, que bate com a tabela exata na 3ª casa
+decimal já a partir de 1 ocorrência (`js/utils/stats.js`).
+
+---
+
+## "Não considero isso raro" (descarte manual)
+
+Além de **incluir** itens (cadastro em Onde dropa), dá pra **excluir**: o botão ✕ em cada linha do
+card Raridades marca o item como "não é raro pra mim". Ele some do card e do destaque roxo em todo
+o app, e a decisão fica salva (`AppState.rarityDismissed`), com desfazer na própria tela.
+
+A ordem de precedência é: detecção automática → cadastro manual → **descarte**. A sua palavra vale
+por último, nos dois sentidos.
 
 ---
 
@@ -150,7 +189,8 @@ automação não alcança.
 
 | Arquivo | Papel |
 |---|---|
-| `js/features/item-dungeon-sources.js` | Limiares, detecção estatística, união com o cadastro manual |
+| `js/features/item-dungeon-sources.js` | Limiar, detecção estatística, cadastro manual e descarte |
+| `js/utils/stats.js` | Faixa de confiança da taxa (Poisson) e nível de confiança por nº de drops |
 | `js/features/rare-drops.js` | Histórico de raridades e "há quanto tempo não cai" |
 | `js/pages/overview-page.js` | Card **Raridades** |
 | `js/pages/sessions-page.js` | Destaque roxo no histórico e em "Raros na mira" |
