@@ -3,7 +3,7 @@ import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getT
 import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
-import { getRarityOneInRuns } from '../features/item-dungeon-sources.js';
+import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
@@ -184,16 +184,19 @@ function buildRareDropsCard() {
     return `há ${dias} dias`;
   };
 
-  const oneIn = getRarityOneInRuns();
-  const criterio = `Um item entra aqui de duas formas: <strong>você cadastrou</strong> ele em Onde dropa, ou <strong>o seu próprio histórico</strong> mostra que ele cai <strong>menos de 1 a cada ${oneIn} runs</strong> naquela DG — a mesma taxa (quantidade ÷ runs) que a página Onde dropa exibe.<br><br>Só julga uma DG onde você já fez pelo menos ${oneIn} runs: pra afirmar que algo é mais raro que 1 a cada ${oneIn}, é preciso ter dado a ele ao menos ${oneIn} chances de cair — antes disso, "não caiu ainda" não prova nada.<br><br>Os dois caminhos existem porque nenhum cobre tudo: a estatística só enxerga item que <strong>já caiu</strong> — um item raro demais, que você ainda não tirou, tem quantidade zero e é invisível pra ela. Esse só aparece se você cadastrar. Por isso o cadastro manual continua valendo a pena mesmo com a detecção automática ligada.`;
+  const maxPct = getRarityMaxPercent();
+  const minRuns = getMinRunsToJudgeRarity();
+  const criterio = `Um item entra aqui de duas formas: <strong>você cadastrou</strong> ele em Onde dropa, ou <strong>o seu próprio histórico</strong> mostra que ele cai em <strong>até ${maxPct}% das runs</strong> daquela DG — é exatamente a "taxa por run" que a página Onde dropa já exibe, mesma conta (quantidade ÷ runs).<br><br>Só julga uma DG onde você já fez pelo menos ${minRuns} runs: pra afirmar que algo cai em menos de ${maxPct}% das vezes, o item precisa ter tido ao menos ${minRuns} chances de cair — antes disso, "não caiu ainda" não prova nada.<br><br>Os dois caminhos existem porque nenhum cobre tudo: a estatística só enxerga item que <strong>já caiu</strong> — um item raro demais, que você ainda não tirou, tem quantidade zero e é invisível pra ela. Esse só aparece se você cadastrar. Por isso o cadastro manual continua valendo a pena mesmo com a detecção automática ligada.`;
 
   const controleLimiar = `
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:var(--fs-sm);color:var(--muted)">
-      <span>Considero raro o que cai menos de <strong style="color:var(--txt)">1 a cada</strong></span>
-      <input class="inp inp-sm" type="number" min="2" step="10" value="${oneIn}" style="width:90px" onchange="setRarityOneInRuns(this.value)">
-      <span><strong style="color:var(--txt)">runs</strong> da DG</span>
-      <span style="font-size:var(--fs-2xs)">— aumente se ainda aparecer coisa que cai todo dia</span>
+      <span>Considero raro o que cai em até</span>
+      <input class="inp inp-sm" type="number" min="0.01" max="100" step="0.5" value="${maxPct}" style="width:80px" onchange="setRarityMaxPercent(this.value)">
+      <span><strong style="color:var(--txt)">% das runs</strong> da DG</span>
+      <span style="font-size:var(--fs-2xs)">— é a mesma taxa por run que aparece em Onde dropa; baixe se ainda vier coisa que cai todo dia</span>
     </div>`;
+
+  const pct = taxa => taxa && taxa.runs ? `${(taxa.perRun * 100).toFixed(taxa.perRun * 100 < 1 ? 2 : 1)}%` : null;
 
   const listaSecas = secas.length ? `
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
@@ -205,7 +208,7 @@ function buildRareDropsCard() {
           <span style="margin-left:auto;color:${d.diasSem === null ? 'var(--muted)' : d.diasSem > 14 ? 'var(--warn)' : 'var(--txt2)'}">
             ${d.diasSem === null ? 'ainda não caiu pra você' : `última vez ${quandoTexto(d.ultimaVezAt)}`}
           </span>
-          ${d.taxa && d.taxa.runs ? `<span style="color:var(--muted);font-size:var(--fs-2xs)" title="${d.taxa.qty} em ${d.taxa.runs} runs registradas">(${d.taxa.qty}/${d.taxa.runs} runs)</span>` : ''}
+          ${d.taxa && d.taxa.runs ? `<span style="color:var(--muted);font-size:var(--fs-2xs)" title="${d.taxa.qty} em ${d.taxa.runs} runs registradas">${pct(d.taxa)} · ${d.taxa.qty}/${d.taxa.runs} runs</span>` : ''}
         </div>`).join('')}
       </div>
     </div>` : '';

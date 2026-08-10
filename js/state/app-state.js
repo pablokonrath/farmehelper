@@ -157,10 +157,10 @@ export const AppState = {
   // Abrir sessão sozinho quando drops começam a cair sem nenhuma marcada. Ligado por padrão:
   // esquecer de marcar é a maior fonte de buraco no histórico. Ver session-autostart.js.
   autoSessionEnabled: true,
-  // "Considero raro o que cai menos de 1 a cada N runs" — na unidade em que o jogador pensa.
-  // Ajustável porque o que é raro depende da economia do servidor, não de um número universal.
-  // Ver item-dungeon-sources.js (DEFAULT_RARITY_ONE_IN_RUNS).
-  rarityOneInRuns: 500,
+  // "Considero raro o que cai em até X% das runs" — mesma unidade que a taxa por run exibida em
+  // Onde dropa, pra as duas telas falarem a mesma língua. Ajustável porque o que é raro depende
+  // da economia do servidor. Ver item-dungeon-sources.js (DEFAULT_RARITY_MAX_PERCENT).
+  rarityMaxPercent: 2,
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,

@@ -31,15 +31,19 @@ estatística.
 
 ### 2. Detecção automática — pelo seu próprio histórico
 
-Derivada das sessões já encerradas, sem cadastro nenhum. É a **mesma taxa** que a página "Onde
-dropa" já exibe — quantidade ÷ runs:
+Derivada das sessões já encerradas, sem cadastro nenhum. Usa **exatamente a mesma taxa** que a
+página "Onde dropa" já exibe na coluna *"taxa por run"* — quantidade ÷ runs, em %:
 
 ```
-quantidade do item naquela DG ÷ total de runs naquela DG  <  1 / N
+(quantidade do item naquela DG ÷ total de runs naquela DG) × 100  ≤  P%
 ```
 
-onde **N** é o "1 a cada N runs" configurável (padrão **500**), e só vale em DGs onde você já fez
-pelo menos **N runs**.
+onde **P** é o limiar configurável (padrão **2%**). Só vale em DGs onde você já fez pelo menos
+`100 / P` runs (no mínimo 50).
+
+A unidade é % justamente pra bater com o que "Onde dropa" mostra: se lá aparece *"taxa por run:
+4.2%"* e o seu limiar é 2%, dá pra saber na hora que aquele item **não** conta como raro, sem
+converter nada de cabeça.
 
 Equipamento genérico (`isExcludedGearItem`) fica de fora antes de qualquer conta — ver a seção
 sobre isso mais abaixo.
@@ -50,18 +54,21 @@ Implementação: `getStatisticalRareItemNames()` em `js/features/item-dungeon-so
 
 ## O limiar: como ajustar e por que ele é configurável
 
-O critério é expresso em **"1 a cada N runs"** porque é a unidade em que o jogador pensa ("esse aí
-demora mil DGs pra cair"), não em taxa decimal.
+O critério é expresso em **% de chance por run** — a mesma unidade da coluna "taxa por run" de
+"Onde dropa". Uma versão anterior usava "1 a cada N runs": é a mesma matemática, mas obrigava a
+converter de cabeça pra comparar as duas telas.
 
-**Ajuste na própria Visão geral**, no card Raridades: *"Considero raro o que cai menos de 1 a cada
-___ runs da DG"*. O valor fica salvo na sua conta (`AppState.rarityOneInRuns`).
+**Ajuste na própria Visão geral**, no card Raridades: *"Considero raro o que cai em até ___% das
+runs da DG"*. O valor fica salvo na sua conta (`AppState.rarityMaxPercent`).
 
 ### A amostra mínima é derivada, não escolhida
 
-Pra afirmar que algo é "mais raro que 1 a cada N", é preciso ter feito **ao menos N runs** naquela
-DG — antes disso o item não teve nem chance de cair uma vez, e *"não caiu ainda"* não é evidência
-de raridade. Por isso a amostra mínima acompanha o limiar automaticamente, em vez de ser um
-segundo número solto.
+Pra afirmar que algo cai em menos de P% das runs, o item precisa ter tido **ao menos 100/P
+chances** de cair naquela DG — antes disso, *"não caiu ainda"* não é evidência de raridade. Por
+isso a amostra mínima acompanha o limiar automaticamente, em vez de ser um segundo número solto.
+
+O piso é 50 runs, o mesmo que "Onde dropa" já usa pra considerar uma taxa confiável
+(`MIN_RUNS_FOR_CONFIDENT_RATE`).
 
 Sessões sem o campo "runs" preenchido não entram na conta (sem denominador, não há taxa).
 
@@ -74,18 +81,19 @@ A conta que explica: num ritmo de ~60 runs/dia, 1-a-cada-7 significa que qualque
 menos de ~8 vezes **por dia** era marcado como raro. Destacar o que cai todo dia é o mesmo que não
 destacar nada.
 
-| Frequência real | Taxa por run | Passava no limiar antigo (1/7)? | Passa no padrão atual (1/500)? |
+| Frequência real | Taxa por run | Passava no limiar antigo (~14%)? | Passa no padrão atual (2%)? |
 |---|---|---|---|
-| 2× por dia | 1 a cada 30 runs | sim | não |
-| 1× por semana | 1 a cada 420 runs | sim | não |
-| "mil DGs pra cair" | 1 a cada 1000 runs | sim | **sim** |
+| 2× por dia | 3,3% | sim | não |
+| 1× a cada 2 dias | 1,7% | sim | **sim** |
+| 1× por semana | 0,24% | sim | **sim** |
+| "mil DGs pra cair" | 0,1% | sim | **sim** |
 
 ### Como conferir se está calibrado
 
 O bloco "O que você caça" (Visão geral → Raridades) mostra a **taxa real** de cada item
-cadastrado, no formato `1/120 runs`. É por ali que dá pra ver se o N escolhido bate com a
-realidade do servidor — e a regra prática está na própria tela: *se ainda aparecer coisa que cai
-todo dia, aumente o N*.
+cadastrado, em % e na forma bruta (ex: `0.83% · 1/120 runs`). É por ali que dá pra ver se a % escolhida bate com a
+realidade do servidor — e a regra prática está na própria tela: *se ainda vier coisa que cai todo
+dia, baixe a %*.
 
 ---
 
@@ -129,7 +137,7 @@ não caiu pra você"*. Sem cadastro, esse item seria invisível pro sistema inte
 |---|---|
 | Item raro que já caiu algumas vezes | Detecção automática (sem trabalho nenhum) |
 | Item raro que você ainda **não tirou** | Só o cadastro manual |
-| DG nova, sem 30 runs de histórico | Só o cadastro manual |
+| DG nova, sem runs suficientes de histórico | Só o cadastro manual |
 | Item que você quer marcar por decisão própria | Cadastro manual (vale por cima) |
 
 **Recomendação:** deixe a detecção automática cuidar do dia a dia e cadastre à mão só os poucos

@@ -143,7 +143,10 @@ export async function loadPersistedState() {
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
   AppState.appliedRouteIds = appSettings.appliedRouteIds ?? [];
   AppState.autoSessionEnabled = appSettings.autoSessionEnabled ?? true;
-  AppState.rarityOneInRuns = appSettings.rarityOneInRuns ?? AppState.rarityOneInRuns;
+  // O limiar de raridade já foi guardado como "1 a cada N runs"; virou % (mesma unidade da taxa
+  // exibida em Onde dropa). Converte o valor antigo em vez de descartar a configuração.
+  AppState.rarityMaxPercent = appSettings.rarityMaxPercent
+    ?? (appSettings.rarityOneInRuns ? 100 / appSettings.rarityOneInRuns : AppState.rarityMaxPercent);
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -189,7 +192,7 @@ export function saveDropSnapshot(rows) {
 }
 
 export function saveRarityThreshold() {
-  return put('app-settings.php', { rarityOneInRuns: AppState.rarityOneInRuns });
+  return put('app-settings.php', { rarityMaxPercent: AppState.rarityMaxPercent });
 }
 
 export function saveAutoSessionEnabled() {

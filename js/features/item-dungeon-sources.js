@@ -42,29 +42,34 @@ export function getManualExpectedItemNames(dungeonId) {
   return names;
 }
 
-// Raridade é medida em "1 a cada N runs" — a unidade em que o jogador realmente pensa ("esse aí
-// demora mil DGs pra cair"). Guardado como N (não como taxa) pelo mesmo motivo.
+// Raridade é medida em % de chance por run — a MESMA unidade que a página "Onde dropa" já exibe
+// ("taxa por run: 4.2%"). Antes o limiar era expresso em "1 a cada N runs", que é a mesma conta,
+// mas obrigava a converter de cabeça pra comparar as duas telas.
 //
-// O padrão é propositalmente EXIGENTE. A primeira versão usava 1-a-cada-7 runs e marcou como
-// raridade coisa que cai 2x por dia: num ritmo de ~60 runs/dia, qualquer item que caia menos de
-// 8 vezes por dia passava no filtro. Destacar o que cai todo dia é o mesmo que não destacar nada.
-export const DEFAULT_RARITY_ONE_IN_RUNS = 500;
+// O padrão é propositalmente exigente. A primeira versão marcava como raridade tudo que caísse
+// abaixo de ~14% por run, e isso incluiu item que cai 2x por dia: num ritmo de ~60 runs/dia,
+// qualquer coisa que caísse menos de 8 vezes POR DIA passava. Destacar o que cai todo dia é o
+// mesmo que não destacar nada.
+export const DEFAULT_RARITY_MAX_PERCENT = 2;
 
-export function getRarityOneInRuns() {
-  return Math.max(2, AppState.rarityOneInRuns || DEFAULT_RARITY_ONE_IN_RUNS);
+export function getRarityMaxPercent() {
+  const v = Number(AppState.rarityMaxPercent);
+  return v > 0 ? v : DEFAULT_RARITY_MAX_PERCENT;
 }
 
-export function setRarityOneInRuns(value) {
-  AppState.rarityOneInRuns = Math.max(2, parseInt(value, 10) || DEFAULT_RARITY_ONE_IN_RUNS);
+export function setRarityMaxPercent(value) {
+  const v = parseFloat(String(value).replace(',', '.'));
+  AppState.rarityMaxPercent = v > 0 ? Math.min(100, v) : DEFAULT_RARITY_MAX_PERCENT;
   saveRarityThreshold().catch(err => console.error('Falha ao salvar limiar de raridade:', err));
   renderPage();
 }
 
-// Amostra mínima DERIVADA do próprio limiar, em vez de um segundo número solto: pra afirmar que
-// algo é "mais raro que 1 a cada N", é preciso ter feito ao menos N runs — antes disso o item não
-// teve nem chance de cair uma vez, e "não caiu ainda" não é evidência de raridade.
+// Amostra mínima DERIVADA do limiar, em vez de um segundo número solto: pra afirmar que algo cai
+// em menos de P% das runs, é preciso ter feito ao menos 100/P runs — antes disso o item não teve
+// nem chance de cair uma vez, e "não caiu ainda" não é evidência de raridade. O piso de 50 runs é
+// o mesmo que "Onde dropa" já usa pra considerar uma taxa confiável (MIN_RUNS_FOR_CONFIDENT_RATE).
 export function getMinRunsToJudgeRarity() {
-  return getRarityOneInRuns();
+  return Math.max(50, Math.ceil(100 / getRarityMaxPercent()));
 }
 
 // Taxa real de um item numa DG, pelo seu histórico ({ perRun, runs, qty } ou null sem amostra).
@@ -103,7 +108,7 @@ function getStatisticalRareItemNames(dungeonId) {
   }
   if (totalRuns < getMinRunsToJudgeRarity()) return new Set();
 
-  const maxPerRun = 1 / getRarityOneInRuns();
+  const maxPerRun = getRarityMaxPercent() / 100;
   const rare = new Set();
   for (const [name, qty] of qtyByItem) {
     if (qty / totalRuns <= maxPerRun) rare.add(name);
