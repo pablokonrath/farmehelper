@@ -97,7 +97,7 @@ function sessionItemsRow(s) {
       <span>Tempo ativo: <strong style="color:var(--txt)">${formatDuration(activeMs)}</strong> · relógio total: ${formatDuration(s.durationMs)}</span>
     </div>
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
-    ${expectedNames.size ? '<div style="font-size:11px;color:var(--epic);margin-bottom:8px"><i class="ti ti-star"></i> Itens em roxo são raridades desta DG (cadastro em Onde dropa).</div>' : ''}
+    ${expectedNames.size ? '<div style="font-size:11px;color:var(--epic);margin-bottom:8px"><i class="ti ti-star"></i> Itens em roxo são raridades desta DG — o que você cadastrou em Onde dropa, mais o que o seu próprio histórico mostra cair em poucas runs.</div>' : ''}
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
     ${rows.map(r => `<tr${r.expected ? ' style="background:var(--epic-bg)"' : ''}>
       <td${r.expected ? ' style="color:var(--epic);font-weight:700"' : ''}>${r.expected ? '<i class="ti ti-star" style="color:var(--epic);margin-right:5px" title="Raridade desta DG"></i>' : ''}${esc(r.name)}</td>
