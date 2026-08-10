@@ -37,11 +37,20 @@ ${topic('ti-plug', 'Conectar o arquivo de log (o mais importante)', `
   ])}
 `, true)}
 ${topic('ti-layout-dashboard', 'Visão geral', `
-  É o seu painel do dia: total de Alz do farme, quantidade de drops, gráfico por horário, e os itens que mais renderam.
+  É o seu painel: meta do dia no topo, o filtro de período logo abaixo, e aí os totais — farme, gasto em rush e líquido.
   ${li([
     '<strong>Meta do dia + lucro/hora:</strong> defina quanto quer farmar; ele mostra o quanto já fez, o rendimento por hora e projeta quando bate a meta (comemora quando você atinge).',
-    '<strong>Comparar dias:</strong> escolha dois dias pra ver lado a lado, com a diferença item a item.',
+    '<strong>Sua semana:</strong> farmado, vendido e nº de sessões dos últimos 7 dias comparados com os 7 anteriores — o "Farmado" ali é bruto, com o líquido logo abaixo.',
+    '<strong>Recorde pessoal:</strong> seu melhor dia e sua melhor sessão única, lá no fim da página.',
     'Dá pra adicionar drops manuais também, pra itens que não vieram do log.',
+  ])}
+`)}
+${topic('ti-history', 'Por que o histórico não some (importante)', `
+  O log do <strong>jogo</strong> guarda cerca de 30 dias e depois descarta. O FarmHub <strong>arquiva</strong> o que você farma conforme usa, então "quanto eu farmei" continua verdade em qualquer período, mesmo depois do log ter esquecido.
+  ${li([
+    'Dentro dos ~30 dias do log, o número vem do log (exato, inclui hoje). Antes disso, vem do arquivo do FarmHub.',
+    'Se você pedir um período mais antigo do que o FarmHub começou a arquivar, a página <strong>avisa</strong> quantos dias ficaram sem dado — em vez de mostrar um total menor sem explicar.',
+    'Sessões de farme ficam salvas pra sempre, sem limite: a média de Alz/run de cada DG só melhora com o tempo.',
   ])}
 `)}
 
@@ -49,8 +58,10 @@ ${sectionTitle('Farme, rush e sessões')}
 ${topic('ti-coins', 'Cálculo de farme (preços & itens rastreados)', `
   Aqui você diz <strong>quanto vale cada item</strong> (o preço é individual seu — cada um cadastra o seu). É isso que transforma "10 joias" em Alz na Visão geral.
   ${li([
-    '<strong>Itens rastreados:</strong> marque os itens que te interessam. Eles alimentam os alertas (o sininho liga o alerta sonoro/pop-up daquele item).',
+    '<strong>Itens rastreados:</strong> marque os itens que te interessam. Eles alimentam os alertas (gerencie a lista completa na página <strong>Alertas</strong>; aqui fica o filtro de exibição).',
     'Dá pra filtrar a Visão geral só pelos itens rastreados, se quiser focar no que importa.',
+    '<strong>Coluna "Atualizado":</strong> mostra há quanto tempo cada preço não é revisto e destaca os que passaram de 2 semanas — preço velho vira estimativa errada em silêncio, e todo Alz do app depende dele.',
+    '<strong>Equipamento genérico</strong> (armadura, elmo, luva, espada, sapato...) é ignorado em todo o sistema: não tem valor de venda e só inflaria as listas.',
   ])}
 `)}
 ${topic('ti-swords', 'DGs de rush diário', `
@@ -58,18 +69,24 @@ ${topic('ti-swords', 'DGs de rush diário', `
   ${li([
     '<strong>Valores:</strong> preço do ticket e o Card Cash (1.000 Cash em Alz) — você digita uma vez e fica salvo. O custo da gema sai automático do Card Cash (÷ 1000).',
     '<strong>Reset com gema:</strong> por DG, informe se resetou o limite com gemas (quantas e o preço) — entra no custo.',
-    '<strong>Créditos de macro:</strong> se comprou créditos pra rodar o helper, informe por categoria (preço de mercado + custo de fabricar).',
+    '<strong>Créditos de macro:</strong> a parte fixa (Alz + tickets de cada faixa) já é conhecida pelo sistema; você só diz <strong>quantos vai comprar</strong>. Vincule uma vez o item variável de cada categoria e o preço passa a vir sozinho de Cálculo de farme. Ele ainda sugere a quantidade cruzando a dificuldade das DGs do carrinho com o seu tempo/run real, e avisa se passar do limite de 8/dia.',
+    '<strong>Minhas rotas:</strong> molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> ao carrinho de hoje (dá pra combinar mais de uma rota).',
     '<strong>Histórico:</strong> cada dia fica salvo. Dá pra editar, duplicar pra outro dia e excluir.',
     'Prefere passo a passo? Tem o atalho <strong>"Montar no modo guiado"</strong> no topo.',
   ])}
 `)}
 ${topic('ti-crosshair', 'Sessões de farme (por DG)', `
-  Opcional, mas poderoso: antes de começar a farmar numa DG, clique em <strong>Iniciar</strong> e escolha a DG. Os drops que caírem entram no histórico daquela dungeon.
+  Antes de farmar numa DG, clique em <strong>Iniciar</strong> e escolha a DG — os drops que caírem entram no histórico dela. <strong>Se você esquecer, o FarmHub cuida sozinho</strong> (dá pra desligar no próprio card).
   ${li([
+    '<strong>Sessão automática:</strong> quando os drops começam a cair sem sessão aberta, ele abre uma e <strong>retroage o início pro primeiro drop</strong>. Tenta adivinhar a DG pelos itens raros que caíram; se errar, você troca a DG no histórico com um clique. Quando os drops param por 20min, ele encerra sozinho <strong>no horário do último drop</strong> — o tempo parado não entra na conta.',
+    '<strong>Itens caindo agora:</strong> dá pra ver o que já dropou sem encerrar a sessão. Raridade da DG sai em <strong style="color:var(--epic)">roxo</strong> e vem primeiro na lista.',
+    '<strong>O que conta como raro:</strong> o que você cadastrou em Onde dropa, mais o que o seu próprio histórico mostra cair em poucas runs daquela DG (a partir de 30 runs de amostra).',
     '<strong>Qual DG rende mais:</strong> ranking por <strong>Alz por run</strong> — como o número de entradas por dia é limitado, o que decide onde gastar é o rendimento por run.',
+    '<strong>Quanto tempo você tem hoje:</strong> diga quantas horas tem e ele monta a combinação de rota salva + DGs avulsas que mais rende nesse tempo.',
+    '<strong>Seu horário mais produtivo:</strong> junta todas as suas sessões pela hora em que começaram e mostra em que faixa do dia você historicamente rende mais (só entra faixa com 2+ sessões, pra um dia de sorte não virar regra).',
     '<strong>Tempo ativo:</strong> a duração desconta a inatividade (se o rush parou e você demorou a encerrar, esse tempo parado não infla a sessão).',
-    '<strong>Vale a pena resetar?:</strong> informando o valor da gema, ele diz se compensa resetar a DG pra fazer runs extras.',
-    '<strong>Progresso do rush de hoje:</strong> cruza o rush que você montou com as sessões feitas e marca ✅/⬜ automaticamente, pra ver quais DGs ainda faltam.',
+    '<strong>Vale a pena resetar?:</strong> informando o valor da gema, ele diz se compensa resetar a DG pra fazer runs extras — e avisa no próprio carrinho, antes de você gastar.',
+    '<strong>Progresso do rush de hoje:</strong> cruza o rush que você montou com as runs de fato feitas, e mostra o Alz esperado vs. o já realizado. As DGs que ainda faltam aparecem no topo do seletor de DG.',
     '<strong>Vigilância automática:</strong> ao iniciar a sessão, o watchdog (aviso de travamento) liga sozinho; ao encerrar, desliga.',
   ])}
 `)}
@@ -79,7 +96,9 @@ ${topic('ti-cash', 'Vendas', `
   Registre suas vendas reais (item, quantidade, valor) e compare com o preço estimado.
   ${li([
     '<strong>Total vendido</strong> (real) vs. o estimado pelo preço cadastrado, e a diferença.',
-    '<strong>Histórico de preço:</strong> cada vez que você muda o preço de um item, vira um ponto no gráfico, pra ver a variação.',
+    '<strong>Histórico de preço:</strong> a variação do preço pelo qual você <strong>realmente vendeu</strong> cada item (não o que cadastrou como estimativa) — um ponto por dia com venda.',
+    '<strong>Aviso de venda barata:</strong> se você registrar uma venda 20% abaixo da sua média recente daquele item, ele pergunta antes de gravar — evita que uma venda apressada distorça seu histórico de preço.',
+    '<strong>Cofres de Alz:</strong> reserve uma % fixa de cada venda pra um objetivo (ex: 30% de tudo que vender vai pro set novo). Vale só pras vendas registradas depois que o cofre foi criado. Não confunda com a "Meta de farme" do dia — uma é o que você farma, o cofre é o que você vende de fato.',
   ])}
 `)}
 ${sectionTitle('Alertas e avisos')}
@@ -113,6 +132,7 @@ ${topic('ti-bolt', 'Modo guiado', `
   ${li([
     'Registrar uma venda · Definir a meta do dia · Iniciar/encerrar sessão de DG',
     'Rastrear item p/ alerta · Montar o rush de hoje',
+    'Aplicar uma rota salva · Criar um cofre de Alz · Recuperar sessão esquecida',
   ])}
 `)}
 ${topic('ti-device-mobile', 'Instalar no celular (app)', `
