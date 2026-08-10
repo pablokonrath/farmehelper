@@ -142,6 +142,7 @@ export async function loadPersistedState() {
   AppState.dgSessions = dgSessionsRows.length ? dgSessionsRows : legacyDgSessions;
   AppState.activeDgSession = appSettings.activeDgSession ?? null;
   AppState.appliedRouteIds = appSettings.appliedRouteIds ?? [];
+  AppState.autoSessionEnabled = appSettings.autoSessionEnabled ?? true;
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -184,6 +185,10 @@ export function saveRushCredits() {
 // histórico antigo que essa tabela existe pra guardar. Ver api/drop-snapshots.php.
 export function saveDropSnapshot(rows) {
   return put('drop-snapshots.php', rows);
+}
+
+export function saveAutoSessionEnabled() {
+  return put('app-settings.php', { autoSessionEnabled: AppState.autoSessionEnabled });
 }
 
 export function saveRushCreditItemNames() {

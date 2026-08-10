@@ -43,7 +43,10 @@ function summarizeDrops(drops) {
   return { totalAlz, bestItem: best && best.price > 0 ? best : null };
 }
 
-export function startDgSession(dungeonId, runMinutes) {
+// startAt opcional: a detecção automática (session-autostart.js) só percebe que você começou a
+// farmar depois dos primeiros drops, então precisa retroagir o início pro primeiro drop — senão
+// esses minutos iniciais ficariam fora da sessão.
+export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } = {}) {
   if (!dungeonId) return;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dg) return;
@@ -62,11 +65,14 @@ export function startDgSession(dungeonId, runMinutes) {
     dungeonName: dg.name,
     routeId: routeMatch?.id || null,
     routeName: routeMatch?.name || null,
-    startAt: Date.now(),
+    startAt: startAt || Date.now(),
     runs: 0,
     runMinutes: Math.max(0, parseFloat(String(runMinutes).replace(',', '.')) || 0),
     runsManuallySet: false,
     autoWatchdog,
+    // Marca que quem abriu foi a detecção automática — a UI avisa pra conferir a DG, já que o
+    // palpite pode estar errado (e trocar a DG de uma sessão é um clique no histórico).
+    autoStarted: auto,
   };
   saveActiveDgSession();
   if (autoWatchdog) setWatchdogEnabled(true); // já reseta os relógios do watchdog e persiste

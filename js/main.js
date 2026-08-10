@@ -15,6 +15,7 @@ import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox } from './features/ui-toggles.js';
+import { toggleAutoSessionStart } from './features/session-autostart.js';
 import {
   toggleCategoryManager,
   addItemCategory,
@@ -210,6 +211,7 @@ Object.assign(window, {
   quickRushRemove,
   openGuidedRush,
   toggleInfoBox,
+  toggleAutoSessionStart,
 });
 
 // Registra o service worker já no carregamento, pra o app poder ser INSTALADO como PWA de

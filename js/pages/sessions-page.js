@@ -198,10 +198,30 @@ export function renderSessionsPage() {
   const historyDate = AppState.sessionsHistoryDate || today;
   const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
 
+  // DGs do rush de hoje que ainda não completaram as repetições planejadas — vão fixadas no topo
+  // do seletor (só priorizando, nunca escondendo o resto: dia de farmar fora do plano acontece).
+  const rushToday = AppState.rushHistory[today];
+  const pendingRushDungeons = !rushToday?.items?.length ? [] : rushToday.items
+    .map(it => {
+      const dg = AppState.dungeonList.find(d => d.id === it.dungeonId || d.name === it.name);
+      if (!dg) return null;
+      const done = computeRunsDoneToday(it.name);
+      return done >= it.repetitions ? null : { dg, faltam: it.repetitions - done };
+    })
+    .filter(Boolean);
+  const rushPriorityGroups = !pendingRushDungeons.length ? [] : [{
+    label: `Do rush de hoje — faltam ${pendingRushDungeons.length} DG(s)`,
+    dungeons: pendingRushDungeons.map(p => p.dg),
+    labelFn: dg => {
+      const p = pendingRushDungeons.find(x => x.dg.id === dg.id);
+      return `${dg.name} — faltam ${p.faltam} run${p.faltam > 1 ? 's' : ''}`;
+    },
+  }];
+
   const nowFarmingCard = `
 <div class="card card-featured">
   <div class="ctitle"><i class="ti ti-crosshair" style="color:var(--gold)"></i>Farmando agora</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não quiser marcar, é só farmar normal.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não marcar, o FarmHub abre uma sessão sozinho assim que os drops começam a cair (dá pra desligar abaixo).</div>
   ${active
     ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -209,6 +229,7 @@ export function renderSessionsPage() {
           <div>
           <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}${AppState.activeDgSession.routeName ? ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(AppState.activeDgSession.routeName)}</span>` : ''}</div>
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+          ${AppState.activeDgSession.autoStarted ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-alert-triangle"></i> Aberta automaticamente — confira se a DG está certa. Errada? Encerre e corrija a DG no histórico abaixo.</div>` : ''}
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
             return expected.length ? `<div style="font-size:11px;color:var(--gold);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';
@@ -229,13 +250,17 @@ export function renderSessionsPage() {
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
           <select class="inp" id="dgSessionSelect">
-            ${renderDungeonOptionsGrouped(AppState.dungeonList)}
+            ${renderDungeonOptionsGrouped(AppState.dungeonList, undefined, null, rushPriorityGroups)}
           </select></div>
         <div style="width:150px"><label class="lbl">Tempo por run (min)</label>
           <input class="inp" id="dgSessionRunMinutes" type="number" min="0" step="0.5" placeholder="opcional"></div>
         <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value, document.getElementById('dgSessionRunMinutes').value)"><i class="ti ti-player-play"></i>Iniciar</button></div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.${pendingRushDungeons.length ? ' As DGs que ainda faltam no rush de hoje aparecem no topo da lista e saem de lá conforme você completa as runs.' : ''}</div>
+      <label class="tgl-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer">
+        <label class="tgl"><input type="checkbox" ${AppState.autoSessionEnabled ? 'checked' : ''} onchange="toggleAutoSessionStart(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+        Abrir sessão sozinho quando eu esquecer de marcar
+      </label>
       <button style="background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;margin-top:10px;padding:0" onclick="toggleForgottenSessionRecovery()"><i class="ti ti-history-toggle"></i> Esqueceu de marcar uma sessão? Recuperar pelo log</button>
       ${AppState.forgottenSessionRecoveryOpen ? forgottenSessionRecoveryPanel() : ''}`}
 </div>`;

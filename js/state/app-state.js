@@ -154,6 +154,9 @@ export const AppState = {
   // Histórico permanente de drops, agregado por dia+item ([{date, name, qty}]) — o log do jogo
   // só guarda ~30 dias, então sem isso todo farme mais antigo sumia. Ver drop-history.js.
   dropSnapshot: [],
+  // Abrir sessão sozinho quando drops começam a cair sem nenhuma marcada. Ligado por padrão:
+  // esquecer de marcar é a maior fonte de buraco no histórico. Ver session-autostart.js.
+  autoSessionEnabled: true,
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,

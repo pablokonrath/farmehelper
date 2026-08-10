@@ -6,6 +6,7 @@ import { relayWatchdogToTelegram } from './telegram.js';
 import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './tracked-drop-sync.js';
 import { syncDropSnapshot } from './drop-history.js';
+import { checkAutoStartSession } from './session-autostart.js';
 import { renderPage } from '../router.js';
 
 // Os arquivos de drop do Cabal Neo são gerados em windows-1252, não UTF-8.
@@ -86,6 +87,7 @@ function handleWorkerMessage(event) {
     recordDropActivity(parsedDrops);
     processNewDropsForAlerts(parsedDrops);
     checkFarmGoalReached();
+    checkAutoStartSession(); // abre sessão sozinho se você esqueceu de marcar
     if (AppState.currentPage === 'overview' || AppState.currentPage === 'sessoes') renderPage();
   }
 }
