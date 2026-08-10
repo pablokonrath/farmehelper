@@ -178,7 +178,11 @@ tbody tr:hover{background:var(--surf2)}
   .pg-title{font-size:var(--fs-3xl)}
 }
 @media (max-width:480px){
-  .g2,.g3,.g4,.g6{grid-template-columns:1fr}
+  /* g2/g3 carregam os números grandes (Total de farme, líquido) — 1 por linha pra caber o valor
+     sem quebrar. g4/g6 são KPIs curtos (contagens, %), cabem 2 por linha tranquilamente; forçá-los
+     a 1 coluna dobrava a altura da página à toa. */
+  .g2,.g3{grid-template-columns:1fr}
+  .g4,.g6{grid-template-columns:1fr 1fr}
 }
 
 /* Tela de login dividida (apresentação + formulário). min-width:0 evita que o flex estoure a

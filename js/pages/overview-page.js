@@ -235,10 +235,11 @@ export function renderOverviewPage() {
   return `
 <div class="pg-title"><i class="ti ti-map" style="color:var(--acc)"></i>Visão geral</div>
 <div class="pg-sub">Métricas consolidadas do seu farme com base nos filtros aplicados.</div>
+${/* Ordem pensada pra quem abre a página querendo um número, não um painel: meta de hoje ->
+     filtro (que comanda tudo abaixo) -> os totais -> contexto -> ferramentas. Recorde pessoal e
+     "adicionar drop manual" são motivação e ferramenta, não dado operacional — foram pro fim,
+     porque no celular empurravam o "Total de farme" pra ~4 telas abaixo. */''}
 ${metaCard}
-${personalBestsCard}
-${weeklyRetrospectiveCard}
-${manualDropsCard}
 <div class="card">
   <div class="row">
     <div style="width:130px"><label class="lbl">De</label>${renderDateInputBR({ value: AppState.dateFrom, onChange: 'setDateFrom' })}</div>
@@ -267,6 +268,7 @@ ${coverageNotice}
   <div class="kpi"><div class="kpi-lbl">Drops / hora</div><div class="kpi-val">${dropsPerHour}</div></div>
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub">itens com valor cadastrado</div></div>
 </div>
+${weeklyRetrospectiveCard}
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Top itens <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${items.length} itens</span></div></div>
@@ -278,5 +280,7 @@ ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti
     <td>${it.total ? renderAlzValue(it.total, true) : '<span style="color:var(--muted)">—</span>'}</td>
   </tr>`).join('') : `<tr><td colspan="5" class="empty">Nenhum item neste período</td></tr>`}
   </tbody></table>
-</div>`;
+</div>
+${personalBestsCard}
+${manualDropsCard}`;
 }
