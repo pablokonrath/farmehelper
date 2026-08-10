@@ -98,6 +98,19 @@ Sem dado cruzado entre jogadores, sem conta compartilhada — preços, sessões,
 histórico de cada conta são isolados. Criar conta só pede usuário e senha, nenhum dado
 pessoal.
 
+## 7b. Item raro tem lugar próprio
+
+O farme do dia a dia é volume; o que a gente lembra (e caça) são os drops raros — e eles se
+perdem no meio de milhares de itens comuns.
+
+- Quando um raro cai, ele sai em **roxo** e vem **primeiro** na lista da sessão ao vivo.
+- A Visão geral tem uma área **Raridades**: o histórico de tudo de bom que já veio (com DG, valor
+  e há quanto tempo) e, embaixo, **o que você caça** — as raridades que você marcou, com a última
+  vez que caíram e a taxa real (ex: 1 a cada 120 runs). O que nunca caiu aparece marcado.
+- Você não precisa cadastrar nada pra começar: o sistema deduz o que é raro pelo seu próprio
+  histórico (o que cai em poucas runs daquela DG). Cadastrar à mão continua valendo pros itens que
+  você ainda **não tirou** — esses a estatística não tem como enxergar.
+
 ## 8. Não é só planilha — também te mostra quando você tá indo bem
 
 - **Seu horário mais produtivo** — cruza todas as suas sessões pela hora em que começaram e

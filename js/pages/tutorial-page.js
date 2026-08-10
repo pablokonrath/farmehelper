@@ -41,6 +41,8 @@ ${topic('ti-layout-dashboard', 'Visão geral', `
   ${li([
     '<strong>Meta do dia + lucro/hora:</strong> defina quanto quer farmar; ele mostra o quanto já fez, o rendimento por hora e projeta quando bate a meta (comemora quando você atinge).',
     '<strong>Sua semana:</strong> farmado, vendido e nº de sessões dos últimos 7 dias comparados com os 7 anteriores — o "Farmado" ali é bruto, com o líquido logo abaixo.',
+    '<strong>Raridades:</strong> área só pros itens raros — o histórico do que já veio (com DG, valor e há quanto tempo) e, embaixo, "o que você caça": as raridades cadastradas com a última vez que caíram e a taxa real (ex: 1/120 runs). Item que nunca caiu aparece como "ainda não caiu pra você".',
+    '<strong>Sua evolução:</strong> compara blocos de 30 dias pela média por <strong>dia farmado</strong> — se num mês você jogou 20 dias e no outro 5, comparar o total falaria mais de presença do que de rendimento.',
     '<strong>Recorde pessoal:</strong> seu melhor dia e sua melhor sessão única, lá no fim da página.',
     'Dá pra adicionar drops manuais também, pra itens que não vieram do log.',
   ])}
@@ -80,7 +82,7 @@ ${topic('ti-crosshair', 'Sessões de farme (por DG)', `
   ${li([
     '<strong>Sessão automática:</strong> quando os drops começam a cair sem sessão aberta, ele abre uma e <strong>retroage o início pro primeiro drop</strong>. Tenta adivinhar a DG pelos itens raros que caíram; se errar, você troca a DG no histórico com um clique. Quando os drops param por 20min, ele encerra sozinho <strong>no horário do último drop</strong> — o tempo parado não entra na conta.',
     '<strong>Itens caindo agora:</strong> dá pra ver o que já dropou sem encerrar a sessão. Raridade da DG sai em <strong style="color:var(--epic)">roxo</strong> e vem primeiro na lista.',
-    '<strong>O que conta como raro:</strong> o que você cadastrou em Onde dropa, mais o que o seu próprio histórico mostra cair em poucas runs daquela DG (a partir de 30 runs de amostra).',
+    '<strong>O que conta como raro:</strong> o que você cadastrou em Onde dropa, mais o que o seu próprio histórico mostra cair em no máximo 0,15 por run naquela DG (~1 a cada 7 runs), a partir de 30 runs de amostra. Vale cadastrar à mão mesmo assim: a detecção automática só enxerga item que <strong>já caiu</strong> — o que você ainda não tirou é invisível pra ela.',
     '<strong>Qual DG rende mais:</strong> ranking por <strong>Alz por run</strong> — como o número de entradas por dia é limitado, o que decide onde gastar é o rendimento por run.',
     '<strong>Quanto tempo você tem hoje:</strong> diga quantas horas tem e ele monta a combinação de rota salva + DGs avulsas que mais rende nesse tempo.',
     '<strong>Seu horário mais produtivo:</strong> junta todas as suas sessões pela hora em que começaram e mostra em que faixa do dia você historicamente rende mais (só entra faixa com 2+ sessões, pra um dia de sorte não virar regra).',

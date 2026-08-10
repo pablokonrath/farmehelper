@@ -16,11 +16,12 @@ O maior receio de quem ouve falar de uma ferramenta assim é razoável: "isso l�
 
 ## Funcionalidades
 
-- **Visão geral** — farme do dia, filtros por data, gráficos de itens/valor
+- **Visão geral** — farme do dia, área de raridades, evolução por mês, filtros por data e gráficos
+- **Histórico permanente** — o log do jogo guarda ~30 dias; o FarmHub arquiva o resto, então "quanto eu farmei" continua verdade em qualquer período
 - **Modo guiado** — assistente passo a passo pras ações mais comuns, pra quem não quer caçar nas páginas
 - **Cálculo de farme** — preço por item, itens rastreados, "onde dropa" pra achar a DG certa
 - **DGs de rush diário** — monta o rush do dia (Alz, tickets, gemas) e compara custo x retorno
-- **Sessões de farme** — inicia/encerra sessão por DG, contabiliza runs e Alz/hora automaticamente
+- **Sessões de farme** — abre e encerra sessão sozinho conforme os drops caem ou param, contabiliza runs e Alz/hora, e destaca item raro em roxo ([como a raridade é decidida](RARIDADES.md))
 - **Alertas** — som + pop-up + notificação do sistema quando um item rastreado cai, com vigilância de travamento (watchdog) caso o helper pare sozinho
 - **Vendas** — histórico de preço e registro do que já foi vendido
 - **Relatório** — drops agrupados por categoria, com exportação em CSV
@@ -37,6 +38,12 @@ O maior receio de quem ouve falar de uma ferramenta assim é razoável: "isso l�
 ## Rodando por conta própria
 
 O passo a passo completo de deploy (banco de dados, configuração, Telegram, cron jobs) está em [DEPLOY.md](DEPLOY.md).
+
+## Documentação
+
+- [DEPLOY.md](DEPLOY.md) — instalação, banco de dados e migrações
+- [RARIDADES.md](RARIDADES.md) — como o sistema decide o que é item raro, de onde vieram os
+  limiares e por que o cadastro manual continua valendo junto com a detecção automática
 
 ## Privacidade
 
