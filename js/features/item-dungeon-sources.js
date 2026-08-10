@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveItemDungeonSources, saveRarityThreshold } from '../state/persistence.js';
+import { saveItemDungeonSources, saveRarityThreshold, saveRarityDismissed } from '../state/persistence.js';
 import { isExcludedGearItem } from './drops.js';
 import { renderPage } from '../router.js';
 
@@ -64,12 +64,37 @@ export function setRarityMaxPercent(value) {
   renderPage();
 }
 
-// Amostra mínima DERIVADA do limiar, em vez de um segundo número solto: pra afirmar que algo cai
-// em menos de P% das runs, é preciso ter feito ao menos 100/P runs — antes disso o item não teve
-// nem chance de cair uma vez, e "não caiu ainda" não é evidência de raridade. O piso de 50 runs é
-// o mesmo que "Onde dropa" já usa pra considerar uma taxa confiável (MIN_RUNS_FOR_CONFIDENT_RATE).
+// Amostra mínima FIXA, de propósito. Já foi derivada do limiar (100/P runs) e isso criava um
+// comportamento errado: apertar o limiar de 2% pra 1% subia a exigência de 50 pra 100 runs e
+// derrubava DGs inteiras — então item de 0,5%, mais raro que os dois limiares, SUMIA ao apertar.
+// Um limiar mais frouxo tem que ser sempre um superconjunto do mais apertado; com a exigência
+// variando junto, deixava de ser. 50 runs é o mesmo piso que "Onde dropa" usa
+// (MIN_RUNS_FOR_CONFIDENT_RATE).
+export const MIN_RUNS_TO_JUDGE_RARITY = 50;
+
 export function getMinRunsToJudgeRarity() {
-  return Math.max(50, Math.ceil(100 / getRarityMaxPercent()));
+  return MIN_RUNS_TO_JUDGE_RARITY;
+}
+
+// Itens que VOCÊ decidiu que não são raros, mesmo o histórico dizendo que são (ex: uma joia que
+// cai pouco por run mas que você tira todo dia e não considera raridade). Vale por cima da
+// detecção automática — mesma lógica do cadastro manual, no sentido oposto: curadoria ganha da
+// estatística nos dois sentidos. Guardado por NOME, global: se não é raro, não é em DG nenhuma.
+export function isRarityDismissed(itemName) {
+  return (AppState.rarityDismissed || []).includes(itemName);
+}
+
+export function dismissRarity(itemName) {
+  if (!AppState.rarityDismissed) AppState.rarityDismissed = [];
+  if (!AppState.rarityDismissed.includes(itemName)) AppState.rarityDismissed.push(itemName);
+  saveRarityDismissed().catch(err => console.error('Falha ao salvar exclusão de raridade:', err));
+  renderPage();
+}
+
+export function restoreRarity(itemName) {
+  AppState.rarityDismissed = (AppState.rarityDismissed || []).filter(n => n !== itemName);
+  saveRarityDismissed().catch(err => console.error('Falha ao salvar exclusão de raridade:', err));
+  renderPage();
 }
 
 // Taxa real de um item numa DG, pelo seu histórico ({ perRun, runs, qty } ou null sem amostra).
@@ -116,10 +141,12 @@ function getStatisticalRareItemNames(dungeonId) {
   return rare;
 }
 
-// União do cadastro manual (curadoria) com o que o histórico mostra ser raro — usado em Sessões
-// de farme pra destacar as raridades e pra o palpite de DG da sessão automática.
+// União do cadastro manual (curadoria) com o que o histórico mostra ser raro, menos o que você
+// marcou como "não é raro" — usado em Sessões de farme pra destacar as raridades e pra o palpite
+// de DG da sessão automática. A exclusão vale por último: é a sua palavra final sobre o item.
 export function getExpectedItemNamesForDungeon(dungeonId) {
   const names = getManualExpectedItemNames(dungeonId);
   for (const name of getStatisticalRareItemNames(dungeonId)) names.add(name);
+  for (const name of AppState.rarityDismissed || []) names.delete(name);
   return names;
 }

@@ -4,12 +4,13 @@ import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../fea
 import { infoToggle } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
 import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
+import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
-import { esc } from '../utils/escape.js';
+import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
 // "1h 20min" / "45min" / "+12h" — usado na projeção "nesse ritmo, meta em ~X".
@@ -175,7 +176,7 @@ function buildTrendCard() {
 function buildRareDropsCard() {
   const historico = getRareDropHistory(12);
   const secas = getRarityDroughts();
-  if (!historico.total && !secas.length) return '';
+  if (!historico.total && !secas.length && !(AppState.rarityDismissed || []).length) return '';
 
   const quandoTexto = at => {
     const dias = Math.floor((Date.now() - at) / 86400000);
@@ -196,7 +197,25 @@ function buildRareDropsCard() {
       <span style="font-size:var(--fs-2xs)">— é a mesma taxa por run que aparece em Onde dropa; baixe se ainda vier coisa que cai todo dia</span>
     </div>`;
 
-  const pct = taxa => taxa && taxa.runs ? `${(taxa.perRun * 100).toFixed(taxa.perRun * 100 < 1 ? 2 : 1)}%` : null;
+  const fmtPct = v => `${(v * 100).toFixed(v * 100 < 1 ? 2 : 1)}%`;
+  // Mostra a faixa provável, não só o número: com poucos drops a taxa medida quase não diz nada
+  // (1 drop em 1000 runs = "0,1%", mas a verdade pode estar entre 1/179 e 1/40.000). Ver stats.js.
+  const taxaTexto = taxa => {
+    if (!taxa || !taxa.runs) return '';
+    const faixa = dropRateRange(taxa.qty, taxa.runs);
+    const conf = rateConfidence(taxa.qty);
+    const cor = conf.nivel === 'boa' ? 'var(--muted)' : conf.nivel === 'media' ? 'var(--txt2)' : 'var(--warn)';
+    return `<span style="color:${cor};font-size:var(--fs-2xs)" title="${taxa.qty} drop(s) em ${taxa.runs} runs — ${conf.rotulo}. Faixa provável (95%): ${fmtPct(faixa.min)} a ${fmtPct(faixa.max)}.">${fmtPct(taxa.perRun)}${taxa.qty > 0 ? ` (${fmtPct(faixa.min)}–${fmtPct(faixa.max)})` : ''} · ${taxa.qty}/${taxa.runs} runs</span>`;
+  };
+
+  const descartados = AppState.rarityDismissed || [];
+  const listaDescartados = !descartados.length ? '' : `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <label class="lbl" style="margin-bottom:6px">Você marcou como "não é raro"</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${descartados.map(n => `<span class="badge badge-muted" style="display:flex;align-items:center;gap:6px">${esc(n)}<button title="Voltar a tratar como raro" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:0;display:flex" onclick="restoreRarity('${escAttr(n)}')"><i class="ti ti-arrow-back-up"></i></button></span>`).join('')}
+      </div>
+    </div>`;
 
   const listaSecas = secas.length ? `
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
@@ -208,7 +227,7 @@ function buildRareDropsCard() {
           <span style="margin-left:auto;color:${d.diasSem === null ? 'var(--muted)' : d.diasSem > 14 ? 'var(--warn)' : 'var(--txt2)'}">
             ${d.diasSem === null ? 'ainda não caiu pra você' : `última vez ${quandoTexto(d.ultimaVezAt)}`}
           </span>
-          ${d.taxa && d.taxa.runs ? `<span style="color:var(--muted);font-size:var(--fs-2xs)" title="${d.taxa.qty} em ${d.taxa.runs} runs registradas">${pct(d.taxa)} · ${d.taxa.qty}/${d.taxa.runs} runs</span>` : ''}
+          ${taxaTexto(d.taxa)}
         </div>`).join('')}
       </div>
     </div>` : '';
@@ -229,10 +248,12 @@ function buildRareDropsCard() {
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           ${i.value ? `<strong style="color:${getAlzTierColor(i.value)}" title="${formatNumber(i.value)} Alz">${formatAlzGamer(i.value)}</strong>` : ''}
           <span style="color:var(--muted);font-size:var(--fs-xs)">${quandoTexto(i.at)}</span>
+          <button title="Não considero isso raro — tira daqui e do destaque roxo" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;display:flex" onclick="dismissRarity('${escAttr(i.name)}')"><i class="ti ti-x"></i></button>
         </span>
       </div>`).join('')}
     </div>`}
   ${listaSecas}
+  ${listaDescartados}
 </div>`;
 }
 

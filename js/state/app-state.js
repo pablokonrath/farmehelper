@@ -161,6 +161,9 @@ export const AppState = {
   // Onde dropa, pra as duas telas falarem a mesma língua. Ajustável porque o que é raro depende
   // da economia do servidor. Ver item-dungeon-sources.js (DEFAULT_RARITY_MAX_PERCENT).
   rarityMaxPercent: 2,
+  // Itens que você marcou como "não é raro pra mim", mesmo o histórico dizendo que são. Vale por
+  // cima da detecção automática. Ver item-dungeon-sources.js.
+  rarityDismissed: [],
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,
