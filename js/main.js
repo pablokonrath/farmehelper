@@ -27,7 +27,7 @@ import { setDateFrom, setDateTo, toggleManualDropsManager } from './pages/overvi
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty } from './features/drop-source.js';
-import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg } from './features/item-dungeon-sources.js';
+import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, setRarityOneInRuns } from './features/item-dungeon-sources.js';
 import {
   setRushCartDate,
   setRushTicketPrice,
@@ -104,6 +104,7 @@ Object.assign(window, {
   addItemDungeonSourceItem,
   removeItemDungeonSourceItem,
   toggleItemDungeonSourceDg,
+  setRarityOneInRuns,
   toggleFilterByKeywords,
   addItemPrice,
   startEditingItemPrice,

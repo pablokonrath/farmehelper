@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getExpectedItemNamesForDungeon, getManualExpectedItemNames, getItemRateInDungeon } from './item-dungeon-sources.js';
-import { getItemPrice } from './drops.js';
+import { getItemPrice, isExcludedGearItem } from './drops.js';
 
 // Histórico de raridades: o farme normal é volume, mas o que a gente lembra (e caça) são os
 // drops raros. Esses ficam diluídos no meio de milhares de itens comuns nas listas gerais —
@@ -22,7 +22,8 @@ export function getRareDropHistory(limit = 20) {
       raridadesPorDg.set(session.dungeonId, raras);
     }
     for (const [name, qty] of Object.entries(session.items)) {
-      if (!raras.has(name)) continue;
+      // Sessões antigas ainda guardam equipamento genérico no registro — filtra na hora de ler.
+      if (isExcludedGearItem(name) || !raras.has(name)) continue;
       ocorrencias.push({
         name,
         qty,

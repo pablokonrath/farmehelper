@@ -3,7 +3,7 @@ import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getT
 import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
-import { RARE_MAX_DROPS_PER_RUN, MIN_RUNS_TO_JUDGE_RARITY } from '../features/item-dungeon-sources.js';
+import { getRarityOneInRuns } from '../features/item-dungeon-sources.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computePersonalBests } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
@@ -184,7 +184,16 @@ function buildRareDropsCard() {
     return `há ${dias} dias`;
   };
 
-  const criterio = `Um item entra aqui de duas formas: <strong>você cadastrou</strong> ele em Onde dropa, ou <strong>o seu próprio histórico</strong> mostra que ele cai em no máximo ${RARE_MAX_DROPS_PER_RUN} por run naquela DG (~1 a cada ${Math.round(1 / RARE_MAX_DROPS_PER_RUN)} runs), com pelo menos ${MIN_RUNS_TO_JUDGE_RARITY} runs de amostra pra não julgar no chute.<br><br>Os dois caminhos existem porque nenhum cobre tudo: a estatística só enxerga item que <strong>já caiu</strong> — um item raro demais, que você ainda não tirou, tem quantidade zero e é invisível pra ela. Esse só aparece se você cadastrar. Por isso o cadastro manual continua valendo a pena mesmo com a detecção automática ligada.`;
+  const oneIn = getRarityOneInRuns();
+  const criterio = `Um item entra aqui de duas formas: <strong>você cadastrou</strong> ele em Onde dropa, ou <strong>o seu próprio histórico</strong> mostra que ele cai <strong>menos de 1 a cada ${oneIn} runs</strong> naquela DG — a mesma taxa (quantidade ÷ runs) que a página Onde dropa exibe.<br><br>Só julga uma DG onde você já fez pelo menos ${oneIn} runs: pra afirmar que algo é mais raro que 1 a cada ${oneIn}, é preciso ter dado a ele ao menos ${oneIn} chances de cair — antes disso, "não caiu ainda" não prova nada.<br><br>Os dois caminhos existem porque nenhum cobre tudo: a estatística só enxerga item que <strong>já caiu</strong> — um item raro demais, que você ainda não tirou, tem quantidade zero e é invisível pra ela. Esse só aparece se você cadastrar. Por isso o cadastro manual continua valendo a pena mesmo com a detecção automática ligada.`;
+
+  const controleLimiar = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;font-size:var(--fs-sm);color:var(--muted)">
+      <span>Considero raro o que cai menos de <strong style="color:var(--txt)">1 a cada</strong></span>
+      <input class="inp inp-sm" type="number" min="2" step="10" value="${oneIn}" style="width:90px" onchange="setRarityOneInRuns(this.value)">
+      <span><strong style="color:var(--txt)">runs</strong> da DG</span>
+      <span style="font-size:var(--fs-2xs)">— aumente se ainda aparecer coisa que cai todo dia</span>
+    </div>`;
 
   const listaSecas = secas.length ? `
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
@@ -206,6 +215,7 @@ function buildRareDropsCard() {
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-star" style="color:var(--epic)"></i>Raridades</div>
     ${historico.total ? `<span class="badge" style="background:var(--epic-bg);color:var(--epic);border:1px solid var(--epic-border)">${historico.total} no total</span>` : ''}</div>
   ${infoToggle('overview-rare', criterio)}
+  ${controleLimiar}
   ${!historico.total
     ? '<div class="empty" style="padding:14px 0">Nenhuma raridade registrada ainda — elas aparecem aqui conforme caem nas suas sessões.</div>'
     : `<div style="display:flex;flex-direction:column;gap:6px">
@@ -315,9 +325,10 @@ export function renderOverviewPage() {
   const weeklyRetrospectiveCard = buildWeeklyRetrospectiveCard();
 
   if (!getAllDrops().length) {
-    // Recorde pessoal e retrospectiva semanal vêm do banco (sessões/vendas), não do log do dia —
-    // podem existir mesmo sem o arquivo ao vivo reconectado ainda hoje.
-    return metaCard + personalBestsCard + weeklyRetrospectiveCard + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
+    // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
+    // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
+    return metaCard + buildRareDropsCard() + personalBestsCard + weeklyRetrospectiveCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `

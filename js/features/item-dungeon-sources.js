@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
-import { saveItemDungeonSources } from '../state/persistence.js';
+import { saveItemDungeonSources, saveRarityThreshold } from '../state/persistence.js';
+import { isExcludedGearItem } from './drops.js';
 import { renderPage } from '../router.js';
 
 // Cadastra um item novo no mapa item → DGs (começa sem nenhuma DG marcada, o jogador marca
@@ -41,11 +42,30 @@ export function getManualExpectedItemNames(dungeonId) {
   return names;
 }
 
-// Raro = cai em poucas runs daquela DG. Acima dessa taxa é item de rotina, não raridade.
-// Exportados porque a UI explica o critério pro jogador em vez de deixar como número mágico.
-export const RARE_MAX_DROPS_PER_RUN = 0.15; // ~1 a cada 7 runs ou menos
-// Piso de amostra: com poucas runs, qualquer item parece raro só por não ter caído ainda.
-export const MIN_RUNS_TO_JUDGE_RARITY = 30;
+// Raridade é medida em "1 a cada N runs" — a unidade em que o jogador realmente pensa ("esse aí
+// demora mil DGs pra cair"). Guardado como N (não como taxa) pelo mesmo motivo.
+//
+// O padrão é propositalmente EXIGENTE. A primeira versão usava 1-a-cada-7 runs e marcou como
+// raridade coisa que cai 2x por dia: num ritmo de ~60 runs/dia, qualquer item que caia menos de
+// 8 vezes por dia passava no filtro. Destacar o que cai todo dia é o mesmo que não destacar nada.
+export const DEFAULT_RARITY_ONE_IN_RUNS = 500;
+
+export function getRarityOneInRuns() {
+  return Math.max(2, AppState.rarityOneInRuns || DEFAULT_RARITY_ONE_IN_RUNS);
+}
+
+export function setRarityOneInRuns(value) {
+  AppState.rarityOneInRuns = Math.max(2, parseInt(value, 10) || DEFAULT_RARITY_ONE_IN_RUNS);
+  saveRarityThreshold().catch(err => console.error('Falha ao salvar limiar de raridade:', err));
+  renderPage();
+}
+
+// Amostra mínima DERIVADA do próprio limiar, em vez de um segundo número solto: pra afirmar que
+// algo é "mais raro que 1 a cada N", é preciso ter feito ao menos N runs — antes disso o item não
+// teve nem chance de cair uma vez, e "não caiu ainda" não é evidência de raridade.
+export function getMinRunsToJudgeRarity() {
+  return getRarityOneInRuns();
+}
 
 // Taxa real de um item numa DG, pelo seu histórico ({ perRun, runs, qty } ou null sem amostra).
 // Serve pra UI mostrar POR QUE um item foi considerado raro, em vez de só afirmar que é.
@@ -73,14 +93,20 @@ function getStatisticalRareItemNames(dungeonId) {
     if (session.dungeonId !== dungeonId || !session.runs) continue;
     totalRuns += session.runs;
     for (const [name, qty] of Object.entries(session.items || {})) {
+      // Sessões antigas (de antes do filtro de equipamento genérico, ou de antes de uma palavra
+      // ter sido adicionada à lista) ainda guardam esses itens no registro. Sem filtrar aqui,
+      // armadura/espada/coturno entravam como "raridade" — justamente o lixo que o filtro existe
+      // pra sumir, e que por cair pouco em cada variação passava em qualquer limiar.
+      if (isExcludedGearItem(name)) continue;
       qtyByItem.set(name, (qtyByItem.get(name) || 0) + qty);
     }
   }
-  if (totalRuns < MIN_RUNS_TO_JUDGE_RARITY) return new Set();
+  if (totalRuns < getMinRunsToJudgeRarity()) return new Set();
 
+  const maxPerRun = 1 / getRarityOneInRuns();
   const rare = new Set();
   for (const [name, qty] of qtyByItem) {
-    if (qty / totalRuns <= RARE_MAX_DROPS_PER_RUN) rare.add(name);
+    if (qty / totalRuns <= maxPerRun) rare.add(name);
   }
   return rare;
 }
