@@ -55,10 +55,18 @@ export function groupDungeonsByDifficulty(dungeonList) {
 // Monta as <option>/<optgroup> de um <select> de DG agrupado por dificuldade — reaproveitado nos
 // seletores de "adicionar ao rush", "farmando agora" e afins, cada um com seu próprio texto de
 // rótulo (labelFn) mas a mesma divisão por faixa de custo do helper.
-export function renderDungeonOptionsGrouped(dungeonList, labelFn = dg => dg.name, selectedId = null) {
+// priorityGroups (opcional): [{label, dungeons}] fixados ANTES dos grupos por dificuldade — usado
+// pelo seletor de "Farmando agora" pra pôr as DGs que ainda faltam no rush de hoje no topo. É de
+// propósito que só prioriza em vez de filtrar: no dia em que você resolver farmar algo fora do
+// plano, a DG continua ali embaixo, em vez de sumir da lista.
+export function renderDungeonOptionsGrouped(dungeonList, labelFn = dg => dg.name, selectedId = null, priorityGroups = []) {
   const groups = groupDungeonsByDifficulty(dungeonList);
   const optionHtml = d => `<option value="${esc(d.id)}"${d.id === selectedId ? ' selected' : ''}>${esc(labelFn(d))}</option>`;
+  const priorityHtml = priorityGroups
+    .filter(g => g.dungeons.length)
+    .map(g => `<optgroup label="${esc(g.label)}">${g.dungeons.map(g.labelFn ? d => `<option value="${esc(d.id)}"${d.id === selectedId ? ' selected' : ''}>${esc(g.labelFn(d))}</option>` : optionHtml).join('')}</optgroup>`)
+    .join('');
   // Só 1 grupo (ex: lista customizada toda "iniciante") -> lista plana, sem optgroup à toa.
-  if (groups.length <= 1) return dungeonList.map(optionHtml).join('');
-  return groups.map(g => `<optgroup label="${esc(g.label)}">${g.dungeons.map(optionHtml).join('')}</optgroup>`).join('');
+  if (groups.length <= 1) return priorityHtml + dungeonList.map(optionHtml).join('');
+  return priorityHtml + groups.map(g => `<optgroup label="${esc(g.label)}">${g.dungeons.map(optionHtml).join('')}</optgroup>`).join('');
 }
