@@ -216,10 +216,16 @@ export function getActiveSessionSummary() {
     totalAlz,
     alzPerHour: activeMs > MIN_ACTIVE_MS_FOR_RATE ? totalAlz / (activeMs / 3600000) : null,
     items: summarizeDropsByItem(drops),
+    // Horário do último drop desta sessão (null se ainda não caiu nada) — é por ele que o
+    // encerramento automático mede a inatividade e fecha a sessão no ponto certo.
+    lastDropAt: drops.length ? Math.max(...drops.map(d => d.timestamp.getTime())) : null,
   };
 }
 
-export function endDgSession() {
+// endAt opcional: o encerramento automático por inatividade (session-autostart.js) fecha a sessão
+// no horário do ÚLTIMO DROP, não no momento em que percebeu — senão o tempo parado entraria na
+// duração e afundaria a média de tempo/run daquela DG pra sempre.
+export function endDgSession({ endAt } = {}) {
   const s = AppState.activeDgSession;
   if (!s) return;
   AppState.dgSessions.push(buildSessionRecord({
@@ -228,7 +234,7 @@ export function endDgSession() {
     routeId: s.routeId,
     routeName: s.routeName,
     startAt: s.startAt,
-    endAt: Date.now(),
+    endAt: endAt || Date.now(),
     runs: s.runs,
   }));
   const wasAutoWatchdog = s.autoWatchdog;

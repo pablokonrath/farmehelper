@@ -6,7 +6,7 @@ import { relayWatchdogToTelegram } from './telegram.js';
 import { checkFarmGoalReached } from './farm-goal.js';
 import { syncTrackedDropCounts } from './tracked-drop-sync.js';
 import { syncDropSnapshot } from './drop-history.js';
-import { checkAutoStartSession } from './session-autostart.js';
+import { checkAutoStartSession, checkAutoEndSession } from './session-autostart.js';
 import { renderPage } from '../router.js';
 
 // Os arquivos de drop do Cabal Neo são gerados em windows-1252, não UTF-8.
@@ -63,6 +63,7 @@ function handleWorkerMessage(event) {
   // inatividade (helper travado / item rastreado sumiu). Ver checkDropWatchdog em alerts.js.
   if (type === 'heartbeat') {
     checkDropWatchdog();
+    checkAutoEndSession(); // encerra sozinho se o farme parou (mesmo sem drop novo pra processar)
     return;
   }
 

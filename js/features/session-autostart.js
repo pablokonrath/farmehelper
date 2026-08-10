@@ -1,10 +1,11 @@
 import { AppState } from '../state/app-state.js';
 import { isExcludedGearItem } from './drops.js';
-import { startDgSession } from './dg-session.js';
+import { startDgSession, endDgSession, getActiveSessionSummary } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled } from '../state/persistence.js';
-import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
+import { stripEnhancementSuffix } from '../utils/parsing.js';
+import { formatAlzGamer } from '../utils/formatting.js';
 
 // A maior fonte de buraco no histórico é humana: esquecer de apertar "Iniciar" antes de entrar
 // na DG. Todo o farme daquele período existe no log, mas fica fora de qualquer sessão — e é a
@@ -86,5 +87,35 @@ export function checkAutoStartSession() {
     guess
       ? `Detectei farme em ${dungeon.name} (pelos itens que caíram). Se não for essa DG, é só trocar no seletor.`
       : `Detectei farme sem sessão aberta e abri uma em ${dungeon.name} — confira se a DG está certa no seletor.`
+  );
+}
+
+// Quanto tempo sem nenhum drop até considerar que o farme acabou. Bem mais folgado que o limite
+// do watchdog (que existe pra avisar de travamento em ~1min): aqui um alarme falso não é um aviso
+// à toa, é uma sessão partida no meio — e trocas de DG, pausa pra vender ou uma DG mais lenta
+// facilmente passam de 10 minutos sem drop.
+const IDLE_TO_CLOSE_MS = 20 * 60 * 1000;
+
+// Encerra a sessão sozinho quando os drops param. Sem isso, sair do PC com a sessão aberta faz o
+// tempo parado entrar na duração e afundar a média de tempo/run daquela DG PRA SEMPRE (é o que o
+// próprio histórico avisa). Fecha no horário do último drop, não no "agora" — o intervalo morto
+// não conta. Chamado no heartbeat do worker (~5s), com ou sem drop novo.
+export function checkAutoEndSession() {
+  if (!AppState.autoSessionEnabled) return;
+  if (!AppState.activeDgSession) return;
+
+  const summary = getActiveSessionSummary();
+  // Sem nenhum drop ainda: mede a inatividade desde a abertura, senão uma sessão aberta por
+  // engano (ou um auto-start que não vingou) ficaria aberta pra sempre.
+  const referencia = summary?.lastDropAt || AppState.activeDgSession.startAt;
+  if (Date.now() - referencia < IDLE_TO_CLOSE_MS) return;
+
+  const nome = AppState.activeDgSession.dungeonName;
+  const total = summary?.totalAlz || 0;
+  endDgSession({ endAt: referencia });
+
+  showGoalToast(
+    '⏹️ Sessão encerrada sozinha',
+    `${nome} ficou ${Math.round(IDLE_TO_CLOSE_MS / 60000)}min sem drop, então encerrei no horário do último — o tempo parado não entrou na conta. Total: ${formatAlzGamer(total)}.`
   );
 }

@@ -221,7 +221,7 @@ export function renderSessionsPage() {
   const nowFarmingCard = `
 <div class="card card-featured">
   <div class="ctitle"><i class="ti ti-crosshair" style="color:var(--gold)"></i>Farmando agora</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não marcar, o FarmHub abre uma sessão sozinho assim que os drops começam a cair (dá pra desligar abaixo).</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não marcar, o FarmHub abre uma sessão sozinho assim que os drops começam a cair — e encerra sozinho quando eles param, no horário do último drop (dá pra desligar abaixo).</div>
   ${active
     ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
         <div style="display:flex;align-items:center;gap:10px">
@@ -259,7 +259,7 @@ export function renderSessionsPage() {
       <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.${pendingRushDungeons.length ? ' As DGs que ainda faltam no rush de hoje aparecem no topo da lista e saem de lá conforme você completa as runs.' : ''}</div>
       <label class="tgl-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer">
         <label class="tgl"><input type="checkbox" ${AppState.autoSessionEnabled ? 'checked' : ''} onchange="toggleAutoSessionStart(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
-        Abrir sessão sozinho quando eu esquecer de marcar
+        Cuidar da sessão sozinho (abre quando começo a farmar, encerra quando os drops param)
       </label>
       <button style="background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;margin-top:10px;padding:0" onclick="toggleForgottenSessionRecovery()"><i class="ti ti-history-toggle"></i> Esqueceu de marcar uma sessão? Recuperar pelo log</button>
       ${AppState.forgottenSessionRecoveryOpen ? forgottenSessionRecoveryPanel() : ''}`}
