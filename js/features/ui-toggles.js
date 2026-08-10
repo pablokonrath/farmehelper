@@ -26,3 +26,28 @@ export function infoToggle(id, html) {
     ${open ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px">${html}</div>` : ''}
   </div>`;
 }
+
+// Card inteiro colapsável. Diferente do infoToggle (que esconde só a explicação), esse guarda o
+// conteúdo todo — usado em cards de consulta/motivação que não precisam estar abertos o tempo
+// todo e que, somados, empurravam o resto da página pra baixo no celular.
+export function toggleCard(id) {
+  if (AppState.openCards[id]) delete AppState.openCards[id];
+  else AppState.openCards[id] = true;
+  renderPage();
+}
+
+// `resumo` é o que fica VISÍVEL no cabeçalho mesmo fechado — é o que separa "colapsado" de
+// "escondido": você continua vendo o número que importa e só abre pra ver o detalhe.
+export function collapsibleCard({ id, icon, iconColor, title, resumo = '', body, defaultOpen = false }) {
+  const open = AppState.openCards[id] ?? defaultOpen;
+  return `
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="toggleCard('${id}')">
+    <i class="ti ${icon}"${iconColor ? ` style="color:${iconColor}"` : ''}></i>
+    <span style="font-family:var(--font-display);font-size:var(--fs-md);font-weight:700;letter-spacing:.6px;text-transform:uppercase">${title}</span>
+    ${resumo ? `<span style="margin-left:auto;display:flex;align-items:center;gap:10px">${resumo}</span>` : '<span style="margin-left:auto"></span>'}
+    <i class="ti ti-chevron-${open ? 'up' : 'down'}" style="color:var(--muted)"></i>
+  </div>
+  ${open ? `<div style="border-top:1px solid var(--border);padding:14px 16px">${body}</div>` : ''}
+</div>`;
+}

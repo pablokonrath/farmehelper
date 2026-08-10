@@ -250,6 +250,9 @@ export const AppState = {
   // Quais textos explicativos de card ("Como funciona") estão abertos — em qualquer página, não
   // só Sessões. Só UI, não persiste (volta tudo fechado ao recarregar). Ver ui-toggles.js.
   openInfoBoxes: {},
+  // Quais cards colapsáveis estão abertos (Raridades, Evento, Recorde). Só UI, não persiste —
+  // volta fechado ao recarregar, que é o estado que mantém a página curta. Ver ui-toggles.js.
+  openCards: {},
   // Painel de "recuperar sessão esquecida" (Sessões de farme) aberto ou não — só UI, não persiste.
   forgottenSessionRecoveryOpen: false,
   // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings). Valor de gema/ticket

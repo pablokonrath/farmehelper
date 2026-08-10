@@ -14,7 +14,7 @@ import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js
 import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
-import { toggleInfoBox } from './features/ui-toggles.js';
+import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
 import { toggleAutoSessionStart } from './features/session-autostart.js';
 import { setEventEnabled, setEventItemName, setEventSince, setEventMultiplier } from './features/event-tracker.js';
 import {
@@ -220,6 +220,7 @@ Object.assign(window, {
   quickRushRemove,
   openGuidedRush,
   toggleInfoBox,
+  toggleCard,
   toggleAutoSessionStart,
 });
 

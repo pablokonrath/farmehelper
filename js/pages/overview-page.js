@@ -1,13 +1,13 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
 import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
-import { infoToggle } from '../features/ui-toggles.js';
+import { infoToggle, collapsibleCard } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
 import { getEventConfig, computeEventProgress } from '../features/event-tracker.js';
 import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
-import { computePersonalBests } from '../features/dg-session.js';
+import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -22,6 +22,86 @@ function formatHoursShort(hours) {
   const m = totalMin % 60;
   if (h <= 0) return `${m}min`;
   return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
+
+// "O que fazer agora" — a Visão geral conta o passado; este bloco é o único que aponta o próximo
+// passo. Toda a inteligência pra isso já existia no app (melhor DG por run, melhor rota por
+// lucro/hora, progresso do rush de hoje), mas morava em Sessões de farme: quem abria a Visão geral
+// via o placar e tinha que ir procurar a decisão em outra página.
+//
+// Uma sugestão só, a mais relevante do momento, em ordem de prioridade — não uma lista de opções.
+function buildNextStepCard() {
+  const ativa = getActiveSessionSummary();
+  if (ativa) {
+    return `
+<div class="card" style="border-color:var(--ok-border)">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <i class="ti ti-player-play" style="color:var(--ok);font-size:20px"></i>
+    <div style="flex:1;min-width:200px">
+      <div style="font-weight:700">Farmando em ${esc(ativa.dungeonName)}</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">${ativa.dropCount} drops · ${formatAlzGamer(ativa.totalAlz)}${ativa.alzPerHour != null ? ` · ${formatAlzGamer(ativa.alzPerHour)}/h` : ''}</div>
+    </div>
+    <button class="btn btn-d btn-xs" onclick="navigateTo('sessoes')"><i class="ti ti-arrow-right"></i>Ver sessão</button>
+  </div>
+</div>`;
+  }
+
+  const hoje = todayISODate();
+  const rush = AppState.rushHistory[hoje];
+  const comparacao = computeDgComparison();
+  const melhorDg = comparacao.find(c => c.alzPerRun != null);
+
+  // 1) Rush do dia montado e ainda com runs faltando: terminar o plano vem antes de otimizar.
+  const pendentes = !rush?.items?.length ? [] : rush.items
+    .map(it => ({ it, faltam: it.repetitions - computeRunsDoneToday(it.name) }))
+    .filter(x => x.faltam > 0);
+  if (pendentes.length) {
+    const prox = pendentes[0];
+    const totalFaltam = pendentes.reduce((s, x) => s + x.faltam, 0);
+    return `
+<div class="card card-featured">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <i class="ti ti-checklist" style="color:var(--gold);font-size:20px"></i>
+    <div style="flex:1;min-width:200px">
+      <div style="font-weight:700">Continue o rush de hoje</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">Faltam <strong style="color:var(--txt)">${totalFaltam} run(s)</strong> — a próxima é <strong style="color:var(--txt)">${esc(prox.it.name)}</strong> (${prox.faltam} restante(s))</div>
+    </div>
+    <button class="btn btn-p btn-xs" onclick="navigateTo('sessoes')"><i class="ti ti-player-play"></i>Iniciar sessão</button>
+  </div>
+</div>`;
+  }
+
+  // 2) Sem rush montado hoje: aponta onde a entrada rende mais, que é a decisão que o limite
+  // diário de runs impõe. Só com dado real — sem histórico, não inventa recomendação.
+  if (!rush?.items?.length && melhorDg) {
+    return `
+<div class="card card-featured">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <i class="ti ti-bulb" style="color:var(--gold);font-size:20px"></i>
+    <div style="flex:1;min-width:200px">
+      <div style="font-weight:700">Você ainda não montou o rush de hoje</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">Pelo seu histórico, a entrada rende mais em <strong style="color:var(--txt)">${esc(melhorDg.dungeonName)}</strong> — ${formatAlzGamer(melhorDg.alzPerRun)}/run</div>
+    </div>
+    <button class="btn btn-p btn-xs" onclick="navigateTo('rush')"><i class="ti ti-swords"></i>Montar rush</button>
+  </div>
+</div>`;
+  }
+
+  // 3) Rush completo: reconhece e sai do caminho.
+  if (rush?.items?.length) {
+    return `
+<div class="card" style="border-color:var(--ok-border)">
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <i class="ti ti-circle-check" style="color:var(--ok);font-size:20px"></i>
+    <div style="flex:1;min-width:200px">
+      <div style="font-weight:700">Rush de hoje concluído</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">Todas as runs planejadas foram feitas.${melhorDg ? ` Sobrou tempo? ${esc(melhorDg.dungeonName)} é a sua melhor entrada (${formatAlzGamer(melhorDg.alzPerRun)}/run).` : ''}</div>
+    </div>
+  </div>
+</div>`;
+  }
+
+  return '';
 }
 
 // Card da meta de farme do dia: progresso, rendimento (Alz/h) e projeção de quando bate a meta
@@ -74,9 +154,13 @@ function buildMetaCard() {
 function buildPersonalBestsCard() {
   const bests = computePersonalBests();
   if (!bests) return '';
-  return `
-<div class="card">
-  <div class="ctitle"><i class="ti ti-trophy" style="color:var(--gold)"></i>Recorde pessoal</div>
+  return collapsibleCard({
+    id: 'overview-records',
+    icon: 'ti-trophy',
+    iconColor: 'var(--gold)',
+    title: 'Recorde pessoal',
+    resumo: `<span style="font-size:var(--fs-sm);color:var(--muted)">melhor dia</span> <strong style="color:var(--gold)">${formatAlzGamer(bests.bestDay.totalAlz)}</strong>`,
+    body: `
   <div style="display:flex;gap:10px;flex-wrap:wrap">
     <div style="flex:1;min-width:180px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
       <div style="font-size:11px;color:var(--muted)">🏆 Melhor dia</div>
@@ -88,8 +172,8 @@ function buildPersonalBestsCard() {
       <div style="color:var(--gold);font-weight:700;font-size:16px" title="${formatNumber(bests.bestSession.totalAlz)} Alz">${formatAlzGamer(bests.bestSession.totalAlz)}</div>
       <div style="font-size:11px;color:var(--muted)">${esc(bests.bestSession.dungeonName)} · ${formatDateBR(bests.bestSession.date)}</div>
     </div>
-  </div>
-</div>`;
+  </div>`,
+  });
 }
 
 // Painel do evento: conta o item de evento aplicando o multiplicador de cada DG. Isolado do resto
@@ -140,15 +224,28 @@ function buildEventCard() {
       </tr>`).join('')}
     </tbody></table>`;
 
-  return `
-<div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-gift" style="color:var(--gold)"></i>Evento</div>
-    <label class="tgl"><input type="checkbox" ${aberto ? 'checked' : ''} onchange="setEventEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label></div>
-  ${!aberto
-    ? '<div style="font-size:var(--fs-sm);color:var(--muted)">Ligue quando houver evento em que um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa DG e 5 em outra). O FarmHub faz a conta pra você.</div>'
-    : `${infoToggle('overview-event', 'O log do jogo registra só "caiu 1 item" — ele não sabe em qual DG. Quem sabe é o histórico de sessões, então a contagem aqui usa as sessões: um drop só entra com o multiplicador se caiu dentro de uma sessão marcada naquela DG. Como o FarmHub abre e encerra sessão sozinho, na prática cobre quase tudo — e o que ficou de fora aparece declarado abaixo, em vez de ser omitido. Fica num painel próprio porque evento é temporário: nada disso mexe no Total de farme, Top itens ou Relatório.')}
-      ${configuracao}${resultado}`}
-</div>`;
+  // O liga/desliga fica DENTRO do corpo, não no cabeçalho: o cabeçalho inteiro é a área de
+  // clique pra colapsar, e um toggle ali dentro capturaria/competiria com esse clique.
+  const chave = `<label class="tgl-row" style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--muted);cursor:pointer;margin-bottom:12px">
+      <label class="tgl"><input type="checkbox" ${aberto ? 'checked' : ''} onchange="setEventEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+      Evento ativo
+    </label>`;
+
+  return collapsibleCard({
+    id: 'overview-event',
+    icon: 'ti-gift',
+    iconColor: 'var(--gold)',
+    title: 'Evento',
+    // Fechado, o cabeçalho ainda entrega o número que importa — o total já multiplicado.
+    resumo: aberto && progresso?.totalContado
+      ? `<strong style="color:var(--gold)">${progresso.totalContado.toLocaleString('pt-BR')}</strong> <span style="font-size:var(--fs-sm);color:var(--muted)">${esc(progresso.itemName)}</span>`
+      : '<span class="badge badge-muted">desligado</span>',
+    defaultOpen: aberto && !progresso?.totalContado,
+    body: `${chave}${!aberto
+      ? '<div style="font-size:var(--fs-sm);color:var(--muted)">Ligue quando houver evento em que um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa DG e 5 em outra). O FarmHub faz a conta pra você.</div>'
+      : `${infoToggle('overview-event-info', 'O log do jogo registra só "caiu 1 item" — ele não sabe em qual DG. Quem sabe é o histórico de sessões, então a contagem aqui usa as sessões: um drop só entra com o multiplicador se caiu dentro de uma sessão marcada naquela DG. Como o FarmHub abre e encerra sessão sozinho, na prática cobre quase tudo — e o que ficou de fora aparece declarado abaixo, em vez de ser omitido. Fica num painel próprio porque evento é temporário: nada disso mexe no Total de farme, Top itens ou Relatório.')}
+      ${configuracao}${resultado}`}`,
+  });
 }
 
 export function setTrendPeriod(dias) {
@@ -275,11 +372,18 @@ function buildRareDropsCard() {
       </div>
     </div>` : '';
 
-  return `
-<div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-star" style="color:var(--epic)"></i>Raridades</div>
-    ${historico.total ? `<span class="badge" style="background:var(--epic-bg);color:var(--epic);border:1px solid var(--epic-border)">${historico.total} no total</span>` : ''}</div>
-  ${infoToggle('overview-rare', criterio)}
+  // Fechado, o cabeçalho mostra a última raridade que caiu — é a informação que faz alguém abrir.
+  const ultima = historico.itens[0];
+  return collapsibleCard({
+    id: 'overview-rare',
+    icon: 'ti-star',
+    iconColor: 'var(--epic)',
+    title: 'Raridades',
+    resumo: ultima
+      ? `<span style="font-size:var(--fs-sm);color:var(--muted)">última:</span> <strong style="color:var(--epic)">${esc(ultima.name)}</strong> <span style="font-size:var(--fs-xs);color:var(--muted)">${quandoTexto(ultima.at)}</span> <span class="badge" style="background:var(--epic-bg);color:var(--epic);border:1px solid var(--epic-border)">${historico.total}</span>`
+      : '<span class="badge badge-muted">nenhuma ainda</span>',
+    body: `
+  ${infoToggle('overview-rare-info', criterio)}
   ${controleLimiar}
   ${!historico.total
     ? '<div class="empty" style="padding:14px 0">Nenhuma raridade registrada ainda — elas aparecem aqui conforme caem nas suas sessões.</div>'
@@ -296,8 +400,8 @@ function buildRareDropsCard() {
       </div>`).join('')}
     </div>`}
   ${listaSecas}
-  ${listaDescartados}
-</div>`;
+  ${listaDescartados}`,
+  });
 }
 
 export function setDateFrom(value) {
@@ -423,12 +527,13 @@ export function renderOverviewPage() {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return metaCard + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    return buildNextStepCard() + metaCard + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
 <div class="pg-title"><i class="ti ti-map" style="color:var(--acc)"></i>Visão geral</div>
-<div class="pg-sub">Métricas consolidadas do seu farme com base nos filtros aplicados.</div>
+<div class="pg-sub">Seu painel de farme. O filtro de data abaixo comanda os totais; cards de janela própria (meta de hoje, evolução, raridades) têm período próprio.</div>
+${buildNextStepCard()}
 ${/* Ordem pensada pra quem abre a página querendo um número, não um painel: meta de hoje ->
      filtro (que comanda tudo abaixo) -> os totais -> contexto -> ferramentas. Recorde pessoal e
      "adicionar drop manual" são motivação e ferramenta, não dado operacional — foram pro fim,
