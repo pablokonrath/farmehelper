@@ -31,38 +31,77 @@ estatística.
 
 ### 2. Detecção automática — pelo seu próprio histórico
 
-Derivada das sessões já encerradas, sem cadastro nenhum:
+Derivada das sessões já encerradas, sem cadastro nenhum. É a **mesma taxa** que a página "Onde
+dropa" já exibe — quantidade ÷ runs:
 
 ```
-quantidade total do item naquela DG ÷ total de runs naquela DG  ≤  0,15
+quantidade do item naquela DG ÷ total de runs naquela DG  <  1 / N
 ```
 
-com no mínimo **30 runs** de amostra na DG.
+onde **N** é o "1 a cada N runs" configurável (padrão **500**), e só vale em DGs onde você já fez
+pelo menos **N runs**.
+
+Equipamento genérico (`isExcludedGearItem`) fica de fora antes de qualquer conta — ver a seção
+sobre isso mais abaixo.
 
 Implementação: `getStatisticalRareItemNames()` em `js/features/item-dungeon-sources.js`.
 
 ---
 
-## De onde vieram os números
+## O limiar: como ajustar e por que ele é configurável
 
-Sendo direto: os dois limiares foram escolhidos por **raciocínio, não medindo dados reais de
-jogo**. O critério de cada um:
+O critério é expresso em **"1 a cada N runs"** porque é a unidade em que o jogador pensa ("esse aí
+demora mil DGs pra cair"), não em taxa decimal.
 
-**`RARE_MAX_DROPS_PER_RUN = 0,15`** — equivale a "cai no máximo 1 vez a cada ~7 runs". Acima
-disso o item aparece com frequência suficiente pra ser rotina, não raridade — destacar tudo é o
-mesmo que não destacar nada.
+**Ajuste na própria Visão geral**, no card Raridades: *"Considero raro o que cai menos de 1 a cada
+___ runs da DG"*. O valor fica salvo na sua conta (`AppState.rarityOneInRuns`).
 
-**`MIN_RUNS_TO_JUDGE_RARITY = 30`** — com poucas runs, *todo* item parece raro só por ainda não
-ter caído. 30 runs é o piso onde uma taxa de ~1/7 já teria tido chance real de aparecer algumas
-vezes. Sessões sem o campo "runs" preenchido não entram na conta.
+### A amostra mínima é derivada, não escolhida
 
-**Se algum dos dois estiver calibrado errado pro seu servidor**, os dois são constantes exportadas
-no topo de `js/features/item-dungeon-sources.js` — mudar é uma linha, e o texto explicativo na
-Visão geral se atualiza sozinho a partir delas.
+Pra afirmar que algo é "mais raro que 1 a cada N", é preciso ter feito **ao menos N runs** naquela
+DG — antes disso o item não teve nem chance de cair uma vez, e *"não caiu ainda"* não é evidência
+de raridade. Por isso a amostra mínima acompanha o limiar automaticamente, em vez de ser um
+segundo número solto.
 
-Como conferir na prática: o bloco "O que você caça" (Visão geral → Raridades) mostra a taxa real
-de cada item cadastrado, no formato `1/120 runs`. É por ali que dá pra ver se o limiar bate com a
-realidade do servidor.
+Sessões sem o campo "runs" preenchido não entram na conta (sem denominador, não há taxa).
+
+### Por que o padrão é exigente (e por que já foi frouxo demais)
+
+A primeira versão usava **1 a cada 7 runs** e o resultado, com dados reais, foram **4.565
+"raridades"** — incluindo joias que caem 2× por dia.
+
+A conta que explica: num ritmo de ~60 runs/dia, 1-a-cada-7 significa que qualquer item caindo
+menos de ~8 vezes **por dia** era marcado como raro. Destacar o que cai todo dia é o mesmo que não
+destacar nada.
+
+| Frequência real | Taxa por run | Passava no limiar antigo (1/7)? | Passa no padrão atual (1/500)? |
+|---|---|---|---|
+| 2× por dia | 1 a cada 30 runs | sim | não |
+| 1× por semana | 1 a cada 420 runs | sim | não |
+| "mil DGs pra cair" | 1 a cada 1000 runs | sim | **sim** |
+
+### Como conferir se está calibrado
+
+O bloco "O que você caça" (Visão geral → Raridades) mostra a **taxa real** de cada item
+cadastrado, no formato `1/120 runs`. É por ali que dá pra ver se o N escolhido bate com a
+realidade do servidor — e a regra prática está na própria tela: *se ainda aparecer coisa que cai
+todo dia, aumente o N*.
+
+---
+
+## Equipamento genérico nunca entra
+
+Armadura, elmo, luva, coturno, espada, manopla, máscara, chakram e afins (a lista completa é
+`EXCLUDED_ITEM_KEYWORDS` em `js/features/drops.js`) são ignorados em todo o app — não têm valor de
+venda e só inflariam as listas.
+
+Esse filtro **precisa ser aplicado na leitura**, não só na gravação: sessões antigas — de antes do
+filtro existir, ou de antes de uma palavra ter sido acrescentada à lista — ainda guardam esses
+itens no registro. Uma versão da detecção de raridade lia `session.items` direto e, como cada
+*variação* de peça cai pouco ("Manopla de Demonite", "Armadura de Paládio(GU)"...), todas passavam
+em qualquer limiar e viravam "raridade".
+
+Aplicado hoje em `getStatisticalRareItemNames()`, `getRareDropHistory()` e `sessionItemsRow()`.
 
 ---
 
