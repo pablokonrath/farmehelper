@@ -33,11 +33,24 @@ O log do próprio jogo só guarda um mês. O FarmHub guarda tudo que você já f
 começou a usar, num banco de dados de verdade — sem limite artificial apagando sessões
 antigas por trás dos panos.
 
+- **Os drops em si** ficam arquivados por dia e por item, então "quanto eu farmei" continua
+  verdade em qualquer período, mesmo depois do log do jogo ter descartado aquele mês. E quando
+  um período pedido é antigo demais até pro arquivo, o app **avisa** em vez de mostrar um total
+  menor em silêncio.
 - Sessões de farme por DG (runs, tempo ativo, Alz, itens) ficam salvas indefinidamente.
 - A média de Alz/run e Alz/hora de cada DG fica cada vez mais confiável com o tempo, em vez
   de resetar toda vez que o log local expira.
 - Preço de venda real de cada item, dia a dia — não o preço que você cadastrou como estimativa,
   o que você **de fato conseguiu vender por**.
+
+## 2b. Não depende de você lembrar de marcar
+
+Esquecer de apertar "Iniciar" antes de entrar na DG era o maior buraco no histórico: o farme
+acontecia, mas ficava fora de qualquer sessão — e é a sessão que alimenta "Qual DG rende mais",
+tempo por run e "Onde dropa". Agora, quando os drops começam a cair sem sessão aberta, o FarmHub
+abre uma sozinho e **retroage o início pro primeiro drop**, sem perder os minutos iniciais. Ele
+até tenta adivinhar qual DG é pelos itens que caíram; se errar, trocar é um clique. E o seletor
+de DG já mostra no topo o que ainda falta do rush que você planejou pro dia.
 
 ## 3. Você decide o que é ruído — e o sistema respeita
 

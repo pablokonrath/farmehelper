@@ -649,6 +649,33 @@ só não fica desatualizado). Depende do Apache da Hostinger ter `mod_headers` a
 hospedagem compartilhada comum). Ícones/imagens não entram nessa regra — esses continuam com
 cache normal do navegador, não mudam a cada deploy.
 
+## Histórico permanente de drops (IMPORTANTE — passo manual)
+
+O log do jogo guarda cerca de 30 dias. Até esta versão, os drops eram lidos do arquivo e nunca
+gravados no banco: **todo farme mais antigo que a janela do log sumia pra sempre**, e a Visão
+geral mostrava um "Total de farme" incompleto em qualquer período mais antigo, sem avisar
+(medido: um filtro de 180 dias exibia 17% do farme real).
+
+Rode `sql/migrate_drop_snapshots.sql` no phpMyAdmin (aba **SQL**) — cria a tabela
+`drop_snapshots`, que guarda o agregado por dia+item (algumas centenas de linhas por dia, não os
+drops individuais). É aditivo: não altera nem apaga nenhuma tabela existente.
+
+**Enquanto a migração não roda**, o app continua funcionando normal — a chamada do histórico
+falha silenciosamente e ele opera só com a janela do log, exatamente como antes. Depois de rodar,
+o arquivamento começa sozinho a cada carregamento do log.
+
+Detalhes de comportamento:
+
+- Guarda só a **quantidade** por dia+item; o valor em Alz continua calculado na hora com o preço
+  atual de Cálculo de farme, então o histórico não congela com preços velhos.
+- **Auto-cura**: como o log sempre traz os últimos ~30 dias, cada sincronização reafirma esse
+  período inteiro (upsert por dia+item). Um dia só passa a depender exclusivamente do banco
+  depois de já ter sido gravado dezenas de vezes.
+- A Visão geral costura as duas fontes sem contar nada duas vezes: dentro da janela do log manda
+  o log (exato, inclui hoje); antes dela, o banco. Se o período pedido tem dias que nenhuma das
+  duas cobre (anteriores ao início do arquivamento), a página **avisa** em vez de mostrar um
+  total incompleto em silêncio.
+
 ## Se algo der errado
 
 - **Tela branca depois do login**: geralmente é erro de conexão com o banco — confira
