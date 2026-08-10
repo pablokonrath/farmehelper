@@ -97,10 +97,10 @@ function sessionItemsRow(s) {
       <span>Tempo ativo: <strong style="color:var(--txt)">${formatDuration(activeMs)}</strong> · relógio total: ${formatDuration(s.durationMs)}</span>
     </div>
     ${!rows.length ? '<div class="empty" style="padding:8px 0">Nenhum item registrado nesta sessão.</div>' : `
-    ${expectedNames.size ? '<div style="font-size:11px;color:var(--gold);margin-bottom:8px"><i class="ti ti-star"></i> Itens com estrela são raridades desta DG (cadastro em Onde dropa).</div>' : ''}
+    ${expectedNames.size ? '<div style="font-size:11px;color:var(--epic);margin-bottom:8px"><i class="ti ti-star"></i> Itens em roxo são raridades desta DG (cadastro em Onde dropa).</div>' : ''}
     <table><thead><tr><th>Item</th><th>Qtd</th><th>Valor</th></tr></thead><tbody>
-    ${rows.map(r => `<tr${r.expected ? ' style="background:var(--gold-bg)"' : ''}>
-      <td>${r.expected ? '<i class="ti ti-star" style="color:var(--gold);margin-right:5px" title="Raridade desta DG"></i>' : ''}${esc(r.name)}</td>
+    ${rows.map(r => `<tr${r.expected ? ' style="background:var(--epic-bg)"' : ''}>
+      <td${r.expected ? ' style="color:var(--epic);font-weight:700"' : ''}>${r.expected ? '<i class="ti ti-star" style="color:var(--epic);margin-right:5px" title="Raridade desta DG"></i>' : ''}${esc(r.name)}</td>
       <td>${r.qty}×</td>
       <td>${r.value ? renderAlzValue(r.value) : '<span style="color:var(--muted)">—</span>'}</td>
     </tr>`).join('')}
@@ -232,7 +232,7 @@ export function renderSessionsPage() {
           ${AppState.activeDgSession.autoStarted ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-alert-triangle"></i> Aberta automaticamente — confira se a DG está certa. Errada? Encerre e corrija a DG no histórico abaixo.</div>` : ''}
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
-            return expected.length ? `<div style="font-size:11px;color:var(--gold);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';
+            return expected.length ? `<div style="font-size:11px;color:var(--epic);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';
           })()}
           </div>
         </div>

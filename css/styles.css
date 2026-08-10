@@ -9,6 +9,10 @@
   --ok:#6b9c4a;--ok-bg:rgba(107,156,74,.14);--ok-border:rgba(107,156,74,.35);
   --err:#d9480f;--err-bg:rgba(217,72,15,.14);--err-border:rgba(217,72,15,.35);
   --warn:#c2820a;--warn-bg:rgba(194,130,10,.13);--warn-border:rgba(194,130,10,.35);
+  /* Roxo "épico" pra item raro — cor própria porque o dourado já significa outra coisa aqui
+     (rota aplicada, melhor faixa de horário). O roxo clássico de épico (#a855f7) reprova em
+     contraste neste fundo (4.0:1); este tom mantém a leitura de raridade com 6.0:1. */
+  --epic:#c084fc;--epic-bg:rgba(192,132,252,.14);--epic-border:rgba(192,132,252,.42);
   --r:8px;
   /* Escala de tipografia central — antes cada seletor tinha seu font-size fixo em px, então
      "aumentar a fonte do sistema" exigia caçar e editar cada declaração uma por uma. Com os

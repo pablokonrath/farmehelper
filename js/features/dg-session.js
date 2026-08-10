@@ -5,6 +5,7 @@ import { formatAlzGamer, parseTimeInputBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled } from './alerts.js';
+import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { renderPage } from '../router.js';
 
 // Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
@@ -440,10 +441,17 @@ export function startDgSessionTicker() {
       pageBox.innerHTML = `${clock} · ${summary.dropCount} drops · <strong style="color:var(--gold)">${formatAlzGamer(summary.totalAlz)}</strong>${summary.alzPerHour != null ? ` · ${formatAlzGamer(summary.alzPerHour)}/h` : ''}`;
     }
     // Itens já caídos na sessão ativa, ao vivo — sem esperar encerrar pra ver o que dropou.
+    // Raridade desta DG (cadastro em Onde dropa) sai em roxo épico e vem primeiro: é o drop que
+    // você estava caçando, não pode se perder no meio da lista de lixo comum.
     const itemsBox = document.getElementById('dgLiveItemsBox');
     if (itemsBox) {
-      itemsBox.innerHTML = summary.items.length
-        ? summary.items.map(it => `<span class="badge badge-muted">${esc(it.name)} ×${it.qty}${it.total ? ` · ${formatAlzGamer(it.total)}` : ''}</span>`).join(' ')
+      const rareNames = getExpectedItemNamesForDungeon(session.dungeonId);
+      const marked = summary.items.map(it => ({ ...it, rare: rareNames.has(it.name) }));
+      marked.sort((a, b) => (b.rare - a.rare) || (b.total - a.total));
+      itemsBox.innerHTML = marked.length
+        ? marked.map(it => it.rare
+            ? `<span class="badge" style="background:var(--epic-bg);color:var(--epic);border:1px solid var(--epic-border)" title="Raridade desta DG"><i class="ti ti-star"></i> ${esc(it.name)} ×${it.qty}${it.total ? ` · ${formatAlzGamer(it.total)}` : ''}</span>`
+            : `<span class="badge badge-muted">${esc(it.name)} ×${it.qty}${it.total ? ` · ${formatAlzGamer(it.total)}` : ''}</span>`).join(' ')
         : '<span style="color:var(--muted);font-size:var(--fs-xs)">Nenhum item ainda.</span>';
     }
   };
