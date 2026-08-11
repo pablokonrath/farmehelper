@@ -170,6 +170,8 @@ export const AppState = {
   // Bruto (valor dos drops) ou líquido (drops − gasto em rush) no card "Sua evolução". Só UI,
   // mesmo motivo do trendPeriodDays acima.
   trendShowNet: false,
+  // Janela do card "Sua consistência" (7 ou 30 dias). Só UI, mesmo motivo do trendPeriodDays.
+  consistencyPeriodDays: 30,
   // Evento temporário do servidor: item que vale quantidade diferente por DG. Fica isolado num
   // painel próprio pra não contaminar os números permanentes. Ver event-tracker.js.
   eventConfig: { enabled: false, itemName: '', since: '', multipliers: {} },

@@ -460,6 +460,54 @@ export function computePersonalBests() {
   };
 }
 
+// Consistência de farme: quantos dos últimos N dias tiveram sessão, tempo ativo total, sequência
+// atual e maior buraco sem farmar dentro da janela. Igual a computePersonalBests, não ajuda a
+// decidir ONDE farmar (isso é trabalho de Sessões de farme) — é sobre ROTINA: você está mantendo
+// o ritmo ou já faz dias que não farma sem perceber? "Sua evolução" já mostra a renda por
+// período; isto é a mesma ideia só que no eixo do tempo farmado, não do Alz rendido.
+export function computeFarmingConsistency(days) {
+  const dayMs = 86400000;
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+  const isoOf = offsetDays => {
+    const d = new Date(startOfToday.getTime() - offsetDays * dayMs);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const activeMsByDate = {};
+  AppState.dgSessions.forEach(s => {
+    if (!s.date) return;
+    activeMsByDate[s.date] = (activeMsByDate[s.date] || 0) + (s.activeDurationMs ?? s.durationMs ?? 0);
+  });
+
+  // cells[0] = dia mais antigo da janela, último = hoje — ordem cronológica, pro heatmap ler da
+  // esquerda (passado) pra direita (hoje), igual qualquer calendário.
+  const cells = [];
+  for (let offset = days - 1; offset >= 0; offset--) {
+    const date = isoOf(offset);
+    cells.push({ date, activeMs: activeMsByDate[date] || 0 });
+  }
+
+  const daysComFarme = cells.filter(c => c.activeMs > 0).length;
+  const totalActiveMs = cells.reduce((sum, c) => sum + c.activeMs, 0);
+
+  // Sequência atual: quantos dias seguidos ATÉ HOJE (de trás pra frente) tiveram farme — quebra
+  // no primeiro dia vazio. Maior buraco: o intervalo mais longo sem farme em toda a janela, não
+  // só o mais recente — pra "há quanto tempo você não some" não ficar escondido atrás de um dia
+  // isolado de farme no meio de semanas paradas.
+  let streakAtual = 0;
+  for (let i = cells.length - 1; i >= 0; i--) {
+    if (cells[i].activeMs > 0) streakAtual++;
+    else break;
+  }
+  let maiorBuraco = 0, buracoCorrente = 0;
+  cells.forEach(c => {
+    if (c.activeMs > 0) { buracoCorrente = 0; }
+    else { buracoCorrente++; maiorBuraco = Math.max(maiorBuraco, buracoCorrente); }
+  });
+
+  return { cells, totalDays: days, daysComFarme, totalActiveMs, streakAtual, maiorBuraco };
+}
+
 // Parâmetros do "vale a pena resetar?" — todos inteiros não-negativos (valores em Alz ou gemas
 // vêm de inputs mascarados; runs por reset no mínimo 1).
 export function setResetConfig(field, value) {

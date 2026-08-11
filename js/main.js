@@ -24,7 +24,7 @@ import {
   setItemCategoryAssignment,
 } from './features/admin.js';
 
-import { setDateFrom, setDateTo, toggleManualDropsManager, setTrendPeriod, setTrendMode } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty } from './features/drop-source.js';
@@ -100,6 +100,7 @@ Object.assign(window, {
   toggleManualDropsManager,
   setTrendPeriod,
   setTrendMode,
+  setConsistencyPeriod,
   setEventEnabled,
   setEventItemName,
   setEventSince,

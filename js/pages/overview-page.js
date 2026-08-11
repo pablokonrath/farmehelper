@@ -8,8 +8,8 @@ import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-d
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computeSalesSummary } from '../features/sales.js';
-import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday } from '../features/dg-session.js';
-import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
+import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday, computeFarmingConsistency } from '../features/dg-session.js';
+import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc, escAttr } from '../utils/escape.js';
@@ -283,6 +283,11 @@ export function setTrendMode(liquido) {
   renderPage();
 }
 
+export function setConsistencyPeriod(dias) {
+  AppState.consistencyPeriodDays = parseInt(dias, 10) === 7 ? 7 : 30;
+  renderPage();
+}
+
 // Card único de comparação temporal. Antes eram dois ("Sua semana" 7d×7d e "Sua evolução" 30d×30d)
 // dizendo a mesma coisa em janelas diferentes e ocupando quase uma tela de celular cada. Agora é
 // um card com seletor de período — mesma informação, um terço do espaço.
@@ -385,6 +390,45 @@ function buildTrendCard() {
   </div>
   ${projecaoTexto}
   ${metaPeriodoTexto}
+</div>`;
+}
+
+// Consistência de farme: enquanto "Sua evolução" mostra quanto você rendeu, este mostra se você
+// manteve o RITMO — quantos dos últimos N dias tiveram sessão, sequência atual, maior intervalo
+// parado. É reflexivo, não decisório (não diz "qual DG farmar" — isso é Sessões de farme), por
+// isso mora aqui e não lá: mesmo critério de "Recorde pessoal" logo abaixo — dado de sessão, mas
+// rotina/motivação, não tática.
+function buildConsistencyCard() {
+  const dias = AppState.consistencyPeriodDays === 7 ? 7 : 30;
+  const c = computeFarmingConsistency(dias);
+  if (!c.daysComFarme) return '';
+
+  const pct = Math.round((c.daysComFarme / c.totalDays) * 100);
+  const corBuraco = c.maiorBuraco >= 5 ? 'var(--err)' : c.maiorBuraco >= 3 ? 'var(--warn)' : 'var(--muted)';
+  const botao = (v, txt) => `<button class="btn btn-xs ${dias === v ? 'btn-p' : 'btn-d'}" onclick="setConsistencyPeriod(${v})">${txt}</button>`;
+
+  // Um quadrado por dia — cinza (--surf2) sem farme, verde quanto mais tempo ativo. Teto de 4h
+  // pra intensidade máxima: depois disso a diferença visual entre "4h" e "8h" não ajuda a ler o
+  // padrão de dias, só achata a escala pros dias normais na comparação.
+  const INTENSITY_CAP_MS = 4 * 3600000;
+  const heatmap = c.cells.map(cell => {
+    const intensity = cell.activeMs > 0 ? 0.25 + Math.min(1, cell.activeMs / INTENSITY_CAP_MS) * 0.75 : 0;
+    const bg = cell.activeMs > 0 ? `rgba(107,156,74,${intensity.toFixed(2)})` : 'var(--surf2)';
+    return `<div title="${formatDateBR(cell.date)}: ${cell.activeMs > 0 ? formatDuration(cell.activeMs) : 'sem farme'}" style="width:14px;height:14px;border-radius:3px;background:${bg};flex-shrink:0"></div>`;
+  }).join('');
+
+  return `
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-calendar-stats"></i>Sua consistência</div>
+    <div style="display:flex;gap:6px">${botao(7, 'Semana')}${botao(30, 'Mês')}</div></div>
+  ${infoToggle('overview-consistency', 'Não é sobre quanto você rendeu (isso é "Sua evolução" acima) — é sobre se você manteve o ritmo. Um quadrado por dia: cinza é dia sem sessão registrada, verde é dia com farme (mais forte = mais tempo ativo, até um teto de 4h). Vem do mesmo histórico de sessões que "Qual DG rende mais" usa em Sessões de farme, só olhado pelo eixo do tempo em vez do eixo da DG.')}
+  <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px;font-size:13px">
+    <span>Farmou <strong style="color:var(--txt)">${c.daysComFarme}</strong> de ${c.totalDays} dias <span style="color:var(--muted)">(${pct}%)</span></span>
+    <span>Tempo ativo total: <strong style="color:var(--txt)">${formatDuration(c.totalActiveMs)}</strong></span>
+    ${c.streakAtual >= 2 ? `<span>🔥 <strong style="color:var(--gold)">${c.streakAtual}</strong> dias seguidos</span>` : ''}
+    ${c.maiorBuraco >= 3 ? `<span style="color:${corBuraco}">Maior intervalo parado: ${c.maiorBuraco} dias</span>` : ''}
+  </div>
+  <div style="display:flex;gap:3px;flex-wrap:wrap">${heatmap}</div>
 </div>`;
 }
 
@@ -617,7 +661,7 @@ export function renderOverviewPage() {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return buildNextStepCard() + metaCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    return buildNextStepCard() + metaCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
@@ -662,6 +706,7 @@ ${avisoPrecoDesatualizado}
 ${buildEventCard()}
 ${buildRareDropsCard()}
 ${buildTrendCard()}
+${buildConsistencyCard()}
 ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti ti-chart-bar"></i>Farme diário</div><div class="chart-wrap"><canvas id="fc"></canvas></div></div>` : ''}
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Top itens <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${items.length} itens</span></div></div>
