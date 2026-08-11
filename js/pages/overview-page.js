@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getAllDrops, getItemPrice, summarizeDropsByItem, getTodayFarmedAlz, getTodayFarmRate } from '../features/drops.js';
-import { getHistoricalSummary, countUncoveredDays, getPeriodTrend } from '../features/drop-history.js';
+import { getHistoricalSummary, countUncoveredDays, getPeriodTrend, getRushSpentInRange } from '../features/drop-history.js';
 import { infoToggle, collapsibleCard } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
 import { getEventConfig, computeEventProgress } from '../features/event-tracker.js';
@@ -123,6 +123,17 @@ function buildMetaCard() {
     statusRight = `<span style="color:var(--muted)">faltam <strong style="color:var(--txt)">${formatAlzGamer(remaining)}</strong></span>`;
   }
 
+  // A meta em si continua bruta (é o que o título promete), mas quem gastou em rush hoje pode
+  // bater a meta bruta e ainda assim estar no vermelho de verdade — sem esta linha, isso ficava
+  // invisível bem no card mais em destaque da página. Só aparece quando há gasto de rush hoje,
+  // pra não poluir o card em dias sem rush.
+  const rushSpentHoje = AppState.rushHistory[todayISODate()]?.total || 0;
+  const netHoje = todayFarmed - rushSpentHoje;
+  const liquidoHojeTexto = rushSpentHoje <= 0 ? '' : `
+  <div style="margin-top:6px;font-size:11px;color:var(--muted)">
+    Líquido hoje (descontando ${formatAlzGamer(rushSpentHoje)} de rush): <strong style="color:${getAlzTierColor(netHoje)}" title="${formatNumber(netHoje)} Alz">${formatAlzGamer(netHoje)}</strong>
+  </div>`;
+
   return `
 <div class="card card-featured">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-target" style="color:var(--gold)"></i>Meta de farme — hoje</div>
@@ -145,7 +156,8 @@ function buildMetaCard() {
   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;flex-wrap:wrap;gap:8px">
     <span style="color:var(--muted)"><i class="ti ti-bolt" style="color:var(--gold)"></i> Rendimento: <strong style="color:var(--txt)">${rate ? formatAlzGamer(rate.alzPerHour) + '/h' : '—'}</strong></span>
     ${statusRight}
-  </div>`}
+  </div>
+  ${liquidoHojeTexto}`}
 </div>`;
 }
 
@@ -253,6 +265,11 @@ export function setTrendPeriod(dias) {
   renderPage();
 }
 
+export function setTrendMode(liquido) {
+  AppState.trendShowNet = !!liquido;
+  renderPage();
+}
+
 // Card único de comparação temporal. Antes eram dois ("Sua semana" 7d×7d e "Sua evolução" 30d×30d)
 // dizendo a mesma coisa em janelas diferentes e ocupando quase uma tela de celular cada. Agora é
 // um card com seletor de período — mesma informação, um terço do espaço.
@@ -261,15 +278,19 @@ export function setTrendPeriod(dias) {
 // 5, o total falaria mais sobre presença do que sobre o quanto o farme rende.
 function buildTrendCard() {
   const dias = AppState.trendPeriodDays === 7 ? 7 : 30;
+  const liquido = !!AppState.trendShowNet;
   const blocos = getPeriodTrend(dias, 3);
   if (blocos.filter(b => b.diasComFarme > 0).length < 2) return '';
 
   const [atual, anterior] = blocos;
+  // Bruto = só o valor do que caiu. Líquido = bruto − gasto em rush (crédito/tickets/gemas) dos
+  // mesmos dias, então pode ficar negativo — dia em que o rush custou mais do que rendeu.
+  const metricaBloco = b => liquido ? b.netPorDiaFarmado : b.alzPorDiaFarmado;
   // Exige farme nos DOIS blocos comparados, não só "2 blocos com farme em algum lugar": se você
   // parou de farmar no período atual, a frase dizia "rendeu -100%" enquanto o quadro ao lado
   // dizia "sem farme registrado" — duas afirmações contraditórias na mesma tela.
-  const variacao = atual.diasComFarme > 0 && anterior?.diasComFarme > 0 && anterior.alzPorDiaFarmado > 0
-    ? Math.round((atual.alzPorDiaFarmado / anterior.alzPorDiaFarmado - 1) * 100)
+  const variacao = atual.diasComFarme > 0 && anterior?.diasComFarme > 0 && metricaBloco(anterior) > 0
+    ? Math.round((metricaBloco(atual) / metricaBloco(anterior) - 1) * 100)
     : null;
   const subiu = variacao != null && variacao >= 0;
   const rotulo = dias === 7
@@ -288,30 +309,37 @@ function buildTrendCard() {
   const inicioPeriodo = dias === 30
     ? new Date(hoje.getFullYear(), hoje.getMonth(), 1)
     : new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (diaDoPeriodo - 1));
-  const periodoEmAndamento = getHistoricalSummary(todayISODate(inicioPeriodo), todayISODate(hoje), { respeitarFiltrosDaPagina: false });
+  const inicioPeriodoIso = todayISODate(inicioPeriodo);
+  const hojeIso = todayISODate(hoje);
+  const periodoEmAndamento = getHistoricalSummary(inicioPeriodoIso, hojeIso, { respeitarFiltrosDaPagina: false });
   const diasFarmadosNoPeriodo = Object.values(periodoEmAndamento.totalsByDate).filter(v => v > 0).length;
-  const ritmoPorDiaCorrido = diaDoPeriodo > 0 ? periodoEmAndamento.totalAlz / diaDoPeriodo : 0;
+  const totalPeriodoBase = liquido
+    ? periodoEmAndamento.totalAlz - getRushSpentInRange(inicioPeriodoIso, hojeIso)
+    : periodoEmAndamento.totalAlz;
+  const ritmoPorDiaCorrido = diaDoPeriodo > 0 ? totalPeriodoBase / diaDoPeriodo : 0;
   const projecao = ritmoPorDiaCorrido * totalDoPeriodo;
   const projecaoTexto = diasFarmadosNoPeriodo < 2 ? '' : `
     <div style="font-size:var(--fs-sm);color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
       <i class="ti ti-target" style="color:var(--gold)"></i> No seu ritmo atual, ${dias === 30 ? 'este mês' : 'esta semana'} fecha em
       <strong style="color:${getAlzTierColor(projecao)}" title="${formatNumber(Math.round(projecao))} Alz">${formatAlzGamer(projecao)}</strong>
-      <span style="font-size:var(--fs-2xs)">(${formatAlzGamer(periodoEmAndamento.totalAlz)} até agora, em ${diasFarmadosNoPeriodo} dia(s) de farme)</span>
+      <span style="font-size:var(--fs-2xs)">(${formatAlzGamer(totalPeriodoBase)}${liquido ? ' líquido' : ''} até agora, em ${diasFarmadosNoPeriodo} dia(s) de farme)</span>
     </div>`;
 
-  const botao = (v, txt) => `<button class="btn btn-xs ${dias === v ? 'btn-p' : 'btn-d'}" onclick="setTrendPeriod(${v})">${txt}</button>`;
+  const botaoPeriodo = (v, txt) => `<button class="btn btn-xs ${dias === v ? 'btn-p' : 'btn-d'}" onclick="setTrendPeriod(${v})">${txt}</button>`;
+  const botaoModo = (v, txt) => `<button class="btn btn-xs ${liquido === v ? 'btn-p' : 'btn-d'}" onclick="setTrendMode(${v})">${txt}</button>`;
 
   return `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-chart-bar"></i>Sua evolução</div>
-    <div style="display:flex;gap:6px">${botao(7, 'Semana')}${botao(30, 'Mês')}</div></div>
-  ${infoToggle('overview-trend', `Compara blocos de ${dias} dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num período você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso. Ignora o filtro de data acima de propósito: a janela deste card é a dele.`)}
-  ${variacao == null ? '' : `<div style="font-size:13px;margin-bottom:12px">Nos últimos ${dias} dias você rendeu <strong style="color:${subiu ? 'var(--ok)' : 'var(--err)'}">${subiu ? '+' : ''}${variacao}%</strong> por dia farmado, comparado com os ${dias} dias anteriores.</div>`}
+    <div style="display:flex;gap:6px">${botaoPeriodo(7, 'Semana')}${botaoPeriodo(30, 'Mês')}</div></div>
+  <div style="display:flex;gap:6px;margin:-4px 0 10px">${botaoModo(false, 'Bruto')}${botaoModo(true, 'Líquido')}</div>
+  ${infoToggle('overview-trend', `Compara blocos de ${dias} dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num período você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. <strong>Bruto</strong> é só o valor dos itens que caíram; <strong>líquido</strong> desconta o que você gastou em rush (crédito, tickets, gemas) nos mesmos dias — pode ficar negativo se o rush custou mais do que rendeu naquele período. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso. Ignora o filtro de data acima de propósito: a janela deste card é a dele.`)}
+  ${variacao == null ? '' : `<div style="font-size:13px;margin-bottom:12px">Nos últimos ${dias} dias você rendeu${liquido ? ' líquido' : ''} <strong style="color:${subiu ? 'var(--ok)' : 'var(--err)'}">${subiu ? '+' : ''}${variacao}%</strong> por dia farmado, comparado com os ${dias} dias anteriores.</div>`}
   <div class="g3">
     ${blocos.map((b, i) => `<div class="kpi">
       <div class="kpi-lbl">${rotulo[i]}</div>
-      <div class="kpi-val" style="font-size:18px;color:${getAlzTierColor(b.alzPorDiaFarmado)}" title="${formatNumber(Math.round(b.alzPorDiaFarmado))} Alz por dia farmado">${b.diasComFarme ? formatAlzGamer(b.alzPorDiaFarmado) : '—'}</div>
-      <div class="kpi-sub">${b.diasComFarme ? `por dia farmado · ${b.diasComFarme} dia(s)` : 'sem farme registrado'}</div>
+      <div class="kpi-val" style="font-size:18px;color:${getAlzTierColor(metricaBloco(b))}" title="${formatNumber(Math.round(metricaBloco(b)))} Alz${liquido ? ' líquido' : ''} por dia farmado">${b.diasComFarme ? formatAlzGamer(metricaBloco(b)) : '—'}</div>
+      <div class="kpi-sub">${b.diasComFarme ? `${liquido ? 'líquido ' : ''}por dia farmado · ${b.diasComFarme} dia(s)` : 'sem farme registrado'}</div>
     </div>`).join('')}
   </div>
   ${projecaoTexto}
@@ -436,29 +464,23 @@ export function renderOverviewPage() {
   const items = history.items;
   const totalFarmed = history.totalAlz;
 
-  const totalRushSpent = (() => {
-    let total = 0;
-    Object.entries(AppState.rushHistory).forEach(([date, rush]) => {
-      if (AppState.dateFrom && date < AppState.dateFrom) return;
-      if (AppState.dateTo && date > AppState.dateTo) return;
-      total += rush.total;
-    });
-    return total;
-  })();
+  const totalRushSpent = getRushSpentInRange(AppState.dateFrom, AppState.dateTo);
 
   const net = totalFarmed - totalRushSpent;
   // Drops/hora precisa de horário exato de cada drop, que só o log ao vivo tem (o histórico
   // agregado guarda o dia, não a hora) — por isso essa métrica continua só sobre o log.
   //
-  // Usa MIN/MAX em vez de primeiro/último item: getAllDrops concatena os drops manuais no fim da
-  // lista com data qualquer, então a ordem do array não é cronológica. Assumir que era dava
-  // números absurdos em silêncio — medido: 1 drop manual de outro dia derrubava 11,1 pra 0,09
-  // drops/h, e um drop manual antigo zerava a métrica (tempo negativo).
-  const comHorario = drops.filter(d => d.timestamp).map(d => d.timestamp.getTime());
+  // Exclui drop MANUAL, não só filtra por ter timestamp: addManualDrop grava um timestamp real
+  // (00:00:00 do dia escolhido, ver manual-drops.js), então "tem timestamp" sozinho não bastava
+  // pra afastar o problema que o comentário antigo aqui já descrevia — um manual de outro dia (ou
+  // de hoje à meia-noite) ainda entrava no MIN/MAX e esticava/encolhia a janela em horas, mesmo
+  // com a ordenação por MIN/MAX já corrigida. getTodayFarmRate() já evita isso do mesmo jeito.
+  const logDropsComHorario = drops.filter(d => d.timestamp && !d.manual);
+  const comHorario = logDropsComHorario.map(d => d.timestamp.getTime());
   const elapsedHours = comHorario.length >= 2
     ? (Math.max(...comHorario) - Math.min(...comHorario)) / 3600000
     : 0;
-  const dropsPerHour = elapsedHours > 0.1 ? (drops.length / elapsedHours).toFixed(1) : '—';
+  const dropsPerHour = elapsedHours > 0.1 ? (logDropsComHorario.length / elapsedHours).toFixed(1) : '—';
 
   // Dias do período pedido sem nenhuma fonte de dado (nem log, nem histórico) — normalmente
   // porque são anteriores ao dia em que o FarmHub começou a guardar. Avisar é o que impede o
