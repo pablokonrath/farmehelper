@@ -1,9 +1,9 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
-import { computeResetWorth, computeDgComparison } from '../features/dg-session.js';
+import { computeResetWorth, computeDgComparison, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
-import { infoToggle } from '../features/ui-toggles.js';
+import { infoToggle, collapsibleCard } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
@@ -63,8 +63,13 @@ export function renderRushPage() {
   // própria, então cada clique nesta página (adicionar DG, mudar quantidade de crédito) disparava
   // 3 varreduras redundantes do mesmo AppState.dgSessions.
   const dgStats = computeDgComparison();
+  // Já vem ordenada por Lucro/hora (mesmo critério de "Qual rota rende mais" em Sessões de
+  // farme) — a primeira com profitPerHour conhecido é a melhor rota salva, usada no resumo do
+  // card colapsado e pra destacar a linha na tabela.
+  const routeComparisonSorted = computeRouteComparison(dgStats);
   const routeTimeById = {};
-  computeRouteComparison(dgStats).forEach(r => { routeTimeById[r.id] = r; });
+  routeComparisonSorted.forEach(r => { routeTimeById[r.id] = r; });
+  const melhorRota = routeComparisonSorted.find(r => r.profitPerHour != null);
   const creditNeeds = computeCartCreditNeeds(AppState.rushCart, dgStats);
   // Cruza cada DG resetada no carrinho com "vale a pena resetar?" (mesmo cálculo de Sessões de
   // farme) — se o histórico real diz que não compensa, avisa aqui em vez de só numa página separada.
@@ -107,16 +112,31 @@ export function renderRushPage() {
 
   // Rotas ficam logo após os parâmetros do dia — é o caminho rápido do dia a dia (aplicar e
   // pronto), então não faz sentido estar depois de Créditos/Gerenciar DGs/Adicionar/Métricas.
-  const routesCard = `
-<div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Minhas rotas</div></div>
-  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. Compare o lucro de cada rota em Sessões de farme.')}
+  // Colapsável (igual Créditos/Gerenciar DGs) porque quem tem muitas rotas salvas via a lista
+  // inteira empurrar o resto da página pra baixo mesmo nos dias em que só quer aplicar uma —
+  // o resumo no cabeçalho (contagem + melhor rota) continua visível fechado, então fechar não
+  // esconde a informação que decide "abro isso hoje ou não".
+  const routesResumo = !AppState.rushRoutes.length ? '' : `
+    <span style="font-size:var(--fs-sm);color:var(--muted)">${AppState.rushRoutes.length} rota${AppState.rushRoutes.length > 1 ? 's' : ''}</span>
+    ${melhorRota ? `<span style="font-size:var(--fs-sm)"><i class="ti ti-trophy" style="color:var(--gold)"></i> <strong style="color:var(--txt)">${esc(melhorRota.name)}</strong> <span style="color:var(--gold)">${formatAlzGamer(melhorRota.profitPerHour)}/h</span></span>` : ''}`;
+  const routesCard = collapsibleCard({
+    id: 'rush-routes-card',
+    icon: 'ti-route',
+    title: 'Minhas rotas',
+    resumo: routesResumo,
+    defaultOpen: true,
+    body: `
+  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. <strong>Lucro esperado</strong> e <strong>Lucro/hora</strong> são a mesma conta de "Qual rota rende mais" em Sessões de farme (Alz/run histórico de cada DG × repetições, menos o custo de rodar nos preços de hoje) — trazida pra cá pra decidir sem precisar trocar de página. <i class="ti ti-trophy" style="color:var(--gold)"></i> marca a rota de melhor Lucro/hora entre as suas.')}
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
-  <table><thead><tr><th>Rota</th><th style="width:320px">DGs</th><th>Tempo estimado</th><th style="width:150px">Ações</th></tr></thead><tbody>
+  <table><thead><tr><th>Rota</th><th style="width:280px">DGs</th><th>Tempo estimado</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
     const stats = routeTimeById[route.id];
+    const isBest = melhorRota && route.id === melhorRota.id;
+    const missingWarning = stats?.missingDataCount
+      ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${stats.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no lucro esperado"></i>`
+      : '';
     return `<tr>
-    <td style="font-weight:500">${esc(route.name)}</td>
+    <td style="font-weight:500">${isBest ? '<i class="ti ti-trophy" style="color:var(--gold)" title="Melhor Lucro/hora entre suas rotas"></i> ' : ''}${esc(route.name)}${missingWarning}</td>
     <td><div style="display:flex;flex-wrap:wrap;gap:4px">
       ${route.items.map(it => {
         const dg = AppState.dungeonList.find(d => d.id === it.dungeonId);
@@ -128,6 +148,8 @@ export function renderRushPage() {
         ? `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown))}">${formatDuration(stats.estimatedTimeMs)}</span>`
         : `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown) + (stats.timeBreakdown.length ? '\n\n' : '') + 'Falta tempo/run farmado de: ' + stats.missingTimeDataDgNames.join(', ') + ' — soma só das DGs com dado')}">≈${formatDuration(stats.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)" title="Nenhuma DG desta rota tem tempo/run farmado ainda">—</span>'}</td>
+    <td>${stats && stats.expectedAlz > 0 ? `<span style="color:${stats.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600" title="${formatNumber(stats.profit)} Alz">${stats.profit >= 0 ? '+' : ''}${formatAlzGamer(stats.profit)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+    <td>${stats?.profitPerHour != null ? `<strong style="color:var(--gold)">${formatAlzGamer(stats.profitPerHour)}/h</strong>` : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-d btn-xs" aria-label="Aplicar rota ${esc(route.name)}" onclick="applyRushRoute('${route.id}')" title="Soma as DGs desta rota ao carrinho de hoje"><i class="ti ti-player-play"></i></button>
       <button class="btn btn-d btn-xs" aria-label="Editar rota ${esc(route.name)}" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
@@ -136,8 +158,8 @@ export function renderRushPage() {
     </div></td>
   </tr>`;
   }).join('')}
-  </tbody></table>`}
-</div>`;
+  </tbody></table>`}`,
+  });
 
   const addDgCard = `
 <div class="card">
@@ -154,7 +176,7 @@ export function renderRushPage() {
         return `${d.name}${parts.length ? ' — ' + parts.join(' + ') : ''}`;
       })}
       </select></div>
-    <div><label class="lbl">Repetições</label><input class="inp" id="dgRp" type="number" min="1" value="1" oninput="updateCartPreview()"></div>
+    <div><label class="lbl">Repetições</label><input class="inp" id="dgRp" type="number" min="1" value="${DAILY_RUN_LIMIT}" oninput="updateCartPreview()"></div>
   </div>
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
     <input type="checkbox" id="dgReset" style="width:16px;height:16px;accent-color:var(--acc)" onchange="toggleResetDetailFields()">

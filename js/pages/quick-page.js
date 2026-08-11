@@ -1,6 +1,6 @@
 import { AppState, CREDIT_CATEGORIES } from '../state/app-state.js';
 import { formatAlzGamer, formatNumber, formatDuration } from '../utils/formatting.js';
-import { getActiveSessionSummary, suggestForgottenSessionWindow } from '../features/dg-session.js';
+import { getActiveSessionSummary, suggestForgottenSessionWindow, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { checkSalePriceDrop } from '../features/sales.js';
 import { getCostPerGem, calculateRushCartCost, getCreditUnitCost, getCreditItemPrice } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
@@ -121,7 +121,7 @@ function renderRushDGs(qm) {
     <div style="display:flex;flex-direction:column;gap:8px">
       <select class="inp" id="qm-rush-dg"><option value="">Selecione a DG...</option>${opts}</select>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:var(--fs-2xs)">Repetições</label><input class="inp" id="qm-rush-reps" type="number" min="1" value="1"></div>
+        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:var(--fs-2xs)">Repetições</label><input class="inp" id="qm-rush-reps" type="number" min="1" value="${DAILY_RUN_LIMIT}"></div>
         <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:var(--fs-2xs)">Gemas de reset (0 = não)</label><input class="inp" id="qm-rush-gemqty" type="number" min="0" value="0"></div>
         <div style="flex:1;min-width:110px"><label class="lbl" style="font-size:var(--fs-2xs)">Preço da gema (Alz)</label><input class="inp" id="qm-rush-gemprice" type="text" inputmode="numeric" value="${gemHint}" oninput="maskAlzInputLive(this)"></div>
       </div>
