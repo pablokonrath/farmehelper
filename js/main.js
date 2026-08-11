@@ -36,6 +36,7 @@ import {
   toggleDungeonManager,
   startEditingDungeon,
   cancelEditingDungeon,
+  toggleRushRouteItems,
 } from './pages/rush-page.js';
 
 import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice } from './features/pricing.js';
@@ -147,6 +148,7 @@ Object.assign(window, {
   toggleDungeonManager,
   startEditingDungeon,
   cancelEditingDungeon,
+  toggleRushRouteItems,
   saveDungeonEdit,
   deleteDungeon,
   addNewDungeon,

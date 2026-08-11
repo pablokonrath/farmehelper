@@ -3,7 +3,7 @@ import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, compute
 import { computeResetWorth, computeDgComparison, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
-import { infoToggle, collapsibleCard } from '../features/ui-toggles.js';
+import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
 import { saveRushParams } from '../state/persistence.js';
@@ -51,6 +51,15 @@ export function startEditingDungeon(id) {
 
 export function cancelEditingDungeon() {
   AppState.editingDungeonId = null;
+  renderPage();
+}
+
+// Mostra/esconde a lista de DGs de UMA rota — cada rota abre/fecha por conta própria (mesmo
+// padrão de "Ver itens" no histórico de sessões), pra não precisar colapsar a seção inteira só
+// pra não ver a lista de badges de rota nenhuma.
+export function toggleRushRouteItems(routeId) {
+  if (AppState.expandedRushRoutes[routeId]) delete AppState.expandedRushRoutes[routeId];
+  else AppState.expandedRushRoutes[routeId] = true;
   renderPage();
 }
 
@@ -112,37 +121,34 @@ export function renderRushPage() {
 
   // Rotas ficam logo após os parâmetros do dia — é o caminho rápido do dia a dia (aplicar e
   // pronto), então não faz sentido estar depois de Créditos/Gerenciar DGs/Adicionar/Métricas.
-  // Colapsável (igual Créditos/Gerenciar DGs) porque quem tem muitas rotas salvas via a lista
-  // inteira empurrar o resto da página pra baixo mesmo nos dias em que só quer aplicar uma —
-  // o resumo no cabeçalho (contagem + melhor rota) continua visível fechado, então fechar não
-  // esconde a informação que decide "abro isso hoje ou não".
-  const routesResumo = !AppState.rushRoutes.length ? '' : `
-    <span style="font-size:var(--fs-sm);color:var(--muted)">${AppState.rushRoutes.length} rota${AppState.rushRoutes.length > 1 ? 's' : ''}</span>
-    ${melhorRota ? `<span style="font-size:var(--fs-sm)"><i class="ti ti-trophy" style="color:var(--gold)"></i> <strong style="color:var(--txt)">${esc(melhorRota.name)}</strong> <span style="color:var(--gold)">${formatAlzGamer(melhorRota.profitPerHour)}/h</span></span>` : ''}`;
-  const routesCard = collapsibleCard({
-    id: 'rush-routes-card',
-    icon: 'ti-route',
-    title: 'Minhas rotas',
-    resumo: routesResumo,
-    defaultOpen: true,
-    body: `
-  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. <strong>Lucro esperado</strong> e <strong>Lucro/hora</strong> são a mesma conta de "Qual rota rende mais" em Sessões de farme (Alz/run histórico de cada DG × repetições, menos o custo de rodar nos preços de hoje) — trazida pra cá pra decidir sem precisar trocar de página. <i class="ti ti-trophy" style="color:var(--gold)"></i> marca a rota de melhor Lucro/hora entre as suas.')}
+  // A lista de rotas em si fica sempre visível (é o que você veio ver); a lista de DGs de CADA
+  // rota é que fecha por padrão e abre uma a uma — clicar numa rota não afeta as outras.
+  const routesCard = `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-route"></i>Minhas rotas</div>
+  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. <strong>Lucro esperado</strong> e <strong>Lucro/hora</strong> são a mesma conta de "Qual rota rende mais" em Sessões de farme (Alz/run histórico de cada DG × repetições, menos o custo de rodar nos preços de hoje) — trazida pra cá pra decidir sem precisar trocar de página. <i class="ti ti-trophy" style="color:var(--gold)"></i> marca a rota de melhor Lucro/hora entre as suas. Clique no número de DGs pra ver quais são.')}
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
-  <table><thead><tr><th>Rota</th><th style="width:280px">DGs</th><th>Tempo estimado</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
+  <table><thead><tr><th>Rota</th><th style="width:130px">DGs</th><th>Tempo estimado</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
     const stats = routeTimeById[route.id];
     const isBest = melhorRota && route.id === melhorRota.id;
+    const expanded = !!AppState.expandedRushRoutes[route.id];
     const missingWarning = stats?.missingDataCount
       ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${stats.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no lucro esperado"></i>`
       : '';
     return `<tr>
     <td style="font-weight:500">${isBest ? '<i class="ti ti-trophy" style="color:var(--gold)" title="Melhor Lucro/hora entre suas rotas"></i> ' : ''}${esc(route.name)}${missingWarning}</td>
-    <td><div style="display:flex;flex-wrap:wrap;gap:4px">
-      ${route.items.map(it => {
-        const dg = AppState.dungeonList.find(d => d.id === it.dungeonId);
-        return `<span class="badge badge-muted" title="${dg ? esc(dg.name) : 'DG removida'}">${dg ? esc(dg.name) : '(DG removida)'} ×${it.repetitions}</span>`;
-      }).join('')}
-    </div></td>
+    <td>
+      <button onclick="toggleRushRouteItems('${route.id}')" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;padding:0">
+        ${route.items.length} DG${route.items.length > 1 ? 's' : ''} <i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i>
+      </button>
+      ${expanded ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">
+        ${route.items.map(it => {
+          const dg = AppState.dungeonList.find(d => d.id === it.dungeonId);
+          return `<span class="badge badge-muted" title="${dg ? esc(dg.name) : 'DG removida'}">${dg ? esc(dg.name) : '(DG removida)'} ×${it.repetitions}</span>`;
+        }).join('')}
+      </div>` : ''}
+    </td>
     <td>${stats?.estimatedTimeMs
       ? (stats.hasTimeData
         ? `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown))}">${formatDuration(stats.estimatedTimeMs)}</span>`
@@ -158,8 +164,8 @@ export function renderRushPage() {
     </div></td>
   </tr>`;
   }).join('')}
-  </tbody></table>`}`,
-  });
+  </tbody></table>`}
+</div>`;
 
   const addDgCard = `
 <div class="card">

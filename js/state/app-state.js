@@ -256,6 +256,9 @@ export const AppState = {
   sessionsHistoryDate: todayISODate(),
   // Quais sessões do histórico estão com a lista de itens expandida (só UI, não persiste).
   expandedDgSessions: {},
+  // Quais rotas (Planejamento de Rush) estão com a lista de DGs expandida — cada rota fecha/abre
+  // por conta própria, sem afetar as outras. Só UI, não persiste.
+  expandedRushRoutes: {},
   // Quais textos explicativos de card ("Como funciona") estão abertos — em qualquer página, não
   // só Sessões. Só UI, não persiste (volta tudo fechado ao recarregar). Ver ui-toggles.js.
   openInfoBoxes: {},

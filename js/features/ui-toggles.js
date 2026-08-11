@@ -30,9 +30,15 @@ export function infoToggle(id, html) {
 // Card inteiro colapsável. Diferente do infoToggle (que esconde só a explicação), esse guarda o
 // conteúdo todo — usado em cards de consulta/motivação que não precisam estar abertos o tempo
 // todo e que, somados, empurravam o resto da página pra baixo no celular.
-export function toggleCard(id) {
-  if (AppState.openCards[id]) delete AppState.openCards[id];
-  else AppState.openCards[id] = true;
+//
+// Recebe o estado ATUAL (currentlyOpen, calculado por collapsibleCard levando defaultOpen em
+// conta) e grava o INVERSO como valor explícito — nunca apaga a chave. Antes alternava entre
+// "true" e "apagado", e quando defaultOpen era true, "apagado" também resolvia pra aberto (ver
+// collapsibleCard abaixo): o primeiro clique reescrevia true por cima de um aberto que já
+// resolvia pra true (sem mudança visível), e o segundo clique apagava a chave, caindo nesse
+// mesmo default true de novo — o card nunca fechava de verdade.
+export function toggleCard(id, currentlyOpen) {
+  AppState.openCards[id] = !currentlyOpen;
   renderPage();
 }
 
@@ -42,7 +48,7 @@ export function collapsibleCard({ id, icon, iconColor, title, resumo = '', body,
   const open = AppState.openCards[id] ?? defaultOpen;
   return `
 <div class="card" style="padding:0;overflow:hidden">
-  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="toggleCard('${id}')">
+  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;gap:10px" onclick="toggleCard('${id}', ${open})">
     <i class="ti ${icon}"${iconColor ? ` style="color:${iconColor}"` : ''}></i>
     <span style="font-family:var(--font-display);font-size:var(--fs-md);font-weight:700;letter-spacing:.6px;text-transform:uppercase">${title}</span>
     ${resumo ? `<span style="margin-left:auto;display:flex;align-items:center;gap:10px">${resumo}</span>` : '<span style="margin-left:auto"></span>'}
