@@ -34,7 +34,7 @@ export function renderSalesPage() {
     ${goalsProgress.map(g => `<div style="padding:12px;background:var(--surf2);border:1px solid ${g.complete ? 'var(--ok-border)' : 'var(--border)'};border-radius:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="font-weight:700;display:flex;align-items:center;gap:8px">${esc(g.name)} <span class="badge badge-acc">${g.percentage}% das vendas</span>${g.complete ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Cheio</span>' : ''}</div>
-        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSalesGoal('${g.id}')" title="Excluir cofre"><i class="ti ti-trash"></i></button>
+        <button aria-label="Excluir cofre ${esc(g.name)}" title="Excluir cofre" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSalesGoal('${g.id}')"><i class="ti ti-trash"></i></button>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden"><div style="width:${Math.round(g.progress * 100)}%;height:100%;background:${g.complete ? 'var(--ok)' : 'var(--acc)'}"></div></div>
@@ -85,7 +85,7 @@ export function renderSalesPage() {
           <td style="font-weight:600">${renderAlzValue(real)}</td>
           <td style="color:var(--muted)">${est ? renderAlzValue(est) : '—'}</td>
           <td style="color:${d >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600">${est ? (d >= 0 ? '+' : '') + formatAlzGamer(d) : '—'}</td>
-          <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSale('${s.id}')"><i class="ti ti-trash"></i></button></td>
+          <td><button aria-label="Remover venda de ${esc(s.itemName)} em ${formatDateBR(s.date)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSale('${s.id}')"><i class="ti ti-trash"></i></button></td>
         </tr>`;
       }).join('')}
       </tbody></table>`}

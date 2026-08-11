@@ -24,12 +24,12 @@ function renderItemDungeonSourcesCard() {
     <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span style="flex:1;font-weight:600;font-size:13px">${esc(itemName)}</span>
-        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeItemDungeonSourceItem('${escAttr(itemName)}')" title="Remover item"><i class="ti ti-trash"></i></button>
+        <button aria-label="Remover ${esc(itemName)}" title="Remover item" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeItemDungeonSourceItem('${escAttr(itemName)}')"><i class="ti ti-trash"></i></button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
         ${dungeonIds.map(id => {
           const dg = AppState.dungeonList.find(d => d.id === id);
-          return `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(dg ? dg.name : id)}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="toggleItemDungeonSourceDg('${escAttr(itemName)}', '${escAttr(id)}')"><i class="ti ti-x"></i></button></span>`;
+          return `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(dg ? dg.name : id)}<button aria-label="Desvincular ${esc(dg ? dg.name : id)} de ${esc(itemName)}" style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="toggleItemDungeonSourceDg('${escAttr(itemName)}', '${escAttr(id)}')"><i class="ti ti-x"></i></button></span>`;
         }).join('')}
         <select class="inp inp-sm" style="width:170px" onchange="if(this.value){toggleItemDungeonSourceDg('${escAttr(itemName)}', this.value);this.value=''}">
           <option value="">+ Adicionar DG...</option>

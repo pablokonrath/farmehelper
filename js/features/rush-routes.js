@@ -165,9 +165,13 @@ export function deleteRushRoute(routeId) {
 // Rota sem tempo estimado (hasTimeData falso ou nenhuma DG com msPerRun) não entra nessa
 // comparação — fica no fim, ordenada só pelo lucro bruto entre si, já que não dá pra saber a
 // eficiência dela ainda.
-export function computeRouteComparison() {
+//
+// dgStats (opcional): mesma ideia do parâmetro em computeResetWorth — aceita um
+// computeDgComparison() já pronto pra não recalcular a mesma varredura do histórico inteiro
+// quando quem chama (Sessões de farme, suggestRouteForTime) já tem um em mãos.
+export function computeRouteComparison(dgStats = computeDgComparison()) {
   const dgStatsById = {};
-  computeDgComparison().forEach(d => { dgStatsById[d.dungeonId] = d; });
+  dgStats.forEach(d => { dgStatsById[d.dungeonId] = d; });
 
   return AppState.rushRoutes.map(route => {
     let expectedAlz = 0;
@@ -272,14 +276,16 @@ function greedyFillTimeWithDgs(remainingMs, dgStats, resetWorth, usedRunsByDgId)
 // gulosamente pela melhor Alz/hora) em vez de deixar o resto do orçamento sem sugestão nenhuma —
 // pode inclusive ser mais runs da MESMA DG da rota, se ainda houver espaço no limite diário dela.
 // Se nenhuma rota salva couber (ou não existir nenhuma ainda), monta um encaixe novo do zero.
-export function suggestRouteForTime(hoursAvailable) {
+//
+// dgStats (opcional): mesma ideia de computeResetWorth/computeRouteComparison — evita recalcular
+// computeDgComparison() de novo quando Sessões de farme já calculou um pra esta renderização.
+export function suggestRouteForTime(hoursAvailable, dgStats = computeDgComparison()) {
   const budgetMs = hoursAvailable * 3600000;
   if (!(budgetMs > 0)) return null;
 
-  const dgStats = computeDgComparison();
-  const resetWorth = computeResetWorth();
+  const resetWorth = computeResetWorth(dgStats);
 
-  const savedFitting = computeRouteComparison().filter(r => r.hasTimeData && r.estimatedTimeMs <= budgetMs);
+  const savedFitting = computeRouteComparison(dgStats).filter(r => r.hasTimeData && r.estimatedTimeMs <= budgetMs);
   if (savedFitting.length) {
     const route = savedFitting[0];
     const savedRouteDef = AppState.rushRoutes.find(r => r.id === route.id);

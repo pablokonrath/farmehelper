@@ -60,19 +60,19 @@ ${Object.entries(AppState.itemPrices).sort(([a], [b]) => a.localeCompare(b)).map
 </tr>` : `<tr>
   <td>${esc(name)}</td><td>${renderAlzValue(price)}</td>
   ${priceAgeCell(name)}
-  <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" onclick="startEditingItemPrice('${escAttr(name)}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${escAttr(name)}')"><i class="ti ti-trash"></i></button></div></td>
+  <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" aria-label="Editar preço de ${esc(name)}" title="Editar" onclick="startEditingItemPrice('${escAttr(name)}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" aria-label="Remover preço de ${esc(name)}" title="Remover" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${escAttr(name)}')"><i class="ti ti-trash"></i></button></div></td>
 </tr>`).join('')}
 </tbody></table>`}
 </div>
 <div class="card"><div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-filter"></i>Itens rastreados</div>
-<label class="tgl"><input type="checkbox" ${AppState.filterByTrackedKeywords ? 'checked' : ''} onchange="toggleFilterByKeywords(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label></div>
+<label class="tgl"><input type="checkbox" aria-label="Filtrar apenas itens rastreados" ${AppState.filterByTrackedKeywords ? 'checked' : ''} onchange="toggleFilterByKeywords(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label></div>
 <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Filtrar apenas itens rastreados<br><span style="font-size:11px">Quando ativo, só aparecem drops cujo nome contenha uma das palavras abaixo. Ative o alerta para receber notificação imediata (som + pop-up) quando um drop contendo a palavra aparecer. Configure preferências em <a href="#" onclick="navigateTo('alertas');return false" style="color:var(--acc)">Alertas</a> no menu lateral.</span></div>
 ${!AppState.trackedKeywords.length ? '<div class="empty" style="padding:14px 0">Nenhuma palavra rastreada ainda.</div>' : `
 <table style="margin-bottom:12px"><thead><tr><th>Palavra rastreada</th><th style="width:110px"><i class="ti ti-bell"></i> Alerta</th><th style="width:40px">Ações</th></tr></thead><tbody>
 ${AppState.trackedKeywords.map(kw => `<tr>
   <td style="font-weight:500">${esc(kw.word)}</td>
-  <td><label class="tgl"><input type="checkbox" ${kw.alertEnabled ? 'checked' : ''} onchange="toggleKeywordAlert('${escAttr(kw.word)}')"><div class="tgl-track"></div><div class="tgl-thumb"></div></label> <span style="font-size:11px;color:var(--muted)">${kw.alertEnabled ? 'ON' : 'OFF'}</span></td>
-  <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeTrackedKeyword('${escAttr(kw.word)}')"><i class="ti ti-x"></i></button></td>
+  <td><label class="tgl"><input type="checkbox" aria-label="Alerta pra ${esc(kw.word)}" ${kw.alertEnabled ? 'checked' : ''} onchange="toggleKeywordAlert('${escAttr(kw.word)}')"><div class="tgl-track"></div><div class="tgl-thumb"></div></label> <span style="font-size:11px;color:var(--muted)">${kw.alertEnabled ? 'ON' : 'OFF'}</span></td>
+  <td><button aria-label="Remover palavra ${esc(kw.word)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeTrackedKeyword('${escAttr(kw.word)}')"><i class="ti ti-x"></i></button></td>
 </tr>`).join('')}
 </tbody></table>`}
 <div class="row">

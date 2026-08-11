@@ -19,7 +19,7 @@ function renderCategoryManagerCard() {
   ${AppState.isCategoryManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
     ${!AppState.itemCategories.length ? '<div class="empty" style="padding:14px 0">Nenhuma categoria criada ainda.</div>' : `
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
-    ${AppState.itemCategories.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(name)}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeItemCategory('${escAttr(name)}')"><i class="ti ti-x"></i></button></span>`).join('')}
+    ${AppState.itemCategories.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(name)}<button aria-label="Remover categoria ${esc(name)}" style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeItemCategory('${escAttr(name)}')"><i class="ti ti-x"></i></button></span>`).join('')}
     </div>`}
     <div class="row" style="margin-bottom:16px">
       <div style="flex:1"><label class="lbl">Nova categoria</label><input class="inp" id="newItemCategory" placeholder="ex: Sets"></div>

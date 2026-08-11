@@ -7,7 +7,7 @@ import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from '
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
-import { setSessionsHistoryDate, setDgComparisonMode } from './pages/sessions-page.js';
+import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod } from './pages/sessions-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
@@ -210,6 +210,7 @@ Object.assign(window, {
   recoverForgottenSession,
   setSessionsHistoryDate,
   setDgComparisonMode,
+  setDgComparisonPeriod,
   addSale,
   deleteSale,
   setPriceHistoryItem,

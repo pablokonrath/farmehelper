@@ -244,7 +244,7 @@ function buildEventCard() {
   // O liga/desliga fica DENTRO do corpo, não no cabeçalho: o cabeçalho inteiro é a área de
   // clique pra colapsar, e um toggle ali dentro capturaria/competiria com esse clique.
   const chave = `<label class="tgl-row" style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--muted);cursor:pointer;margin-bottom:12px">
-      <label class="tgl"><input type="checkbox" ${aberto ? 'checked' : ''} onchange="setEventEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+      <label class="tgl"><input type="checkbox" aria-label="Evento ativo" ${aberto ? 'checked' : ''} onchange="setEventEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
       Evento ativo
     </label>`;
 
@@ -423,7 +423,7 @@ function buildRareDropsCard() {
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
       <label class="lbl" style="margin-bottom:6px">Você marcou como "não é raro"</label>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
-        ${descartados.map(n => `<span class="badge badge-muted" style="display:flex;align-items:center;gap:6px">${esc(n)}<button title="Voltar a tratar como raro" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:0;display:flex" onclick="restoreRarity('${escAttr(n)}')"><i class="ti ti-arrow-back-up"></i></button></span>`).join('')}
+        ${descartados.map(n => `<span class="badge badge-muted" style="display:flex;align-items:center;gap:6px">${esc(n)}<button aria-label="Voltar a tratar ${esc(n)} como raro" title="Voltar a tratar como raro" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:0;display:flex" onclick="restoreRarity('${escAttr(n)}')"><i class="ti ti-arrow-back-up"></i></button></span>`).join('')}
       </div>
     </div>`;
 
@@ -465,7 +465,7 @@ function buildRareDropsCard() {
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           ${i.value ? `<strong style="color:${getAlzTierColor(i.value)}" title="${formatNumber(i.value)} Alz">${formatAlzGamer(i.value)}</strong>` : ''}
           <span style="color:var(--muted);font-size:var(--fs-xs)">${quandoTexto(i.at)}</span>
-          <button title="Não considero isso raro — tira daqui e do destaque roxo" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;display:flex" onclick="dismissRarity('${escAttr(i.name)}')"><i class="ti ti-x"></i></button>
+          <button aria-label="Não considero ${esc(i.name)} raro" title="Não considero isso raro — tira daqui e do destaque roxo" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;display:flex" onclick="dismissRarity('${escAttr(i.name)}')"><i class="ti ti-x"></i></button>
         </span>
       </div>`).join('')}
     </div>`}
@@ -596,7 +596,7 @@ export function renderOverviewPage() {
       <td>${esc(b.name)}</td>
       <td>${b.qty}×</td>
       <td>${getItemPrice(b.name) ? renderAlzValue(getItemPrice(b.name) * b.qty) : '<span style="color:var(--muted)">—</span>'}</td>
-      <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteManualDropBatch('${b.batchId}')"><i class="ti ti-trash"></i></button></td>
+      <td><button aria-label="Remover drop manual de ${esc(b.name)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteManualDropBatch('${b.batchId}')"><i class="ti ti-trash"></i></button></td>
     </tr>`).join('')}
     </tbody></table>` : '<div class="empty">Nenhum item manual adicionado ainda.</div>'}
   </div>` : ''}

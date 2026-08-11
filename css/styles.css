@@ -3,7 +3,12 @@
      selo de cera) e latão/ouro envelhecido como secundária — troca a antiga base ciano-tech. */
   --bg:#14100b;--surf:#1f1811;--surf2:#2a2016;
   --border:#4a3823;--border2:#6b5230;
-  --txt:#f0e4c8;--txt2:#c2ac82;--muted:#9c8760;
+  --txt:#f0e4c8;--txt2:#c2ac82;
+  /* --muted era #9c8760 — passava no contraste (WCAG AA, 4.5:1) contra --bg, mas ficava bem no
+     limite (~4.6:1) contra --surf2, o fundo de card mais comum onde ele aparece (rótulo, texto
+     secundário — é a cor mais usada do app inteiro depois de --txt). Clareado pra ~5.7:1 contra
+     --surf2 (~6.7:1 contra --bg), mesma família de tom, só com folga de verdade. */
+  --muted:#ab9873;
   --acc:#b3312c;--acc-bg:rgba(179,49,44,.14);--acc-border:rgba(179,49,44,.4);
   --gold:#d9a441;--gold-bg:rgba(217,164,65,.12);--gold-border:rgba(217,164,65,.38);
   --ok:#6b9c4a;--ok-bg:rgba(107,156,74,.14);--ok-border:rgba(107,156,74,.35);

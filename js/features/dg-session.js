@@ -161,6 +161,13 @@ const MIN_ACTIVE_MS_FOR_RATE = 15 * 60 * 1000;
 // menos essa quantidade de sessões (dias diferentes) na faixa antes dela entrar no ranking.
 const MIN_SESSIONS_FOR_HOUR_RANKING = 2;
 
+// "DG esfriando" (ver computeDgComparison): quantas sessões recentes entram na média de
+// comparação, quantas são o mínimo pra confiar nela (1 sessão ruim isolada não prova queda de
+// mercado) e quanto o recente precisa cair abaixo da média geral pra virar um aviso.
+export const RECENT_SESSIONS_FOR_TREND = 5;
+const MIN_SESSIONS_FOR_TREND = 2;
+const COOLING_DROP_THRESHOLD = 0.2; // 20%
+
 // Tempo "ativo" da sessão: soma os intervalos entre drops consecutivos, cortando cada gap no teto
 // de inatividade. Continuar farmando (drops seguidos) conta tudo; parar por horas conta só o teto.
 function activeDurationMs(drops) {
@@ -335,7 +342,11 @@ export function entryCostPerRun(dg, gemValue, ticketValue) {
 // critério bruto continuar estável. Os campos líquidos (netAlzPerRun etc.) vêm JUNTO, prontos pra
 // quem quiser comparar por lucro de verdade (ver o toggle Bruto/Líquido em Sessões de farme) sem
 // precisar de uma segunda função nem mudar quem já usa o bruto.
-export function computeDgComparison() {
+//
+// sinceDate (opcional, ISO): limita a agregação a sessões daquela data em diante — é o toggle
+// "Últimos 30 dias" de Sessões de farme. Sem isso, agrega o histórico inteiro (comportamento
+// padrão, o que todo outro consumidor desta função espera).
+export function computeDgComparison({ sinceDate } = {}) {
   // Valor da gema/ticket vem de Parâmetros do dia (rush-page.js) — a MESMA fonte que o carrinho
   // de rush usa de verdade pra cobrar de você (calculateRushCartCost em rush-cart.js). Não tem
   // um segundo "valor da gema" digitado só pra essa conta; antes tinha (resetConfig.gemValueAlz/
@@ -345,8 +356,9 @@ export function computeDgComparison() {
 
   const byDg = {};
   AppState.dgSessions.forEach(s => {
+    if (sinceDate && s.date < sinceDate) return;
     const agg = byDg[s.dungeonId] || (byDg[s.dungeonId] = {
-      dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, activeMs: 0, runs: 0, dropCount: 0, totalAlz: 0,
+      dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, activeMs: 0, runs: 0, dropCount: 0, totalAlz: 0, sessionsList: [],
     });
     agg.sessions++;
     // Tempo ativo (fiel), com fallback pra duração total em sessões antigas sem o campo.
@@ -354,6 +366,7 @@ export function computeDgComparison() {
     agg.runs += s.runs || 0;
     agg.dropCount += s.dropCount;
     agg.totalAlz += sessionTotalAlz(s);
+    agg.sessionsList.push(s);
   });
   return Object.values(byDg)
     .map(a => {
@@ -363,11 +376,34 @@ export function computeDgComparison() {
       // valor do bruto (custo 0) em vez de virar null, já que "sem dado de custo" não é o mesmo
       // erro que "sem dado de rendimento" (alzPerRun/netAlzPerRun continuam null por runs=0).
       const netTotalAlz = a.totalAlz - costPerRun * a.runs;
+      const alzPerRun = a.runs > 0 ? a.totalAlz / a.runs : null;
+
+      // "Esfriando": compara as últimas RECENT_SESSIONS_FOR_TREND sessões desta DG (por Alz/run)
+      // contra a média geral acima. O histórico nunca é purgado (de propósito), então sem isso uma
+      // DG que rendia bem há meses continua no topo do ranking mesmo que o item que ela dropa
+      // tenha caído de preço há semanas — a média de longo prazo mascara a queda recente.
+      const recentSessions = [...a.sessionsList]
+        .sort((x, y) => x.startAt - y.startAt)
+        .slice(-RECENT_SESSIONS_FOR_TREND)
+        .filter(s => (s.runs || 0) > 0);
+      let recentAlzPerRun = null;
+      let cooling = false;
+      if (recentSessions.length >= MIN_SESSIONS_FOR_TREND) {
+        const recentRuns = recentSessions.reduce((sum, s) => sum + (s.runs || 0), 0);
+        recentAlzPerRun = recentRuns > 0 ? recentSessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0) / recentRuns : null;
+        cooling = recentAlzPerRun != null && alzPerRun != null && recentAlzPerRun < alzPerRun * (1 - COOLING_DROP_THRESHOLD);
+      }
+
       return {
-        ...a,
+        dungeonId: a.dungeonId,
+        dungeonName: a.dungeonName,
+        sessions: a.sessions,
+        runs: a.runs,
+        dropCount: a.dropCount,
+        totalAlz: a.totalAlz,
         durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
         alzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? a.totalAlz / (a.activeMs / 3600000) : null,
-        alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
+        alzPerRun,
         // Tempo médio por run = tempo ativo somado ÷ runs somadas — mesma ideia do Alz/run, sem
         // precisar de nenhum campo novo (usado pra sugerir rota pelo tempo disponível do jogador).
         msPerRun: a.runs > 0 ? a.activeMs / a.runs : null,
@@ -375,6 +411,8 @@ export function computeDgComparison() {
         netTotalAlz,
         netAlzPerRun: a.runs > 0 ? netTotalAlz / a.runs : null,
         netAlzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? netTotalAlz / (a.activeMs / 3600000) : null,
+        recentAlzPerRun,
+        cooling,
       };
     })
     // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide
@@ -435,13 +473,19 @@ export function setResetConfig(field, value) {
 // valores informados) e o custo do reset rateado por run. Se sobrar lucro, vale resetar.
 // entryCostPerRun/netAlzPerRun já vêm prontos de computeDgComparison (mesma conta usada lá pro
 // toggle Bruto/Líquido) — aqui só falta ratear o custo do RESET em cima do líquido.
-export function computeResetWorth() {
+//
+// dgStats (opcional): aceita um computeDgComparison() já calculado, pra quem monta várias contas
+// na mesma renderização (Sessões de farme chama isto, computeRouteComparison E
+// suggestRouteForTime, todos sobre o MESMO histórico) não repetir a varredura de
+// AppState.dgSessions — que nunca é purgado — três, quatro vezes seguidas pelo mesmo resultado.
+// Sem argumento, recalcula (comportamento de sempre, pros chamadores que só precisam disto).
+export function computeResetWorth(dgStats = computeDgComparison()) {
   const cfg = AppState.resetConfig;
   const gemValue = getCostPerGem(); // mesma fonte de Parâmetros do dia usada em computeDgComparison
   const runsPerReset = Math.max(1, cfg.runsPerReset || 1);
   const resetCostPerRun = ((cfg.resetCostGems || 0) * gemValue) / runsPerReset;
 
-  const rows = computeDgComparison()
+  const rows = dgStats
     .filter(c => c.alzPerRun != null)
     .map(c => ({
       dungeonName: c.dungeonName,

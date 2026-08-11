@@ -113,7 +113,7 @@ function renderRushDGs(qm) {
   const cartList = cart.length
     ? `<div style="margin-bottom:12px">${cart.map((it, i) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
         <span><strong>${it.repetitions}×</strong> ${esc(it.name)}${it.usedReset ? ` <span style="color:var(--gold);font-size:12px">· reset ${it.resetGemQuantity} gema(s)</span>` : ''}</span>
-        <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="quickRushRemove(${i})" title="Remover"><i class="ti ti-x"></i></button>
+        <button aria-label="Remover ${esc(it.name)} do carrinho" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="quickRushRemove(${i})"><i class="ti ti-x"></i></button>
       </div>`).join('')}</div>`
     : '<div class="empty" style="padding:10px 0">Nenhuma DG ainda. Adicione abaixo.</div>';
   const inner = `${cartList}
@@ -121,9 +121,9 @@ function renderRushDGs(qm) {
     <div style="display:flex;flex-direction:column;gap:8px">
       <select class="inp" id="qm-rush-dg"><option value="">Selecione a DG...</option>${opts}</select>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:10px">Repetições</label><input class="inp" id="qm-rush-reps" type="number" min="1" value="1"></div>
-        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:10px">Gemas de reset (0 = não)</label><input class="inp" id="qm-rush-gemqty" type="number" min="0" value="0"></div>
-        <div style="flex:1;min-width:110px"><label class="lbl" style="font-size:10px">Preço da gema (Alz)</label><input class="inp" id="qm-rush-gemprice" type="text" inputmode="numeric" value="${gemHint}" oninput="maskAlzInputLive(this)"></div>
+        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:var(--fs-2xs)">Repetições</label><input class="inp" id="qm-rush-reps" type="number" min="1" value="1"></div>
+        <div style="flex:1;min-width:80px"><label class="lbl" style="font-size:var(--fs-2xs)">Gemas de reset (0 = não)</label><input class="inp" id="qm-rush-gemqty" type="number" min="0" value="0"></div>
+        <div style="flex:1;min-width:110px"><label class="lbl" style="font-size:var(--fs-2xs)">Preço da gema (Alz)</label><input class="inp" id="qm-rush-gemprice" type="text" inputmode="numeric" value="${gemHint}" oninput="maskAlzInputLive(this)"></div>
       </div>
       <button class="btn btn-d" onclick="quickRushAdd()"><i class="ti ti-plus"></i>Adicionar DG</button>
     </div>${errLine(qm)}

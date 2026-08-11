@@ -271,6 +271,11 @@ export const AppState = {
   // Bruto ou líquido (desconta custo de entrada) na tabela "Qual DG rende mais". Só UI, não
   // persiste — mesmo motivo do trendShowNet da Visão geral.
   dgComparisonShowNet: false,
+  // Janela de "Qual DG rende mais": null/0 = histórico inteiro (padrão), 30 = só os últimos 30
+  // dias. Só UI, não persiste. O histórico completo nunca é purgado (de propósito), então sem
+  // essa janela uma DG que rendia bem há meses continua no topo mesmo que o mercado já tenha
+  // mudado — este toggle deixa o ranking reagir sem esperar a média de longo prazo se mover.
+  dgComparisonPeriodDays: 0,
 };
 
 export function resetTrackedKeywordsToDefault() {

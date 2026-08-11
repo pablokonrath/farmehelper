@@ -149,5 +149,5 @@ ${topic('ti-device-mobile', 'Instalar no celular (app)', `
 <div class="card" style="margin-top:16px;text-align:center">
   <div style="font-size:13px;color:var(--muted)">Ficou com dúvida em algo que não está aqui? Fala com o <strong style="color:var(--gold)">AnnIKILADOR</strong> no jogo. 🎮</div>
 </div>
-<div style="margin-top:10px;text-align:center;font-size:10px;color:var(--muted)">Emblemas de fundo: ícones de <a href="https://game-icons.net" target="_blank" rel="noopener" style="color:var(--muted)">game-icons.net</a> sob licença <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener" style="color:var(--muted)">CC BY 3.0</a>.</div>`;
+<div style="margin-top:10px;text-align:center;font-size:var(--fs-2xs);color:var(--muted)">Emblemas de fundo: ícones de <a href="https://game-icons.net" target="_blank" rel="noopener" style="color:var(--muted)">game-icons.net</a> sob licença <a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener" style="color:var(--muted)">CC BY 3.0</a>.</div>`;
 }

@@ -102,7 +102,7 @@ function showAlertToast(entry, alertType = null) {
       <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(entry.itemName)}</div>
       <div style="font-size:11px;color:var(--muted)">Palavra: ${esc(entry.keyword)}${entry.quantity > 1 ? ' • ' + entry.quantity + 'x' : ''}</div>
     </div>
-    <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+    <button aria-label="Fechar aviso" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
   container.appendChild(toastEl);
 
   const settings = AppState.alertSettings;
@@ -142,7 +142,7 @@ function showEventToast(eventType, time) {
       <div style="font-weight:600;font-size:13px">${label} às ${time}!</div>
       <div style="font-size:11px;color:var(--muted)">Hora de entrar.</div>
     </div>
-    <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+    <button aria-label="Fechar aviso" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
   container.appendChild(toastEl);
 
   const settings = AppState.alertSettings;
@@ -303,7 +303,7 @@ export function showGoalToast(title, body) {
         <div style="font-weight:600;font-size:13px">${title}</div>
         <div style="font-size:11px;color:var(--muted)">${body}</div>
       </div>
-      <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+      <button aria-label="Fechar aviso" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
     container.appendChild(toastEl);
     const settings = AppState.alertSettings;
     if (settings.soundEnabled) playAlertBeep(settings.volume);
@@ -332,7 +332,7 @@ export function showReconnectWarningToast() {
           <div style="font-size:11px;color:var(--muted);margin-top:2px">O navegador precisa da sua permissão de novo pra continuar lendo os drops automaticamente.</div>
           <button class="btn btn-p btn-xs" style="margin-top:6px" onclick="reconnectLiveFile()">Reconectar</button>
         </div>
-        <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
+        <button aria-label="Fechar aviso" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0" onclick="this.closest('.alert-toast').remove()"><i class="ti ti-x"></i></button>`;
       container.appendChild(toastEl);
     }
   }

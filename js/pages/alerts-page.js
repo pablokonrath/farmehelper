@@ -9,7 +9,7 @@ function toggleRow(title, desc, checked, onchange, { disabled = false, extra = '
   return `
   <div class="sh" style="padding:10px 0${extra}">
     <div><div style="font-weight:600;font-size:13px">${title}</div><div style="font-size:11px;color:var(--muted)">${desc}</div></div>
-    <label class="tgl"><input type="checkbox" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="${onchange}"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+    <label class="tgl"><input type="checkbox" aria-label="${title}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} onchange="${onchange}"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
   </div>`;
 }
 
@@ -42,7 +42,7 @@ function renderEventTypeCard(eventType) {
   </div>
   ${!times.length ? '<div class="empty" style="padding:10px 0">Nenhum horário cadastrado.</div>' : `
   <div style="display:flex;flex-wrap:wrap;gap:6px">
-  ${times.map(t => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${t.time}<button style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeEventTime(${t.id})"><i class="ti ti-x"></i></button></span>`).join('')}
+  ${times.map(t => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${t.time}<button aria-label="Remover horário ${t.time}" style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removeEventTime(${t.id})"><i class="ti ti-x"></i></button></span>`).join('')}
   </div>`}
 </div>`;
 }
@@ -81,7 +81,7 @@ function renderAlertSoundsCard() {
     <input type="file" id="soundFile-${type}" accept=".mp3,.wav,.ogg,audio/mpeg,audio/wav,audio/ogg" style="font-size:11px;max-width:180px">
     <button class="btn btn-d btn-xs" onclick="uploadAlertSound('${type}')"><i class="ti ti-upload"></i>Enviar</button>
     <button class="btn btn-d btn-xs" onclick="testAlertSound('${type}')"><i class="ti ti-player-play"></i>Testar</button>
-    ${sound.filename ? `<button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="removeAlertSound('${type}')"><i class="ti ti-trash"></i></button>` : ''}
+    ${sound.filename ? `<button class="btn btn-xs" aria-label="Remover som de ${label}" title="Remover som" style="background:var(--err-bg);color:var(--err);border:none" onclick="removeAlertSound('${type}')"><i class="ti ti-trash"></i></button>` : ''}
   </div>
   <div id="soundError-${type}" style="display:none;color:var(--err);font-size:12px;margin:4px 0"></div>`;
   }).join('')}
@@ -138,8 +138,8 @@ export function renderAlertsPage() {
   <table style="margin-bottom:12px"><thead><tr><th>Palavra rastreada</th><th style="width:110px"><i class="ti ti-bell"></i> Alerta</th><th style="width:40px">Ações</th></tr></thead><tbody>
   ${AppState.trackedKeywords.map(kw => `<tr>
     <td style="font-weight:500">${esc(kw.word)}</td>
-    <td><label class="tgl"><input type="checkbox" ${kw.alertEnabled ? 'checked' : ''} onchange="toggleKeywordAlert('${escAttr(kw.word)}')"><div class="tgl-track"></div><div class="tgl-thumb"></div></label> <span style="font-size:11px;color:var(--muted)">${kw.alertEnabled ? 'ON' : 'OFF'}</span></td>
-    <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeTrackedKeyword('${escAttr(kw.word)}')"><i class="ti ti-x"></i></button></td>
+    <td><label class="tgl"><input type="checkbox" aria-label="Alerta pra ${esc(kw.word)}" ${kw.alertEnabled ? 'checked' : ''} onchange="toggleKeywordAlert('${escAttr(kw.word)}')"><div class="tgl-track"></div><div class="tgl-thumb"></div></label> <span style="font-size:11px;color:var(--muted)">${kw.alertEnabled ? 'ON' : 'OFF'}</span></td>
+    <td><button aria-label="Remover palavra ${esc(kw.word)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeTrackedKeyword('${escAttr(kw.word)}')"><i class="ti ti-x"></i></button></td>
   </tr>`).join('')}
   </tbody></table>`}
   <div class="row">

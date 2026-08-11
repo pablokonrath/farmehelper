@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, sessionTotalAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, sessionTotalAlz, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
@@ -24,12 +24,24 @@ export function setDgComparisonMode(liquido) {
   renderPage();
 }
 
+// Histórico inteiro ou só os últimos 30 dias em "Qual DG rende mais" (ver comparisonCard). Só
+// muda a EXIBIÇÃO dessa tabela — rota, "vale resetar" e a sugestão por tempo continuam sobre o
+// histórico inteiro, pra não mudar o resultado de outros cards sem o jogador esperar isso.
+export function setDgComparisonPeriod(days) {
+  AppState.dgComparisonPeriodDays = parseInt(days, 10) === 30 ? 30 : 0;
+  renderPage();
+}
+
 // Progresso do rush de hoje: cruza o rush salvo do dia com as runs de fato feitas hoje em cada DG
 // (computeRunsDoneToday soma sessões encerradas + a ativa) contra o planejado — fração real, não
 // um booleano "existe sessão" (isso marcava uma DG de 20 repetições como feita com só 1 run).
 // comparisonByDgId (Alz/run real de computeDgComparison) também dá o "Esperado x Já realizado" em
 // Alz — não só contagem de runs, pra saber se o dia tá rendendo o que o plano previa.
-function renderRushProgressCard(comparisonByDgId) {
+//
+// comparisonAllTime (sorted, ver computeDgComparison): quando o rush termina 100%, aponta a
+// melhor DG do histórico como próximo passo — sem isso, "rush concluído" fica sem dizer o que
+// fazer com o tempo que sobrou, e é exatamente a pergunta que essa página existe pra responder.
+function renderRushProgressCard(comparisonByDgId, comparisonAllTime) {
   const today = todayISODate();
   const rush = AppState.rushHistory[today];
   if (!rush || !rush.items || !rush.items.length) return '';
@@ -40,6 +52,8 @@ function renderRushProgressCard(comparisonByDgId) {
     return { it, runsToday, complete, partial };
   });
   const doneCount = rows.filter(r => r.complete).length;
+  const allDone = doneCount >= rows.length;
+  const melhorDg = allDone ? comparisonAllTime.find(c => c.alzPerRun != null) : null;
 
   let expectedAlz = 0;
   let missingData = 0;
@@ -57,7 +71,7 @@ function renderRushProgressCard(comparisonByDgId) {
   return `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-checklist"></i>Progresso do rush de hoje</div>
-  <span class="badge ${doneCount >= rows.length ? 'badge-ok' : 'badge-acc'}">${doneCount}/${rows.length} feitas</span></div>
+  <span class="badge ${allDone ? 'badge-ok' : 'badge-acc'}">${doneCount}/${rows.length} feitas</span></div>
   ${infoToggle('sessions-rush-progress', 'Conta as runs de verdade feitas hoje em cada DG (automático se você informou o tempo por run ao iniciar, ou o que preencher na mão) contra o planejado no rush.')}
   ${expectedAlz > 0 ? `<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:12px;margin-bottom:12px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
     <span>Esperado hoje (pelo seu Alz/run histórico): <strong style="color:var(--txt)" title="${formatNumber(expectedAlz)} Alz">${formatAlzGamer(expectedAlz)}</strong>${missingData ? ` <span style="color:var(--muted)">(${missingData} DG sem histórico, fora da conta)</span>` : ''}</span>
@@ -70,6 +84,7 @@ function renderRushProgressCard(comparisonByDgId) {
       <span class="badge ${complete ? 'badge-ok' : partial ? 'badge-warn' : 'badge-muted'}">${runsToday}/${it.repetitions}</span>
     </div>`).join('')}
   </div>
+  ${melhorDg ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)"><i class="ti ti-circle-check" style="color:var(--ok)"></i> Rush concluído! Sobrou tempo? <strong style="color:var(--txt)">${esc(melhorDg.dungeonName)}</strong> é sua melhor entrada no histórico (${formatAlzGamer(melhorDg.alzPerRun)}/run).</div>` : ''}
 </div>`;
 }
 
@@ -131,8 +146,8 @@ function sessionHistoryRow(s) {
         <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
         <td style="color:${getAlzTierColor(sessionTotalAlz(s))};font-weight:600" title="${formatNumber(sessionTotalAlz(s))} Alz">${formatAlzGamer(sessionTotalAlz(s))}</td>
         <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(sessionTotalAlz(s) / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
-        <td><button title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
-        <td><button title="Remover esta sessão (ex: ficou aberta por engano e distorce a média de tempo)" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSession(${s.startAt})"><i class="ti ti-trash"></i></button></td>
+        <td><button aria-label="${expanded ? 'Esconder' : 'Ver'} itens desta sessão" title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
+        <td><button aria-label="Remover esta sessão" title="Remover esta sessão (ex: ficou aberta por engano e distorce a média de tempo)" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSession(${s.startAt})"><i class="ti ti-trash"></i></button></td>
       </tr>${expanded ? sessionItemsRow(s) : ''}`;
 }
 
@@ -195,12 +210,18 @@ function forgottenSessionRecoveryPanel() {
 
 export function renderSessionsPage() {
   const active = getActiveSessionSummary();
-  const comparison = computeDgComparison();
+  // Uma varredura só do histórico (nunca purgado, ver comentário em computeDgComparison), reusada
+  // por tudo que precisa dela nesta renderização — antes, rota + reset + sugestão por tempo cada
+  // uma recalculava por conta própria, chegando a 5-6 varreduras do mesmo AppState.dgSessions numa
+  // única renderização, e isso repete a cada ~5s enquanto você farma com esta página aberta (todo
+  // drop novo re-renderiza a página, ver file-source.js).
+  const comparisonAllTime = computeDgComparison();
   const comparisonByDgId = {};
-  comparison.forEach(c => { comparisonByDgId[c.dungeonId] = c; });
-  const routeComparison = computeRouteComparison();
+  comparisonAllTime.forEach(c => { comparisonByDgId[c.dungeonId] = c; });
+  const reset = computeResetWorth(comparisonAllTime);
+  const routeComparison = computeRouteComparison(comparisonAllTime);
   const timeAvailableHours = Number(AppState.timeAvailableHours) || 0;
-  const timeSuggestion = timeAvailableHours > 0 ? suggestRouteForTime(timeAvailableHours) : null;
+  const timeSuggestion = timeAvailableHours > 0 ? suggestRouteForTime(timeAvailableHours, comparisonAllTime) : null;
   const today = todayISODate();
   const historyDate = AppState.sessionsHistoryDate || today;
   const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
@@ -224,6 +245,19 @@ export function renderSessionsPage() {
       return `${dg.name} — faltam ${p.faltam} run${p.faltam > 1 ? 's' : ''}`;
     },
   }];
+
+  // Ponte entre a sessão ativa e "Vale a pena resetar?" — sem isso são duas ferramentas que não
+  // se falam: você tinha que sair daqui, rolar até o card de reset lá embaixo e fazer a conta de
+  // cabeça bem na hora em que ela importa (perto do limite diário). Só aparece quando faltam
+  // poucas runs E resetar de fato compensa pelo histórico — não é um lembrete genérico.
+  const resetNudge = (() => {
+    if (!active) return '';
+    const runsLeft = DAILY_RUN_LIMIT - computeRunsDoneToday(active.dungeonName);
+    if (!(runsLeft > 0 && runsLeft <= 5)) return '';
+    const row = reset.gemValueSet && reset.rows.find(r => r.dungeonName === active.dungeonName);
+    if (!row?.worth) return '';
+    return `<div style="margin-top:12px;padding:10px 12px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:8px;font-size:12px;color:var(--warn)"><i class="ti ti-refresh"></i> Faltam <strong>${runsLeft} run${runsLeft > 1 ? 's' : ''}</strong> pro limite diário desta DG, e resetar compensa pelo seu histórico (líquido de ${formatAlzGamer(row.netAlzPerRun)}/run cobre o custo do reset). Veja "Vale a pena resetar?" mais abaixo.</div>`;
+  })();
 
   const nowFarmingCard = `
 <div class="card card-featured">
@@ -253,7 +287,8 @@ export function renderSessionsPage() {
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <label class="lbl" style="margin-bottom:6px">Itens caindo agora</label>
         <div id="dgLiveItemsBox" style="display:flex;flex-wrap:wrap;gap:6px"></div>
-      </div>`
+      </div>
+      ${resetNudge}`
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
           <select class="inp" id="dgSessionSelect">
@@ -265,7 +300,7 @@ export function renderSessionsPage() {
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.${pendingRushDungeons.length ? ' As DGs que ainda faltam no rush de hoje aparecem no topo da lista e saem de lá conforme você completa as runs.' : ''}</div>
       <label class="tgl-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer">
-        <label class="tgl"><input type="checkbox" ${AppState.autoSessionEnabled ? 'checked' : ''} onchange="toggleAutoSessionStart(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+        <label class="tgl"><input type="checkbox" aria-label="Cuidar da sessão sozinho" ${AppState.autoSessionEnabled ? 'checked' : ''} onchange="toggleAutoSessionStart(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
         Cuidar da sessão sozinho (abre quando começo a farmar, encerra quando os drops param)
       </label>
       <button style="background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;margin-top:10px;padding:0" onclick="toggleForgottenSessionRecovery()"><i class="ti ti-history-toggle"></i> Esqueceu de marcar uma sessão? Recuperar pelo log</button>
@@ -276,6 +311,15 @@ export function renderSessionsPage() {
   const earliestSessionDate = totalSessionsEver
     ? AppState.dgSessions.reduce((min, s) => (s.date && s.date < min ? s.date : min), AppState.dgSessions[0].date || today)
     : null;
+
+  // Janela de exibição: Tudo (padrão) ou só os últimos 30 dias — SÓ recalcula quando o toggle não
+  // é o padrão, pra não custar uma segunda varredura do histórico à toa na maioria das vezes.
+  // Rota, "vale resetar" e a sugestão por tempo continuam sobre comparisonAllTime — de propósito,
+  // ver comentário em setDgComparisonPeriod.
+  const dgPeriodDays = AppState.dgComparisonPeriodDays === 30 ? 30 : 0;
+  const comparison = dgPeriodDays
+    ? computeDgComparison({ sinceDate: todayISODate(new Date(Date.now() - dgPeriodDays * 86400000)) })
+    : comparisonAllTime;
 
   // Líquido reordena por netAlzPerRun em vez do bruto de computeDgComparison — SÓ pra exibição
   // desta tabela (uma cópia). O array original continua ordenado por bruto pra quem mais usa
@@ -291,18 +335,20 @@ export function renderSessionsPage() {
   });
 
   const botaoDgMode = (v, txt) => `<button class="btn btn-xs ${liquidoDg === v ? 'btn-p' : 'btn-d'}" onclick="setDgComparisonMode(${v})">${txt}</button>`;
+  const botaoDgPeriodo = (v, txt) => `<button class="btn btn-xs ${dgPeriodDays === v ? 'btn-p' : 'btn-d'}" onclick="setDgComparisonPeriod(${v})">${txt}</button>`;
   const comparisonCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div>
     <div style="display:flex;gap:6px">${botaoDgMode(false, 'Bruto')}${botaoDgMode(true, 'Líquido')}</div></div>
-  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer. <strong>Líquido</strong> desconta o custo de entrada da run (Alz + tickets + gemas, os mesmos valores de <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> que o carrinho de rush usa de verdade) — é a mesma conta de "Vale a pena resetar?" abaixo, só que aplicada em toda DG, não só nas que valem resetar.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
+  <div style="display:flex;gap:6px;margin:-4px 0 10px">${botaoDgPeriodo(0, 'Tudo')}${botaoDgPeriodo(30, 'Últimos 30 dias')}</div>
+  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer. <strong>Líquido</strong> desconta o custo de entrada da run (Alz + tickets + gemas, os mesmos valores de <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> que o carrinho de rush usa de verdade) — é a mesma conta de "Vale a pena resetar?" abaixo, só que aplicada em toda DG, não só nas que valem resetar. <strong>Últimos 30 dias</strong> ignora sessão mais antiga que isso — o histórico completo nunca é apagado, então uma DG que rendia bem há meses pode continuar no topo do "Tudo" mesmo que o mercado já tenha mudado; esse toggle só afeta esta tabela, não rota/reset/sugestão por tempo abaixo. O ícone <i class="ti ti-trending-down" style="color:var(--warn)"></i> ao lado do nome avisa quando as últimas ${RECENT_SESSIONS_FOR_TREND} sessões dessa DG renderam bem menos que a média mostrada — o mesmo alerta, mas linha a linha em vez de precisar trocar a janela inteira.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
   ${liquidoDg && !gemValueSet && temDgComGema ? `<div style="font-size:11px;color:var(--warn);margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Preço do Card Cash não configurado em <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> — o custo de entrada em gemas de algumas DGs ainda não entra nesta conta.</div>` : ''}
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
     : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th>${liquidoDg ? '<th>Custo entrada / run</th>' : ''}<th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
       ${comparisonSorted.map((c, i) => `<tr>
         <td class="rank">${i + 1}</td>
-        <td style="font-weight:500">${esc(c.dungeonName)}</td>
+        <td style="font-weight:500">${esc(c.dungeonName)}${c.cooling ? ` <i class="ti ti-trending-down" style="color:var(--warn)" title="As últimas sessões desta DG renderam bem menos que a média mostrada (${formatAlzGamer(c.recentAlzPerRun)}/run recente vs ${formatAlzGamer(c.alzPerRun)}/run na média) — pode estar esfriando"></i>` : ''}</td>
         <td>${c.sessions}</td>
         <td>${c.runs || '—'}</td>
         <td style="color:var(--txt2)">${c.msPerRun != null ? formatDuration(c.msPerRun) : '<span style="color:var(--muted)">—</span>'}</td>
@@ -407,8 +453,7 @@ export function renderSessionsPage() {
       </tbody></table>`}
 </div>`;
 
-  const rc = AppState.resetConfig;
-  const reset = computeResetWorth();
+  const rc = AppState.resetConfig; // reset (computeResetWorth) já foi calculado lá em cima, reusado aqui
   const resetCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-refresh"></i>Vale a pena resetar?</div></div>
@@ -441,7 +486,7 @@ export function renderSessionsPage() {
 <div class="pg-title"><i class="ti ti-shield" style="color:var(--acc)"></i>Sessões de farme</div>
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
-${renderRushProgressCard(comparisonByDgId)}
+${renderRushProgressCard(comparisonByDgId, comparisonAllTime)}
 ${timeSuggestionCard}
 ${comparisonCard}
 ${bestHoursCard}

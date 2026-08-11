@@ -91,10 +91,10 @@ export function renderRushPage() {
         : `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown) + (stats.timeBreakdown.length ? '\n\n' : '') + 'Falta tempo/run farmado de: ' + stats.missingTimeDataDgNames.join(', ') + ' — soma só das DGs com dado')}">≈${formatDuration(stats.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)" title="Nenhuma DG desta rota tem tempo/run farmado ainda">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
-      <button class="btn btn-d btn-xs" onclick="applyRushRoute('${route.id}')" title="Soma as DGs desta rota ao carrinho de hoje"><i class="ti ti-player-play"></i></button>
-      <button class="btn btn-d btn-xs" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
-      <button class="btn btn-d btn-xs" onclick="renameRushRoute('${route.id}')" title="Só renomear"><i class="ti ti-tag"></i></button>
-      <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushRoute('${route.id}')" title="Excluir"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-d btn-xs" aria-label="Aplicar rota ${esc(route.name)}" onclick="applyRushRoute('${route.id}')" title="Soma as DGs desta rota ao carrinho de hoje"><i class="ti ti-player-play"></i></button>
+      <button class="btn btn-d btn-xs" aria-label="Editar rota ${esc(route.name)}" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
+      <button class="btn btn-d btn-xs" aria-label="Renomear rota ${esc(route.name)}" onclick="renameRushRoute('${route.id}')" title="Só renomear"><i class="ti ti-tag"></i></button>
+      <button aria-label="Excluir rota ${esc(route.name)}" title="Excluir" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushRoute('${route.id}')"><i class="ti ti-trash"></i></button>
     </div></td>
   </tr>`;
   }).join('')}
@@ -185,8 +185,8 @@ ${routesCard}
         <td>${dg.ticketsPerRun > 0 ? `<span class="badge badge-acc">${dg.ticketsPerRun}× Ticket</span>` : '<span class="badge badge-muted">—</span>'}</td>
         <td>${dg.gemsPerRun > 0 ? `<span class="badge badge-warn">${dg.gemsPerRun}× Gema</span>` : '<span class="badge badge-muted">—</span>'}</td>
         ${AppState.isMasterAdmin ? `<td><div style="display:flex;gap:4px">
-          <button class="btn btn-d btn-xs" onclick="startEditingDungeon('${dg.id}')"><i class="ti ti-edit"></i></button>
-          <button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteDungeon('${dg.id}')"><i class="ti ti-trash"></i></button>
+          <button class="btn btn-d btn-xs" aria-label="Editar DG ${esc(dg.name)}" title="Editar" onclick="startEditingDungeon('${dg.id}')"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-xs" aria-label="Excluir DG ${esc(dg.name)}" title="Excluir" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteDungeon('${dg.id}')"><i class="ti ti-trash"></i></button>
         </div></td>` : ''}
       </tr>`).join('')}
     </tbody></table>
@@ -197,7 +197,7 @@ ${routesCard}
       <div style="width:110px"><input class="inp" id="new-dg-tk" type="number" min="0" placeholder="Qtd. tickets"></div>
       <div style="width:110px"><input class="inp" id="new-dg-g" type="number" min="0" placeholder="Qtd. gemas"></div>
       <button class="btn btn-p" onclick="addNewDungeon()"><i class="ti ti-plus"></i>Adicionar</button>
-      <button class="btn btn-d" onclick="resetDungeonList()" title="Restaurar padrão"><i class="ti ti-refresh"></i></button>
+      <button class="btn btn-d" aria-label="Restaurar lista de DGs padrão" onclick="resetDungeonList()" title="Restaurar padrão"><i class="ti ti-refresh"></i></button>
     </div></div>` : '<div style="font-size:12px;color:var(--muted)">Só admins podem editar essa lista.</div>'}
   </div>` : ''}
 </div>
@@ -302,8 +302,8 @@ ${routesCard}
       <td>${typeBadges.join(' ')}</td>
       <td>${item.repetitions}×</td>
       <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}${resetWarning}</td>
-      <td>${renderAlzValue(total, true)}<div style="font-size:10px;color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
-      <td><button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeDungeonFromCart(${i})"><i class="ti ti-trash"></i></button></td>
+      <td>${renderAlzValue(total, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
+      <td><button aria-label="Remover ${esc(item.name)} do carrinho" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeDungeonFromCart(${i})"><i class="ti ti-trash"></i></button></td>
     </tr>`;
   }).join('')}
   </tbody></table>`}
@@ -320,9 +320,9 @@ ${routesCard}
     <td>${formatDateBR(date)}</td><td>${rush.items?.length || 0} DGs</td>
     <td>${renderAlzValue(rush.total, true)}</td>
     <td><div style="display:flex;gap:4px">
-      <button class="btn btn-d btn-xs" onclick="editSavedRush('${date}')" title="Editar (adicionar/remover DGs)"><i class="ti ti-edit"></i></button>
-      <button class="btn btn-d btn-xs" onclick="duplicateSavedRush('${date}')" title="Duplicar pra hoje"><i class="ti ti-copy"></i></button>
-      <button style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushForDay('${date}')"><i class="ti ti-trash"></i></button>
+      <button class="btn btn-d btn-xs" aria-label="Editar rush de ${formatDateBR(date)}" onclick="editSavedRush('${date}')" title="Editar (adicionar/remover DGs)"><i class="ti ti-edit"></i></button>
+      <button class="btn btn-d btn-xs" aria-label="Duplicar rush de ${formatDateBR(date)} pra hoje" onclick="duplicateSavedRush('${date}')" title="Duplicar pra hoje"><i class="ti ti-copy"></i></button>
+      <button aria-label="Remover rush de ${formatDateBR(date)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushForDay('${date}')"><i class="ti ti-trash"></i></button>
     </div></td>
   </tr>`).join('')}
   </tbody></table>`}
