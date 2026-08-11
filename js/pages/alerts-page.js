@@ -1,7 +1,9 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredAlertHistory } from '../features/alerts.js';
-import { countKeywordMatches } from '../features/keywords.js';
-import { formatDateTimeBR } from '../utils/formatting.js';
+import { countKeywordMatches, suggestUntrackedValuableItems } from '../features/keywords.js';
+import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
+import { collapsibleCard } from '../features/ui-toggles.js';
+import { formatDateTimeBR, renderAlzValue } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 
 // Uma linha "toggle" padrão (título + descrição à esquerda, interruptor à direita). `extra` entra
@@ -97,6 +99,18 @@ export function renderAlertsPage() {
   const linked = !!s.telegramChatId;
   const div = 'border-bottom:1px solid var(--border)';
 
+  // Estado geral num relance — a página é toda feita de toggles espalhados em vários cards, sem
+  // isso não dava pra saber "tá tudo funcionando?" sem abrir e ler cada um. Sempre visível, não
+  // depende de abrir nenhum card colapsado abaixo.
+  const unseenCount = AppState.alertHistory.filter(e => !e.seen).length;
+  const statusStrip = `
+<div class="card" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px">
+  <span class="badge ${s.enabled ? 'badge-ok' : 'badge-muted'}"><i class="ti ${s.enabled ? 'ti-bell' : 'ti-bell-off'}"></i> Alertas ${s.enabled ? 'ligados' : 'desligados'}</span>
+  <span class="badge ${s.watchdogEnabled ? 'badge-ok' : 'badge-muted'}"><i class="ti ti-shield-bolt"></i> Watchdog ${s.watchdogEnabled ? 'vigiando' : 'inativo'}</span>
+  <span class="badge ${linked ? 'badge-ok' : 'badge-muted'}"><i class="ti ti-brand-telegram"></i> Telegram ${linked ? 'vinculado' : 'não vinculado'}</span>
+  ${unseenCount ? `<span class="badge badge-acc" style="margin-left:auto"><i class="ti ti-mail"></i> ${unseenCount} não visto${unseenCount > 1 ? 's' : ''}</span>` : ''}
+</div>`;
+
   const permissionBanner = permission === 'unsupported'
     ? `<div class="notice"><i class="ti ti-alert-circle" style="flex-shrink:0;margin-top:1px"></i><div>Seu navegador não suporta notificações do sistema. Os alertas continuam funcionando com som e pop-up dentro da aba.</div></div>`
     : permission !== 'granted'
@@ -131,6 +145,11 @@ export function renderAlertsPage() {
   // 1.5) Palavras rastreadas — gerenciar direto aqui (o filtro "mostrar só rastreados" continua em
   // Cálculo de farme, é sobre a lista de drops daquela página, não sobre alerta — mas gerenciar as
   // palavras em si mora só aqui agora, junto do que elas efetivamente acionam).
+  //
+  // allDroppedItems calculado UMA VEZ aqui (não dentro do .map de cada palavra) — countKeywordMatches
+  // aceita a lista pronta pra não recalcular o log inteiro de drops a cada palavra rastreada.
+  const allDroppedItems = summarizeDropsByItem(getAllDrops());
+  const suggestions = suggestUntrackedValuableItems();
   const trackedWordsCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-tags"></i>Palavras rastreadas</div>
@@ -138,7 +157,7 @@ export function renderAlertsPage() {
   ${!AppState.trackedKeywords.length ? '<div class="empty" style="padding:14px 0">Nenhuma palavra rastreada ainda.</div>' : `
   <table style="margin-bottom:12px"><thead><tr><th>Palavra rastreada</th><th style="width:110px"><i class="ti ti-bell"></i> Alerta</th><th style="width:40px">Ações</th></tr></thead><tbody>
   ${AppState.trackedKeywords.map(kw => {
-    const matches = countKeywordMatches(kw.word);
+    const matches = countKeywordMatches(kw.word, allDroppedItems);
     return `<tr>
     <td style="font-weight:500">${esc(kw.word)}${matches === 0
       ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Nenhum item já dropado bate com essa palavra — confira se não é erro de digitação, ou se o item simplesmente ainda não caiu"></i>`
@@ -148,6 +167,12 @@ export function renderAlertsPage() {
   </tr>`;
   }).join('')}
   </tbody></table>`}
+  ${suggestions.length ? `<div style="margin-bottom:14px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px"><i class="ti ti-bulb"></i> Itens valiosos que você já dropou e ainda não rastreia:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${suggestions.map(i => `<button class="btn btn-d btn-xs" onclick="addSuggestedKeyword('${escAttr(i.name)}')" title="Rastrear &quot;${escAttr(i.name)}&quot; com alerta já ligado"><i class="ti ti-plus"></i>${esc(i.name)} <span style="color:var(--muted);margin-left:4px">${renderAlzValue(i.price)}</span></button>`).join('')}
+    </div>
+  </div>` : ''}
   <div class="row">
     <div style="flex:1"><label class="lbl">Adicionar palavra</label><input class="inp" id="nKw" placeholder="ex: Fatal" onkeydown="if(event.key==='Enter')addTrackedKeyword()"></div>
     <button class="btn btn-p" onclick="addTrackedKeyword()"><i class="ti ti-plus"></i>Adicionar</button>
@@ -157,38 +182,51 @@ export function renderAlertsPage() {
 </div>`;
 
   // 2) Watchdog — agora 100% automático com a sessão de DG (sem interruptor manual). Aqui ficam
-  // só os limites e o aviso de travamento no Telegram.
+  // só os limites e o aviso de travamento no Telegram. Colapsado por padrão (config "set once",
+  // não algo que se checa todo dia) — o resumo já mostra se tá vigiando ou não sem precisar abrir.
   const watchdogRelayHint = !linked
     ? 'Vincule o Telegram (na seção “Fora do app”) primeiro.'
     : 'Se o helper travar, ou a conexão ao vivo precisar reconectar, chega no Telegram.';
-  const watchdogCard = `
-<div class="card">
-  <div class="ctitle"><i class="ti ti-shield-bolt"></i>Vigilância de inatividade (watchdog)</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Avisa quando o helper trava (sem nenhum drop) ou um item rastreado some. <strong>Liga e desliga sozinho</strong> junto com a sessão de DG — você não ativa nada. (Farme na mão não gera log, então não faz sentido vigiar fora de uma sessão.)</div>
+  const watchdogCard = collapsibleCard({
+    id: 'alerts-watchdog',
+    icon: 'ti-shield-bolt',
+    title: 'Vigilância de inatividade (watchdog)',
+    resumo: s.watchdogEnabled ? '<span class="badge badge-ok"><i class="ti ti-eye"></i> Vigiando agora</span>' : '<span class="badge badge-muted">Inativo</span>',
+    body: `
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 10px">Avisa quando o helper trava (sem nenhum drop) ou um item rastreado some. <strong>Liga e desliga sozinho</strong> junto com a sessão de DG — você não ativa nada. (Farme na mão não gera log, então não faz sentido vigiar fora de uma sessão.)</div>
   <div class="g3">
     <div><label class="lbl">Alertar sem nenhum drop por (minutos)</label><input class="inp" type="number" min="1" value="${s.noDropThresholdMinutes}" onchange="setNoDropThresholdMinutes(this.value)">
     <div class="hint">Silêncio total é forte indício de que o helper travou.</div></div>
     <div style="grid-column:span 2"><label class="lbl">Alertar sem dropar um item rastreado por (minutos)</label><input class="inp" type="number" min="1" value="${s.itemSilenceThresholdMinutes}" onchange="setItemSilenceThresholdMinutes(this.value)">
     <div class="hint">Item específico (ex: joia) pode demorar mais — use um limite mais alto que o de cima.</div></div>
   </div>
-  ${toggleRow('Avisar travamento/desconexão no Telegram', watchdogRelayHint, s.telegramWatchdogRelayEnabled, 'setTelegramWatchdogRelayEnabled(this.checked)', { disabled: !linked, extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' + (!linked ? ';opacity:.55' : '') })}
-</div>`;
+  ${toggleRow('Avisar travamento/desconexão no Telegram', watchdogRelayHint, s.telegramWatchdogRelayEnabled, 'setTelegramWatchdogRelayEnabled(this.checked)', { disabled: !linked, extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' + (!linked ? ';opacity:.55' : '') })}`,
+  });
 
-  // 3) Eventos programados (TG / World Boss)
-  const eventsCard = `
-<div class="card">
-  <div class="ctitle"><i class="ti ti-calendar-event"></i>Eventos: TG e World Boss</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Horários cadastrados pelo admin — aqui você só liga/desliga se quer receber. Chegam também fora do app (ver abaixo).</div>
+  // 3) Eventos programados (TG / World Boss) — mesmo raciocínio: colapsado, resumo mostra quantos
+  // dos 2 estão ligados.
+  const eventsOnCount = (s.tgNotificationsEnabled ? 1 : 0) + (s.worldbossNotificationsEnabled ? 1 : 0);
+  const eventsCard = collapsibleCard({
+    id: 'alerts-events',
+    icon: 'ti-calendar-event',
+    title: 'Eventos: TG e World Boss',
+    resumo: eventsOnCount ? `<span class="badge badge-ok">${eventsOnCount}/2 ativos</span>` : '<span class="badge badge-muted">Desligado</span>',
+    body: `
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 10px">Horários cadastrados pelo admin — aqui você só liga/desliga se quer receber. Chegam também fora do app (ver "Fora do app" abaixo).</div>
   ${toggleRow('Notificação de TG', 'Aviso quando chega o horário de TG.', s.tgNotificationsEnabled, 'setTgNotificationsEnabled(this.checked)', { extra: ';' + div })}
-  ${toggleRow('Notificação de World Boss', 'Mesma coisa, só pro World Boss.', s.worldbossNotificationsEnabled, 'setWorldbossNotificationsEnabled(this.checked)')}
-</div>`;
+  ${toggleRow('Notificação de World Boss', 'Mesma coisa, só pro World Boss.', s.worldbossNotificationsEnabled, 'setWorldbossNotificationsEnabled(this.checked)')}`,
+  });
 
-  // 4) Fora do app: Telegram
-  const outsideCard = `
-<div class="card">
-  <div class="ctitle"><i class="ti ti-brand-telegram"></i>Fora do app (Telegram)</div>
-  <div class="pg-sub" style="margin:-4px 0 10px">Receba avisos com o FarmHub fechado. TG/World Boss chega mesmo offline; alertas do seu próprio drop só com o app aberto (mesmo minimizado).</div>
-  <div style="font-weight:600;font-size:13px;margin-bottom:6px">Telegram</div>
+  // 4) Fora do app: Telegram — colapsado só quando já vinculado (setup concluído); se ainda não
+  // vinculou, fica aberto de propósito, pra não esconder um passo pendente.
+  const outsideCard = collapsibleCard({
+    id: 'alerts-outside',
+    icon: 'ti-brand-telegram',
+    title: 'Fora do app (Telegram)',
+    resumo: linked ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>' : '<span class="badge badge-muted">Não vinculado</span>',
+    defaultOpen: !linked,
+    body: `
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 10px">Receba avisos com o FarmHub fechado. TG/World Boss chega mesmo offline; alertas do seu próprio drop só com o app aberto (mesmo minimizado).</div>
     ${linked
       ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>
@@ -201,8 +239,8 @@ export function renderAlertsPage() {
         <div style="margin-top:10px;font-size:12px;color:var(--muted)">
           Abra o Telegram e clique no link abaixo (ou mande <strong>/start ${AppState.telegramLinkCode}</strong> pro bot):
           <div style="margin-top:6px"><a href="${AppState.telegramBotLink}" target="_blank" rel="noopener" style="color:var(--acc)">${AppState.telegramBotLink}</a></div>
-        </div>` : ''}`}
-</div>`;
+        </div>` : ''}`}`,
+  });
 
   // 5) Histórico
   const historyCard = `
@@ -228,6 +266,7 @@ export function renderAlertsPage() {
   return `
 <div class="pg-title"><i class="ti ti-bell" style="color:var(--acc)"></i>Alertas</div>
 <div class="pg-sub">Notificação em tempo real dos seus itens rastreados, vigilância do helper e eventos de TG/World Boss.</div>
+${statusStrip}
 ${permissionBanner}
 ${coreCard}
 ${trackedWordsCard}

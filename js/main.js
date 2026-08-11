@@ -41,7 +41,7 @@ import {
 } from './pages/rush-page.js';
 
 import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice } from './features/pricing.js';
-import { addTrackedKeyword, removeTrackedKeyword, resetTrackedKeywords, toggleKeywordAlert } from './features/keywords.js';
+import { addTrackedKeyword, removeTrackedKeyword, resetTrackedKeywords, toggleKeywordAlert, addSuggestedKeyword } from './features/keywords.js';
 import { saveDungeonEdit, deleteDungeon, addNewDungeon, resetDungeonList } from './features/dungeon-manager.js';
 import {
   requestNotificationPermission,
@@ -133,6 +133,7 @@ Object.assign(window, {
   removeTrackedKeyword,
   resetTrackedKeywords,
   toggleKeywordAlert,
+  addSuggestedKeyword,
   requestNotificationPermission,
   testNotification,
   markAllAlertsSeen,

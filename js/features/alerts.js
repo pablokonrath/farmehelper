@@ -166,6 +166,18 @@ export function fireEventAlert(eventType, time) {
   notifyOS(`${label} às ${time}!`, { body: 'Hora de entrar.', tag: 'event-' + eventType + '-' + time });
 }
 
+// Teto pra não crescer sem fim — histórico de alerta é consulta/auditoria recente, não arquivo
+// permanente (isso já existe em drop-history.js pros drops). Poda os mais antigos sozinho a cada
+// alerta novo, sem exigir que o jogador lembre de clicar "Limpar" só por questão de tamanho —
+// "Limpar" continua existindo pra quando for intencional mesmo (resetar tudo), não pra manutenção
+// de rotina.
+const MAX_ALERT_HISTORY = 500;
+function trimAlertHistory() {
+  if (AppState.alertHistory.length > MAX_ALERT_HISTORY) {
+    AppState.alertHistory = AppState.alertHistory.slice(-MAX_ALERT_HISTORY);
+  }
+}
+
 function registerAlert(keyword, drop) {
   const groupKey = keyword + '|' + drop.name;
   const now = Date.now();
@@ -193,6 +205,7 @@ function registerAlert(keyword, drop) {
   };
   AppState.alertHistory.push(entry);
   AppState.pendingAlertGroups[groupKey] = { entryId: entry.id, lastSeenAt: now };
+  trimAlertHistory();
   saveAlertHistory();
   fireAlert(entry);
   // Repassa pro Telegram só neste ramo (alerta novo) — no ramo anti-spam acima o item repetido
@@ -225,6 +238,7 @@ function fireWatchdogAlert(itemName, keyword) {
     seen: false,
   };
   AppState.alertHistory.push(entry);
+  trimAlertHistory();
   saveAlertHistory();
   fireAlert(entry, 'watchdog');
   // Manda o mesmo aviso pro Telegram (se ligado + vinculado) — pra saber que o helper travou
