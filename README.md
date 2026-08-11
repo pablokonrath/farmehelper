@@ -20,7 +20,7 @@ O maior receio de quem ouve falar de uma ferramenta assim é razoável: "isso l�
 - **Histórico permanente** — o log do jogo guarda ~30 dias; o FarmHub arquiva o resto, então "quanto eu farmei" continua verdade em qualquer período
 - **Modo guiado** — assistente passo a passo pras ações mais comuns, pra quem não quer caçar nas páginas
 - **Cálculo de farme** — preço por item, itens rastreados, "onde dropa" pra achar a DG certa
-- **DGs de rush diário** — monta o rush do dia (Alz, tickets, gemas) e compara custo x retorno
+- **Planejamento de Rush** — monta o rush do dia (Alz, tickets, gemas) e compara custo x retorno
 - **Sessões de farme** — abre e encerra sessão sozinho conforme os drops caem ou param, contabiliza runs e Alz/hora, e destaca item raro em roxo ([como a raridade é decidida](RARIDADES.md))
 - **Alertas** — som + pop-up + notificação do sistema quando um item rastreado cai, com vigilância de travamento (watchdog) caso o helper pare sozinho
 - **Vendas** — histórico de preço e registro do que já foi vendido

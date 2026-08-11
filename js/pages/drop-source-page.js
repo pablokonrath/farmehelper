@@ -117,7 +117,7 @@ export function renderDropSourcePage() {
 ${!routeYield.length ? '' : `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais deste item</div></div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Soma a taxa de drop de cada DG da rota (tabela acima) × as repetições dela. Crie e edite rotas em DGs de rush diário.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Soma a taxa de drop de cada DG da rota (tabela acima) × as repetições dela. Crie e edite rotas em Planejamento de Rush.</div>
   <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Rendimento esperado</th>${targetQty > 0 ? '<th>Execuções p/ meta</th>' : ''}</tr></thead><tbody>
   ${routeYield.map((r, i) => `<tr>
     <td class="rank">${i + 1}</td>

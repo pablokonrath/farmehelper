@@ -68,9 +68,13 @@ export function calculateCreditsCost() {
 // dungeon-difficulty.js), e arredonda pra cima já que cada crédito só dá horas inteiras de uso.
 // Antes disso o jogador tinha que fazer essa conta de cabeça — o app já tem os dois dados
 // separados (dificuldade da DG + tempo/run), só faltava juntar.
-export function computeCartCreditNeeds(cart = AppState.rushCart) {
+//
+// dgStats (opcional): aceita um computeDgComparison() já pronto — Planejamento de Rush chama
+// isto, computeRouteComparison e computeResetWorth na mesma renderização, e as três recalculavam
+// a mesma varredura do histórico (nunca purgado) de forma independente.
+export function computeCartCreditNeeds(cart = AppState.rushCart, dgStats = computeDgComparison()) {
   const statsByDgId = {};
-  computeDgComparison().forEach(d => { statsByDgId[d.dungeonId] = d; });
+  dgStats.forEach(d => { statsByDgId[d.dungeonId] = d; });
 
   const msByTier = { avancado: 0, intermediario: 0, iniciante: 0 };
   let missingDataCount = 0;
@@ -113,6 +117,11 @@ export function applySuggestedCreditQuantities() {
 // As gemas de entrada e as de reset são somadas no mesmo total de gemas/custo de gemas.
 // Itens salvos antes desse valor por-item existir (usedReset sem resetGemQuantity/resetGemUnitPrice)
 // caem de volta em 1 gema por repetição ao preço atual, para não quebrar rushes já salvos.
+//
+// Devolve o breakdown POR ITEM (items[]) junto com os agregados — antes só o agregado existia, e
+// a tabela do carrinho (Planejamento de Rush) reimplementava essa fórmula inteira de novo, na
+// mão, só pra mostrar o custo linha a linha. Duas cópias da mesma conta com risco real de
+// divergir se a fórmula mudar um dia e só uma cópia for atualizada.
 export function calculateRushCartCost(cart = AppState.rushCart) {
   const ticketPrice = +AppState.rushTicketPrice || 0;
   const costPerGem = getCostPerGem();
@@ -121,27 +130,44 @@ export function calculateRushCartCost(cart = AppState.rushCart) {
   let gemCount = 0;
   let gemCost = 0;
 
-  cart.forEach(item => {
-    alzFromDungeons += item.alzCost * item.repetitions;
+  const items = cart.map(item => {
+    const alzCost = item.alzCost * item.repetitions;
+    alzFromDungeons += alzCost;
+
     const ticketsPerRun = item.ticketsPerRun ?? (item.requiresTicket ? 1 : 0);
-    ticketCount += item.repetitions * ticketsPerRun;
+    const totalTickets = item.repetitions * ticketsPerRun;
+    ticketCount += totalTickets;
+    const ticketCostItem = totalTickets * ticketPrice;
 
     const entryGems = (item.gemsPerRun || 0) * item.repetitions;
+    const entryGemCost = entryGems * costPerGem;
     gemCount += entryGems;
-    gemCost += entryGems * costPerGem;
+    gemCost += entryGemCost;
 
+    let resetGemQuantity = 0, resetGemUnitPrice = 0, resetCost = 0;
     if (item.usedReset) {
-      const quantity = item.resetGemQuantity ?? item.repetitions;
-      const unitPrice = item.resetGemUnitPrice ?? costPerGem;
-      gemCount += quantity;
-      gemCost += quantity * unitPrice;
+      resetGemQuantity = item.resetGemQuantity ?? item.repetitions;
+      resetGemUnitPrice = item.resetGemUnitPrice ?? costPerGem;
+      resetCost = resetGemQuantity * resetGemUnitPrice;
+      gemCount += resetGemQuantity;
+      gemCost += resetCost;
     }
+
+    return {
+      item,
+      alzCost,
+      totalTickets, ticketPrice, ticketCost: ticketCostItem,
+      entryGems, costPerGem, entryGemCost,
+      resetGemQuantity, resetGemUnitPrice, resetCost,
+      total: alzCost + ticketCostItem + entryGemCost + resetCost,
+    };
   });
 
   const ticketCost = ticketCount * ticketPrice;
   const creditsCost = calculateCreditsCost();
 
   return {
+    items,
     alzFromDungeons,
     ticketCount,
     ticketCost,
@@ -389,7 +415,16 @@ export function saveRushForDay() {
     return;
   }
   const cost = calculateRushCartCost();
-  AppState.rushHistory[AppState.rushCartDate] = { total: cost.total, items: [...AppState.rushCart] };
+  // Créditos de macro são um valor GLOBAL (não por data, sem histórico próprio) — mas o custo
+  // deles entra no total de todo dia salvo. Sem guardar a quantidade junto, editar um rush de
+  // outro dia (só pra corrigir uma DG) e salvar de novo trocava silenciosamente o crédito daquele
+  // dia pela quantidade de HOJE, reescrevendo um total que nunca existiu de verdade. Snapshot
+  // (não referência) pra editar os créditos de hoje depois não mudar o que já foi salvo.
+  AppState.rushHistory[AppState.rushCartDate] = {
+    total: cost.total,
+    items: [...AppState.rushCart],
+    credits: JSON.parse(JSON.stringify(AppState.rushCredits)),
+  };
   saveRushHistory();
   updateBalanceSidebar();
   renderPage();
@@ -411,23 +446,28 @@ export function deleteRushForDay(date) {
 }
 
 // Recarrega os itens de um rush já salvo de volta no carrinho, para adicionar/remover DGs
-// e salvar de novo (sobrescrevendo o registro daquele dia).
+// e salvar de novo (sobrescrevendo o registro daquele dia). Restaura também os créditos DAQUELE
+// dia (ver saveRushForDay) — sem isso, editar só a lista de DGs e salvar de novo herdaria a
+// quantidade de crédito de HOJE (valor global, sem histórico próprio) por engano. Rush salvo
+// antes desse snapshot existir (sem `.credits`) cai no que já estiver configurado agora.
 export function editSavedRush(date) {
   const rush = AppState.rushHistory[date];
   if (!rush) return;
   AppState.rushCartDate = date;
   AppState.rushCart = (rush.items || []).map(item => ({ ...item }));
+  if (rush.credits) AppState.rushCredits = JSON.parse(JSON.stringify(rush.credits));
   renderPage();
 }
 
 // Igual editSavedRush, mas pra um rush novo em vez de editar o existente — carrega as mesmas
-// DGs no carrinho com a data de hoje, pra repetir um rush parecido sem montar tudo de novo.
-// Se hoje já tiver um rush salvo, o aviso de "já existe" (renderRushPage) cobre o aviso de
-// sobrescrita — o usuário pode trocar a data antes de salvar.
+// DGs (e os mesmos créditos) no carrinho com a data de hoje, pra repetir um rush parecido sem
+// montar tudo de novo. Se hoje já tiver um rush salvo, o aviso de "já existe" (renderRushPage)
+// cobre o aviso de sobrescrita — o usuário pode trocar a data antes de salvar.
 export function duplicateSavedRush(date) {
   const rush = AppState.rushHistory[date];
   if (!rush) return;
   AppState.rushCartDate = todayISODate();
   AppState.rushCart = (rush.items || []).map(item => ({ ...item }));
+  if (rush.credits) AppState.rushCredits = JSON.parse(JSON.stringify(rush.credits));
   renderPage();
 }

@@ -14,7 +14,7 @@ export function formatDuration(ms) {
 
 // Texto (não-HTML, pra usar em atributo title=) detalhando de onde vem um "Tempo estimado" de
 // rota — uma linha por DG com tempo/run × repetições = total. Usado no tooltip das tabelas de
-// rota (DGs de rush diário e Sessões de farme), pra não precisar abrir a rota só pra ver o
+// rota (Planejamento de Rush e Sessões de farme), pra não precisar abrir a rota só pra ver o
 // tempo/run de cada DG que compõe o total.
 export function timeBreakdownTooltip(timeBreakdown) {
   return (timeBreakdown || [])

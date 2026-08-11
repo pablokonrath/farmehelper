@@ -609,7 +609,7 @@ recente), rode agora `sql/migrate_rush_routes.sql` no phpMyAdmin (aba SQL) — c
 
 Duas coisas novas, pessoais por conta (nada compartilhado):
 
-- **Rotas** (card "Minhas rotas" em DGs de rush diário): monte o carrinho normalmente e clique
+- **Rotas** (card "Minhas rotas" em Planejamento de Rush): monte o carrinho normalmente e clique
   "Salvar como rota" pra guardar aquele conjunto de DGs + repetições como um molde reutilizável,
   sem data fixa (diferente de "Salvar rush do dia", que fica preso àquele dia). Aplicar uma rota
   carrega ela no carrinho com os preços de HOJE — a rota nunca guarda preço, só a composição.

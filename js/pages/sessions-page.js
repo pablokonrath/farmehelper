@@ -384,7 +384,7 @@ export function renderSessionsPage() {
   const routeComparisonCard = !routeComparison.length ? '' : `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais</div></div>
-  ${infoToggle('sessions-route-comparison', `Ordenado por <strong style="color:var(--gold)">Lucro/hora</strong> — uma rota mais longa pode ter lucro total maior sem ser a melhor forma de gastar seu tempo, então a comparação é por eficiência, não pelo lucro bruto. Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje (já incluindo reset por gemas quando alguma DG passa de ${DAILY_RUN_LIMIT} runs e vale a pena resetar). Rota sem tempo estimado completo fica no fim, sem eficiência calculável ainda. Crie e edite rotas em DGs de rush diário.`)}
+  ${infoToggle('sessions-route-comparison', `Ordenado por <strong style="color:var(--gold)">Lucro/hora</strong> — uma rota mais longa pode ter lucro total maior sem ser a melhor forma de gastar seu tempo, então a comparação é por eficiência, não pelo lucro bruto. Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje (já incluindo reset por gemas quando alguma DG passa de ${DAILY_RUN_LIMIT} runs e vale a pena resetar). Rota sem tempo estimado completo fica no fim, sem eficiência calculável ainda. Crie e edite rotas em Planejamento de Rush.`)}
   <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th><th>Lucro/hora</th></tr></thead><tbody>
   ${routeComparison.map((r, i) => `<tr>
     <td class="rank">${i + 1}</td>

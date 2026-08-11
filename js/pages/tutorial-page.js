@@ -66,7 +66,7 @@ ${topic('ti-coins', 'Cálculo de farme (preços & itens rastreados)', `
     '<strong>Equipamento genérico</strong> (armadura, elmo, luva, espada, sapato...) é ignorado em todo o sistema: não tem valor de venda e só inflaria as listas.',
   ])}
 `)}
-${topic('ti-swords', 'DGs de rush diário', `
+${topic('ti-swords', 'Planejamento de Rush', `
   Monte um "carrinho" de DGs que vai rodar no dia e veja o <strong>custo total</strong> (o quanto vai gastar de entrada), que é descontado do lucro daquele dia.
   ${li([
     '<strong>Valores:</strong> preço do ticket e o Card Cash (1.000 Cash em Alz) — você digita uma vez e fica salvo. O custo da gema sai automático do Card Cash (÷ 1000).',

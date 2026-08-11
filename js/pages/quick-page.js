@@ -132,7 +132,7 @@ function renderRushDGs(qm) {
 }
 
 function renderRushCreditos(qm) {
-  const inner = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Vai comprar créditos de macro hoje? (opcional — deixe 0 se não vai usar). O preço de cada um já vem calculado sozinho — configure o item vinculado de cada categoria em "DGs de rush diário" se ainda não fez.</div>
+  const inner = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Vai comprar créditos de macro hoje? (opcional — deixe 0 se não vai usar). O preço de cada um já vem calculado sozinho — configure o item vinculado de cada categoria em "Planejamento de Rush" se ainda não fez.</div>
     ${CREDIT_CATEGORIES.map(cat => {
       const c = AppState.rushCredits[cat.id];
       const unitCost = getCreditUnitCost(cat.id);
@@ -226,11 +226,11 @@ function renderSessao(qm) {
 
 function renderRota(qm) {
   if (qm.step === 'done') {
-    return doneCard('🗺️', 'Rota aplicada!', `As DGs de "${esc(qm.data.routeName)}" foram somadas ao carrinho de hoje, em "DGs de rush diário".`, 'rota');
+    return doneCard('🗺️', 'Rota aplicada!', `As DGs de "${esc(qm.data.routeName)}" foram somadas ao carrinho de hoje, em "Planejamento de Rush".`, 'rota');
   }
   if (!AppState.rushRoutes.length) {
-    return stepShell('Aplicar rota', `<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">Você ainda não tem nenhuma rota salva. Monte o carrinho em "DGs de rush diário" e clique em "Salvar como rota" primeiro.</div>
-      <button class="btn btn-d" onclick="navigateTo('rush')"><i class="ti ti-swords"></i>Ir pra DGs de rush diário</button>`);
+    return stepShell('Aplicar rota', `<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px">Você ainda não tem nenhuma rota salva. Monte o carrinho em "Planejamento de Rush" e clique em "Salvar como rota" primeiro.</div>
+      <button class="btn btn-d" onclick="navigateTo('rush')"><i class="ti ti-swords"></i>Ir pra Planejamento de Rush</button>`);
   }
   const opts = AppState.rushRoutes.map(r => `<option value="${esc(r.id)}">${esc(r.name)} — ${r.items.length} DG${r.items.length > 1 ? 's' : ''}</option>`).join('');
   const inner = `<label class="lbl">Qual rota você quer aplicar?</label>

@@ -1,6 +1,6 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
-import { computeResetWorth } from '../features/dg-session.js';
+import { computeResetWorth, computeDgComparison } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
@@ -58,14 +58,52 @@ export function renderRushPage() {
   const cost = calculateRushCartCost();
   const editingRoute = AppState.editingRouteId ? AppState.rushRoutes.find(r => r.id === AppState.editingRouteId) : null;
   const appliedRoutes = appliedRoutesToday();
+  // Uma varredura só do histórico (nunca purgado), reusada por tudo que precisa dela nesta
+  // renderização — rota, sugestão de crédito e "vale resetar" cada uma recalculava por conta
+  // própria, então cada clique nesta página (adicionar DG, mudar quantidade de crédito) disparava
+  // 3 varreduras redundantes do mesmo AppState.dgSessions.
+  const dgStats = computeDgComparison();
   const routeTimeById = {};
-  computeRouteComparison().forEach(r => { routeTimeById[r.id] = r; });
-  const creditNeeds = computeCartCreditNeeds();
+  computeRouteComparison(dgStats).forEach(r => { routeTimeById[r.id] = r; });
+  const creditNeeds = computeCartCreditNeeds(AppState.rushCart, dgStats);
   // Cruza cada DG resetada no carrinho com "vale a pena resetar?" (mesmo cálculo de Sessões de
   // farme) — se o histórico real diz que não compensa, avisa aqui em vez de só numa página separada.
-  const resetWorth = computeResetWorth();
+  const resetWorth = computeResetWorth(dgStats);
   const resetWorthByName = {};
   if (resetWorth.gemValueSet) resetWorth.rows.forEach(r => { resetWorthByName[r.dungeonName] = r; });
+  const dgStatsByName = {};
+  dgStats.forEach(d => { dgStatsByName[d.dungeonName] = d; });
+  // Melhor Alz/HORA do histórico (não Alz/run — crédito compra TEMPO, usável em qualquer DG, então
+  // a régua de comparação certa é quanto essa hora rende na sua melhor entrada). Usado no aviso de
+  // "vale a pena comprar esse crédito?" abaixo.
+  const bestAlzPerHour = dgStats.reduce((max, d) => (d.alzPerHour != null && d.alzPerHour > max ? d.alzPerHour : max), 0);
+  // Métricas hoje só mostravam CUSTO — nunca quanto o plano deveria RENDER, que é a metade que
+  // decide se o dia fecha no positivo. Mesma conta que "Qual rota rende mais" já faz por rota
+  // (Alz/run histórico × repetições), só que somada pro carrinho inteiro, misturado ou não.
+  let expectedReturn = 0;
+  let missingReturnCount = 0;
+  AppState.rushCart.forEach(item => {
+    const stat = dgStatsByName[item.name];
+    if (stat?.alzPerRun != null) expectedReturn += stat.alzPerRun * item.repetitions;
+    else missingReturnCount++;
+  });
+  const expectedProfit = expectedReturn - cost.total;
+
+  const paramsCard = `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-calendar"></i>Parâmetros do dia</div>
+  <div class="g3">
+    <div><label class="lbl">Data do rush</label>${renderDateInputBR({ value: AppState.rushCartDate, onChange: 'setRushCartDate' })}</div>
+    <div><label class="lbl">Valor unitário do ticket (Alz)</label>
+      <input class="inp" id="tkp" type="text" inputmode="numeric" value="${AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : ''}" placeholder="Ex: 1.000.000"
+        oninput="maskAlzInputLive(this)" onblur="setRushTicketPrice(this.value)">
+      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).</div></div>
+    <div><label class="lbl">Card Cash (1.000 Cash em Alz)</label>
+      <input class="inp" id="ccp" type="text" inputmode="numeric" value="${AppState.rushCardCashPrice ? formatNumber(AppState.rushCardCashPrice) : ''}" placeholder="Ex: 550.000.000"
+        oninput="maskAlzInputLive(this)" onblur="setRushCardCashPrice(this.value)">
+      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
+  </div>
+</div>`;
 
   // Rotas ficam logo após os parâmetros do dia — é o caminho rápido do dia a dia (aplicar e
   // pronto), então não faz sentido estar depois de Créditos/Gerenciar DGs/Adicionar/Métricas.
@@ -101,108 +139,7 @@ export function renderRushPage() {
   </tbody></table>`}
 </div>`;
 
-  return `
-<div class="pg-title"><i class="ti ti-swords" style="color:var(--acc)"></i>DGs de rush diário</div>
-<div class="pg-sub">Monte um carrinho de DGs, salve por data e o custo será deduzido do farme daquele dia.</div>
-<button class="btn btn-d btn-xs" style="margin-bottom:14px" onclick="openGuidedRush()"><i class="ti ti-bolt" style="color:var(--gold)"></i>Prefere passo a passo? Montar no modo guiado</button>
-
-<!-- PARÂMETROS -->
-<div class="card">
-  <div class="ctitle"><i class="ti ti-calendar"></i>Parâmetros do dia</div>
-  <div class="g3">
-    <div><label class="lbl">Data do rush</label>${renderDateInputBR({ value: AppState.rushCartDate, onChange: 'setRushCartDate' })}</div>
-    <div><label class="lbl">Valor unitário do ticket (Alz)</label>
-      <input class="inp" id="tkp" type="text" inputmode="numeric" value="${AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : ''}" placeholder="Ex: 1.000.000"
-        oninput="maskAlzInputLive(this)" onblur="setRushTicketPrice(this.value)">
-      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).</div></div>
-    <div><label class="lbl">Card Cash (1.000 Cash em Alz)</label>
-      <input class="inp" id="ccp" type="text" inputmode="numeric" value="${AppState.rushCardCashPrice ? formatNumber(AppState.rushCardCashPrice) : ''}" placeholder="Ex: 550.000.000"
-        oninput="maskAlzInputLive(this)" onblur="setRushCardCashPrice(this.value)">
-      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
-  </div>
-</div>
-
-${routesCard}
-
-<!-- CRÉDITOS DE MACRO (colapsável) -->
-<div class="card" style="padding:0;overflow:hidden">
-  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleCreditsManager()">
-    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-clock-hour-4"></i>Créditos de macro</div>
-    <i class="ti ti-chevron-${AppState.isCreditsManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
-  </div>
-  ${AppState.isCreditsManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-  ${infoToggle('rush-credits', `Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). O custo de cada categoria tem uma parte fixa (Alz + tickets, regra do jogo — só muda se a equipe do servidor mexer no preço, por isso não é campo pra digitar) e uma parte variável: 1 unidade de um item específico, que muda de preço todo dia. Vincule o item de cada categoria abaixo e o preço vem sozinho de Cálculo de farme — sem vínculo (ou sem preço cadastrado ainda), cai num campo manual. Limite de compra: ${CREDIT_DAILY_LIMIT} por dia, pra cada categoria. A sugestão de quantidade cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'}`)}
-  <datalist id="creditItemSugg">${AppState.knownItemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:220px">Item do dia (preço variável)</th><th>Subtotal</th></tr></thead><tbody>
-  ${CREDIT_CATEGORIES.map(cat => {
-    const { quantity } = AppState.rushCredits[cat.id];
-    const itemName = AppState.rushCreditItemNames[cat.id];
-    const itemPriceInfo = getCreditItemPrice(cat.id);
-    const unitCost = getCreditUnitCost(cat.id);
-    const subtotal = quantity * unitCost;
-    const needed = creditNeeds[cat.id] || 0;
-    const fixed = CREDIT_TIER_COSTS[cat.id];
-    const overLimit = isOverDailyCreditLimit(quantity);
-    return `<tr>
-      <td style="font-weight:500">${cat.name}${needed > 0 ? ` <span style="font-size:var(--fs-2xs);font-weight:400;color:${needed > CREDIT_DAILY_LIMIT ? 'var(--warn)' : 'var(--gold)'}" title="Baseado no tempo/run real das DGs dessa faixa no carrinho de hoje${needed > CREDIT_DAILY_LIMIT ? ` — passa do limite de ${CREDIT_DAILY_LIMIT}/dia` : ''}">≈${needed} sugerido${needed > 1 ? 's' : ''}${needed > CREDIT_DAILY_LIMIT ? ' ⚠' : ''}</span>` : ''}
-        <div style="font-size:var(--fs-2xs);color:var(--muted);font-weight:400;margin-top:2px">${formatAlzGamer(fixed.fixedAlz)} + ${fixed.fixedTickets}× ticket <span style="opacity:.7">(fixo)</span></div></td>
-      <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)">
-        ${overLimit ? `<div style="font-size:var(--fs-2xs);color:var(--warn);margin-top:3px"><i class="ti ti-alert-triangle"></i> máx. ${CREDIT_DAILY_LIMIT}/dia</div>` : ''}</td>
-      <td><input class="inp inp-sm" list="creditItemSugg" value="${esc(itemName)}" placeholder="ex: Núcleo Iniciante" onblur="setRushCreditItemName('${cat.id}', this.value)">
-        ${itemPriceInfo.linked
-          ? `<div style="font-size:var(--fs-2xs);color:var(--ok);margin-top:3px"><i class="ti ti-check"></i> ${formatAlzGamer(itemPriceInfo.price)} — puxado de Cálculo de farme</div>`
-          : itemName
-            ? `<div style="font-size:var(--fs-2xs);color:var(--warn);margin-top:3px">Sem preço cadastrado pra "${esc(itemName)}" em Cálculo de farme — cadastre lá (o nome precisa bater) ou digite o preço de hoje aqui:</div>
-               <input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="preço manual" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`
-            : `<input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="ou digite o preço na mão" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`}</td>
-      <td>${renderAlzValue(subtotal, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${formatAlzGamer(unitCost)}/un.</div></td>
-    </tr>`;
-  }).join('')}
-  </tbody></table>
-  ${creditNeeds.avancado + creditNeeds.intermediario + creditNeeds.iniciante > 0 ? `<button class="btn btn-d btn-xs" style="margin-top:10px" onclick="applySuggestedCreditQuantities()"><i class="ti ti-refresh"></i>Preencher com a sugestão</button>` : ''}
-  </div>` : ''}
-</div>
-
-<!-- GERENCIAR DGs (colapsável) -->
-<div class="card" style="padding:0;overflow:hidden">
-  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleDungeonManager()">
-    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-table"></i>Gerenciar DGs <span style="font-size:11px;font-weight:400;color:var(--muted)">${AppState.dungeonList.length} DGs cadastradas</span></div>
-    <i class="ti ti-chevron-${AppState.isDungeonManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
-  </div>
-  ${AppState.isDungeonManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-    <table style="margin-bottom:14px"><thead><tr><th>Nome da DG</th><th>Custo Alz (por run)</th><th>Tickets (por run)</th><th>Gemas de entrada (por run)</th>${AppState.isMasterAdmin ? '<th style="width:100px">Ações</th>' : ''}</tr></thead><tbody>
-    ${AppState.dungeonList.map(dg => AppState.isMasterAdmin && AppState.editingDungeonId === dg.id ? `
-      <tr style="background:var(--acc-bg)">
-        <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${esc(dg.name)}" style="min-width:160px"></td>
-        <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="text" inputmode="numeric" value="${dg.alzCost ? formatNumber(dg.alzCost) : ''}" placeholder="0" style="width:110px" oninput="maskAlzInputLive(this)"></td>
-        <td><input class="inp inp-sm" id="ed-tk-${dg.id}" type="number" min="0" value="${dg.ticketsPerRun || 0}" style="width:80px"></td>
-        <td><input class="inp inp-sm" id="ed-g-${dg.id}" type="number" min="0" value="${dg.gemsPerRun || 0}" style="width:80px"></td>
-        <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveDungeonEdit('${dg.id}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingDungeon()">✕</button></div></td>
-      </tr>` :
-      `<tr>
-        <td>${esc(dg.name)}</td>
-        <td>${dg.alzCost > 0 ? renderAlzValue(dg.alzCost) : '<span style="color:var(--muted)">—</span>'}</td>
-        <td>${dg.ticketsPerRun > 0 ? `<span class="badge badge-acc">${dg.ticketsPerRun}× Ticket</span>` : '<span class="badge badge-muted">—</span>'}</td>
-        <td>${dg.gemsPerRun > 0 ? `<span class="badge badge-warn">${dg.gemsPerRun}× Gema</span>` : '<span class="badge badge-muted">—</span>'}</td>
-        ${AppState.isMasterAdmin ? `<td><div style="display:flex;gap:4px">
-          <button class="btn btn-d btn-xs" aria-label="Editar DG ${esc(dg.name)}" title="Editar" onclick="startEditingDungeon('${dg.id}')"><i class="ti ti-edit"></i></button>
-          <button class="btn btn-xs" aria-label="Excluir DG ${esc(dg.name)}" title="Excluir" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteDungeon('${dg.id}')"><i class="ti ti-trash"></i></button>
-        </div></td>` : ''}
-      </tr>`).join('')}
-    </tbody></table>
-    ${AppState.isMasterAdmin ? `<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--txt2)"><i class="ti ti-plus"></i> Nova DG</div>
-    <div class="row">
-      <div style="flex:1"><input class="inp" id="new-dg-n" placeholder="Nome da DG"></div>
-      <div style="width:150px"><input class="inp" id="new-dg-a" type="text" inputmode="numeric" placeholder="Custo Alz (0 se ticket/gema)" oninput="maskAlzInputLive(this)"></div>
-      <div style="width:110px"><input class="inp" id="new-dg-tk" type="number" min="0" placeholder="Qtd. tickets"></div>
-      <div style="width:110px"><input class="inp" id="new-dg-g" type="number" min="0" placeholder="Qtd. gemas"></div>
-      <button class="btn btn-p" onclick="addNewDungeon()"><i class="ti ti-plus"></i>Adicionar</button>
-      <button class="btn btn-d" aria-label="Restaurar lista de DGs padrão" onclick="resetDungeonList()" title="Restaurar padrão"><i class="ti ti-refresh"></i></button>
-    </div></div>` : '<div style="font-size:12px;color:var(--muted)">Só admins podem editar essa lista.</div>'}
-  </div>` : ''}
-</div>
-
-<!-- ADICIONAR DG AO CARRINHO -->
+  const addDgCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-plus"></i>Adicionar DG ao rush</div>
   ${infoToggle('rush-add-dg', `Cada run usa o custo Alz da DG (se houver) + tickets × preço do ticket + gemas de entrada × custo por gema (sugestão: <span id="gemaSuggestion">${formatAlzGamer(getCostPerGem())}</span>, calculado a partir do Card Cash). Reset (opcional) soma gemas por cima disso.`)}
@@ -242,20 +179,9 @@ ${routesCard}
     Selecione uma DG e o número de repetições para ver o custo estimado.
   </div>
   <button class="btn btn-p" onclick="addDungeonToCart()"><i class="ti ti-plus"></i>Adicionar ao carrinho</button>
-</div>
+</div>`;
 
-<!-- MÉTRICAS -->
-<div class="g6" style="margin-bottom:12px">
-  <div class="metric"><div class="metric-lbl">Alz das DGs</div><div class="metric-val" id="m-a" style="color:${getAlzTierColor(cost.alzFromDungeons)}" title="${formatNumber(cost.alzFromDungeons)} Alz">${formatAlzGamer(cost.alzFromDungeons)}</div></div>
-  <div class="metric"><div class="metric-lbl">Tickets totais</div><div class="metric-val" id="m-t">${cost.ticketCount}</div></div>
-  <div class="metric"><div class="metric-lbl">Custo tickets</div><div class="metric-val" id="m-ct" style="color:${getAlzTierColor(cost.ticketCost)}" title="${formatNumber(cost.ticketCost)} Alz">${formatAlzGamer(cost.ticketCost)}</div></div>
-  <div class="metric"><div class="metric-lbl">Gemas totais</div><div class="metric-val" id="m-g">${cost.gemCount}</div></div>
-  <div class="metric"><div class="metric-lbl">Custo gemas (entrada + reset)</div><div class="metric-val" id="m-cg" style="color:${getAlzTierColor(cost.gemCost)}" title="${formatNumber(cost.gemCost)} Alz">${formatAlzGamer(cost.gemCost)}</div></div>
-  <div class="metric"><div class="metric-lbl">Custo dos créditos</div><div class="metric-val" id="m-cc" style="color:${getAlzTierColor(cost.creditsCost)}" title="${formatNumber(cost.creditsCost)} Alz">${formatAlzGamer(cost.creditsCost)}</div></div>
-  <div class="metric hl"><div class="metric-lbl">Custo final geral</div><div class="metric-val" id="m-tot" style="color:${getAlzTierColor(cost.total)}" title="${formatNumber(cost.total)} Alz">${formatAlzGamer(cost.total)}</div></div>
-</div>
-
-<!-- CARRINHO -->
+  const cartCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}${appliedRoutes.length ? appliedRoutes.map(r => ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(r.name)}</span>`).join('') : ''}</div>
   <div style="display:flex;gap:8px">
@@ -272,45 +198,139 @@ ${routesCard}
   ${!AppState.rushCart.length ? '<div class="empty">Nenhuma DG adicionada. Escolha uma DG acima e clique em Adicionar, ou aplique uma rota salva.</div>' : `
   <table><thead><tr><th>DG</th><th>Tipo</th><th>Reps</th><th>Reset</th><th>Custo (breakdown)</th><th style="width:40px"></th></tr></thead><tbody>
   ${AppState.rushCart.map((item, i) => {
-    const ticketPrice = +AppState.rushTicketPrice || 0;
-    const costPerGem = getCostPerGem();
-    const ticketsPerRun = item.ticketsPerRun ?? (item.requiresTicket ? 1 : 0);
-    const totalTickets = ticketsPerRun * item.repetitions;
-    const alzCost = item.alzCost * item.repetitions;
-    const ticketCost = totalTickets * ticketPrice;
-    const entryGems = (item.gemsPerRun || 0) * item.repetitions;
-    const entryGemCost = entryGems * costPerGem;
-    const resetGemQuantity = item.usedReset ? (item.resetGemQuantity ?? item.repetitions) : 0;
-    const resetGemUnitPrice = item.usedReset ? (item.resetGemUnitPrice ?? costPerGem) : 0;
-    const resetCost = resetGemQuantity * resetGemUnitPrice;
-    const total = alzCost + ticketCost + entryGemCost + resetCost;
+    // Breakdown por item já vem pronto de calculateRushCartCost (cost.items, mesma posição do
+    // carrinho) — não recalcula a fórmula aqui, só monta o texto/badges em cima do número pronto.
+    const b = cost.items[i];
     const breakdown = [];
-    if (alzCost > 0) breakdown.push(`${formatAlzGamer(item.alzCost)} × ${item.repetitions} = ${formatAlzGamer(alzCost)}`);
-    if (totalTickets > 0) breakdown.push(`${totalTickets} ticket${totalTickets > 1 ? 's' : ''} × ${formatAlzGamer(ticketPrice)} = ${formatAlzGamer(ticketCost)}`);
-    if (entryGems > 0) breakdown.push(`${entryGems} gema${entryGems > 1 ? 's' : ''} de entrada × ${formatAlzGamer(costPerGem)} = ${formatAlzGamer(entryGemCost)}`);
-    if (item.usedReset) breakdown.push(`${resetGemQuantity} gema${resetGemQuantity !== 1 ? 's' : ''} de reset × ${formatAlzGamer(resetGemUnitPrice)} = ${formatAlzGamer(resetCost)}`);
+    if (b.alzCost > 0) breakdown.push(`${formatAlzGamer(item.alzCost)} × ${item.repetitions} = ${formatAlzGamer(b.alzCost)}`);
+    if (b.totalTickets > 0) breakdown.push(`${b.totalTickets} ticket${b.totalTickets > 1 ? 's' : ''} × ${formatAlzGamer(b.ticketPrice)} = ${formatAlzGamer(b.ticketCost)}`);
+    if (b.entryGems > 0) breakdown.push(`${b.entryGems} gema${b.entryGems > 1 ? 's' : ''} de entrada × ${formatAlzGamer(b.costPerGem)} = ${formatAlzGamer(b.entryGemCost)}`);
+    if (item.usedReset) breakdown.push(`${b.resetGemQuantity} gema${b.resetGemQuantity !== 1 ? 's' : ''} de reset × ${formatAlzGamer(b.resetGemUnitPrice)} = ${formatAlzGamer(b.resetCost)}`);
     const typeBadges = [];
-    if (totalTickets > 0) typeBadges.push(`<span class="badge badge-acc">${totalTickets}× Ticket</span>`);
-    if (entryGems > 0) typeBadges.push(`<span class="badge badge-warn">${entryGems}× Gema</span>`);
+    if (b.totalTickets > 0) typeBadges.push(`<span class="badge badge-acc">${b.totalTickets}× Ticket</span>`);
+    if (b.entryGems > 0) typeBadges.push(`<span class="badge badge-warn">${b.entryGems}× Gema</span>`);
     if (!typeBadges.length) typeBadges.push('<span class="badge badge-muted">Alz</span>');
     const resetWorthRow = item.usedReset ? resetWorthByName[item.name] : null;
     const resetWarning = resetWorthRow && !resetWorthRow.worth
       ? ` <i class="ti ti-alert-triangle" style="color:var(--err)" title="Pelo seu histórico, resetar essa DG não compensa: líquido de ${formatAlzGamer(resetWorthRow.netAlzPerRun)}/run não cobre o custo do reset. Veja 'Vale a pena resetar?' em Sessões de farme."></i>`
       : '';
+    // Aviso mais amplo que o de reset: essa DG rende negativo no seu histórico mesmo sem contar
+    // reset nenhum — reaproveita netAlzPerRun (mesmo cálculo de "Qual DG rende mais" em Sessões de
+    // farme). Não repete se o aviso de reset já apareceu (mesma raiz, um é mais específico).
+    const dgStat = dgStatsByName[item.name];
+    const negativeWarning = !resetWarning && dgStat?.netAlzPerRun != null && dgStat.netAlzPerRun < 0
+      ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Pelo seu histórico, o líquido desta DG (já descontando custo de entrada) é ${formatAlzGamer(dgStat.netAlzPerRun)}/run — negativo mesmo sem reset. Veja 'Qual DG rende mais' em Sessões de farme."></i>`
+      : '';
     return `<tr>
-      <td style="font-weight:500">${esc(item.name)}</td>
+      <td style="font-weight:500">${esc(item.name)}${negativeWarning}</td>
       <td>${typeBadges.join(' ')}</td>
       <td>${item.repetitions}×</td>
       <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}${resetWarning}</td>
-      <td>${renderAlzValue(total, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
+      <td>${renderAlzValue(b.total, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
       <td><button aria-label="Remover ${esc(item.name)} do carrinho" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeDungeonFromCart(${i})"><i class="ti ti-trash"></i></button></td>
     </tr>`;
   }).join('')}
   </tbody></table>`}
   <div id="rMsg" style="display:none;margin-top:10px;padding:7px 12px;background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:6px;color:var(--ok);font-size:12px"></div>
-</div>
+</div>`;
 
-<!-- RUSHES SALVOS -->
+  const metricsBlock = `
+<div class="g6" style="margin-bottom:12px">
+  <div class="metric"><div class="metric-lbl">Alz das DGs</div><div class="metric-val" id="m-a" style="color:${getAlzTierColor(cost.alzFromDungeons)}" title="${formatNumber(cost.alzFromDungeons)} Alz">${formatAlzGamer(cost.alzFromDungeons)}</div></div>
+  <div class="metric"><div class="metric-lbl">Tickets totais</div><div class="metric-val" id="m-t">${cost.ticketCount}</div></div>
+  <div class="metric"><div class="metric-lbl">Custo tickets</div><div class="metric-val" id="m-ct" style="color:${getAlzTierColor(cost.ticketCost)}" title="${formatNumber(cost.ticketCost)} Alz">${formatAlzGamer(cost.ticketCost)}</div></div>
+  <div class="metric"><div class="metric-lbl">Gemas totais</div><div class="metric-val" id="m-g">${cost.gemCount}</div></div>
+  <div class="metric"><div class="metric-lbl">Custo gemas (entrada + reset)</div><div class="metric-val" id="m-cg" style="color:${getAlzTierColor(cost.gemCost)}" title="${formatNumber(cost.gemCost)} Alz">${formatAlzGamer(cost.gemCost)}</div></div>
+  <div class="metric"><div class="metric-lbl">Custo dos créditos</div><div class="metric-val" id="m-cc" style="color:${getAlzTierColor(cost.creditsCost)}" title="${formatNumber(cost.creditsCost)} Alz">${formatAlzGamer(cost.creditsCost)}</div></div>
+  <div class="metric hl"><div class="metric-lbl">Custo final geral</div><div class="metric-val" id="m-tot" style="color:${getAlzTierColor(cost.total)}" title="${formatNumber(cost.total)} Alz">${formatAlzGamer(cost.total)}</div></div>
+  <div class="metric"><div class="metric-lbl">Retorno esperado</div><div class="metric-val" style="color:${getAlzTierColor(expectedReturn)}" title="${formatNumber(expectedReturn)} Alz">${formatAlzGamer(expectedReturn)}</div>${missingReturnCount ? `<div class="metric-lbl" style="margin-top:2px">${missingReturnCount} DG sem histórico, fora da conta</div>` : ''}</div>
+  <div class="metric" style="border-left-color:${expectedProfit >= 0 ? 'var(--ok-border)' : 'var(--err-border)'}"><div class="metric-lbl">Lucro esperado hoje</div><div class="metric-val" style="color:${expectedProfit >= 0 ? 'var(--ok)' : 'var(--err)'}" title="${formatNumber(expectedProfit)} Alz">${expectedProfit >= 0 ? '+' : ''}${formatAlzGamer(expectedProfit)}</div></div>
+</div>`;
+
+  const creditsCard = `
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleCreditsManager()">
+    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-clock-hour-4"></i>Créditos de macro</div>
+    <i class="ti ti-chevron-${AppState.isCreditsManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
+  </div>
+  ${AppState.isCreditsManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
+  ${infoToggle('rush-credits', `Cada crédito dá 1h de uso do macro, utilizável em qualquer DG (não é por-DG como tickets/gemas). O custo de cada categoria tem uma parte fixa (Alz + tickets, regra do jogo — só muda se a equipe do servidor mexer no preço, por isso não é campo pra digitar) e uma parte variável: 1 unidade de um item específico, que muda de preço todo dia. Vincule o item de cada categoria abaixo e o preço vem sozinho de Cálculo de farme — sem vínculo (ou sem preço cadastrado ainda), cai num campo manual. Limite de compra: ${CREDIT_DAILY_LIMIT} por dia, pra cada categoria. A sugestão de quantidade cruza a dificuldade de cada DG do carrinho (Avançada/Intermediária/Iniciante) com o tempo/run real das suas sessões — ${creditNeeds.missingDataCount ? `${creditNeeds.missingDataCount} DG(s) do carrinho ainda sem tempo/run farmado, não entram na conta.` : 'cobre todas as DGs do carrinho de hoje.'} "Vale a pena?" compara o custo de 1h de macro com o Alz/hora da sua melhor DG (mesmo dado de "Qual DG rende mais" em Sessões de farme) — 1 crédito só compensa se custar menos do que essa hora renderia farmando de verdade.`)}
+  <datalist id="creditItemSugg">${AppState.knownItemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+  <table><thead><tr><th>Categoria</th><th style="width:110px">Qtd. comprada</th><th style="width:220px">Item do dia (preço variável)</th><th>Subtotal</th></tr></thead><tbody>
+  ${CREDIT_CATEGORIES.map(cat => {
+    const { quantity } = AppState.rushCredits[cat.id];
+    const itemName = AppState.rushCreditItemNames[cat.id];
+    const itemPriceInfo = getCreditItemPrice(cat.id);
+    const unitCost = getCreditUnitCost(cat.id);
+    const subtotal = quantity * unitCost;
+    const needed = creditNeeds[cat.id] || 0;
+    const fixed = CREDIT_TIER_COSTS[cat.id];
+    const overLimit = isOverDailyCreditLimit(quantity);
+    // Vale a pena comprar esse crédito? 1h de macro custando menos do que 1h rende na sua melhor
+    // DG é o piso mínimo pra valer — só aparece com dado real (histórico + custo do crédito).
+    const creditWorthIt = bestAlzPerHour > 0 && unitCost > 0
+      ? `<div style="font-size:var(--fs-2xs);color:${unitCost < bestAlzPerHour ? 'var(--ok)' : 'var(--warn)'};margin-top:2px" title="Sua melhor entrada rende ${formatAlzGamer(bestAlzPerHour)}/h (ver Qual DG rende mais em Sessões de farme)">${unitCost < bestAlzPerHour ? '<i class="ti ti-check"></i> vale a pena' : '<i class="ti ti-alert-triangle"></i> não compensa'} vs ${formatAlzGamer(bestAlzPerHour)}/h</div>`
+      : '';
+    return `<tr>
+      <td style="font-weight:500">${cat.name}${needed > 0 ? ` <span style="font-size:var(--fs-2xs);font-weight:400;color:${needed > CREDIT_DAILY_LIMIT ? 'var(--warn)' : 'var(--gold)'}" title="Baseado no tempo/run real das DGs dessa faixa no carrinho de hoje${needed > CREDIT_DAILY_LIMIT ? ` — passa do limite de ${CREDIT_DAILY_LIMIT}/dia` : ''}">≈${needed} sugerido${needed > 1 ? 's' : ''}${needed > CREDIT_DAILY_LIMIT ? ' ⚠' : ''}</span>` : ''}
+        <div style="font-size:var(--fs-2xs);color:var(--muted);font-weight:400;margin-top:2px">${formatAlzGamer(fixed.fixedAlz)} + ${fixed.fixedTickets}× ticket <span style="opacity:.7">(fixo)</span></div></td>
+      <td><input class="inp inp-sm" type="number" min="0" value="${quantity || ''}" placeholder="0" onchange="setRushCreditQuantity('${cat.id}', this.value)">
+        ${overLimit ? `<div style="font-size:var(--fs-2xs);color:var(--warn);margin-top:3px"><i class="ti ti-alert-triangle"></i> máx. ${CREDIT_DAILY_LIMIT}/dia</div>` : ''}</td>
+      <td><input class="inp inp-sm" list="creditItemSugg" value="${esc(itemName)}" placeholder="ex: Núcleo Iniciante" onblur="setRushCreditItemName('${cat.id}', this.value)">
+        ${itemPriceInfo.linked
+          ? `<div style="font-size:var(--fs-2xs);color:var(--ok);margin-top:3px"><i class="ti ti-check"></i> ${formatAlzGamer(itemPriceInfo.price)} — puxado de Cálculo de farme</div>`
+          : itemName
+            ? `<div style="font-size:var(--fs-2xs);color:var(--warn);margin-top:3px">Sem preço cadastrado pra "${esc(itemName)}" em Cálculo de farme — cadastre lá (o nome precisa bater) ou digite o preço de hoje aqui:</div>
+               <input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="preço manual" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`
+            : `<input class="inp inp-sm" type="text" inputmode="numeric" style="margin-top:3px" value="${AppState.rushCredits[cat.id].marketPrice ? formatNumber(AppState.rushCredits[cat.id].marketPrice) : ''}" placeholder="ou digite o preço na mão" oninput="maskAlzInputLive(this)" onblur="setRushCreditMarketPrice('${cat.id}', this.value)">`}</td>
+      <td>${renderAlzValue(subtotal, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${formatAlzGamer(unitCost)}/un.</div>${creditWorthIt}</td>
+    </tr>`;
+  }).join('')}
+  </tbody></table>
+  ${creditNeeds.avancado + creditNeeds.intermediario + creditNeeds.iniciante > 0 ? `<button class="btn btn-d btn-xs" style="margin-top:10px" onclick="applySuggestedCreditQuantities()"><i class="ti ti-refresh"></i>Preencher com a sugestão</button>` : ''}
+  </div>` : ''}
+</div>`;
+
+  const dungeonManagerCard = `
+<div class="card" style="padding:0;overflow:hidden">
+  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleDungeonManager()">
+    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-table"></i>Gerenciar DGs <span style="font-size:11px;font-weight:400;color:var(--muted)">${AppState.dungeonList.length} DGs cadastradas</span></div>
+    <i class="ti ti-chevron-${AppState.isDungeonManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
+  </div>
+  ${AppState.isDungeonManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
+    <table style="margin-bottom:14px"><thead><tr><th>Nome da DG</th><th>Custo Alz (por run)</th><th>Tickets (por run)</th><th>Gemas de entrada (por run)</th>${AppState.isMasterAdmin ? '<th style="width:100px">Ações</th>' : ''}</tr></thead><tbody>
+    ${AppState.dungeonList.map(dg => AppState.isMasterAdmin && AppState.editingDungeonId === dg.id ? `
+      <tr style="background:var(--acc-bg)">
+        <td><input class="inp inp-sm" id="ed-n-${dg.id}" value="${esc(dg.name)}" style="min-width:160px"></td>
+        <td><input class="inp inp-sm" id="ed-a-${dg.id}" type="text" inputmode="numeric" value="${dg.alzCost ? formatNumber(dg.alzCost) : ''}" placeholder="0" style="width:110px" oninput="maskAlzInputLive(this)"></td>
+        <td><input class="inp inp-sm" id="ed-tk-${dg.id}" type="number" min="0" value="${dg.ticketsPerRun || 0}" style="width:80px"></td>
+        <td><input class="inp inp-sm" id="ed-g-${dg.id}" type="number" min="0" value="${dg.gemsPerRun || 0}" style="width:80px"></td>
+        <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveDungeonEdit('${dg.id}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingDungeon()">✕</button></div></td>
+      </tr>` :
+      `<tr>
+        <td>${esc(dg.name)}</td>
+        <td>${dg.alzCost > 0 ? renderAlzValue(dg.alzCost) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td>${dg.ticketsPerRun > 0 ? `<span class="badge badge-acc">${dg.ticketsPerRun}× Ticket</span>` : '<span class="badge badge-muted">—</span>'}</td>
+        <td>${dg.gemsPerRun > 0 ? `<span class="badge badge-warn">${dg.gemsPerRun}× Gema</span>` : '<span class="badge badge-muted">—</span>'}</td>
+        ${AppState.isMasterAdmin ? `<td><div style="display:flex;gap:4px">
+          <button class="btn btn-d btn-xs" aria-label="Editar DG ${esc(dg.name)}" title="Editar" onclick="startEditingDungeon('${dg.id}')"><i class="ti ti-edit"></i></button>
+          <button class="btn btn-xs" aria-label="Excluir DG ${esc(dg.name)}" title="Excluir" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteDungeon('${dg.id}')"><i class="ti ti-trash"></i></button>
+        </div></td>` : ''}
+      </tr>`).join('')}
+    </tbody></table>
+    ${AppState.isMasterAdmin ? `<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--txt2)"><i class="ti ti-plus"></i> Nova DG</div>
+    <div class="row">
+      <div style="flex:1"><input class="inp" id="new-dg-n" placeholder="Nome da DG"></div>
+      <div style="width:150px"><input class="inp" id="new-dg-a" type="text" inputmode="numeric" placeholder="Custo Alz (0 se ticket/gema)" oninput="maskAlzInputLive(this)"></div>
+      <div style="width:110px"><input class="inp" id="new-dg-tk" type="number" min="0" placeholder="Qtd. tickets"></div>
+      <div style="width:110px"><input class="inp" id="new-dg-g" type="number" min="0" placeholder="Qtd. gemas"></div>
+      <button class="btn btn-p" onclick="addNewDungeon()"><i class="ti ti-plus"></i>Adicionar</button>
+      <button class="btn btn-d" aria-label="Restaurar lista de DGs padrão" onclick="resetDungeonList()" title="Restaurar padrão"><i class="ti ti-refresh"></i></button>
+    </div></div>` : '<div style="font-size:12px;color:var(--muted)">Só admins podem editar essa lista.</div>'}
+  </div>` : ''}
+</div>`;
+
+  const savedRushesCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Rushes salvos</div>
   <span style="font-size:12px;color:var(--muted)">Acumulado: ${renderAlzValue(Object.values(AppState.rushHistory).reduce((s, r) => s + r.total, 0), true)}</span></div>
@@ -327,4 +347,22 @@ ${routesCard}
   </tr>`).join('')}
   </tbody></table>`}
 </div>`;
+
+  // Ordem pensada pro fluxo de verdade do dia a dia: parâmetros → rotas (caminho rápido) →
+  // adicionar DG → ver o carrinho crescer (antes esses dois ficavam separados por Créditos e
+  // Gerenciar DGs, então adicionar uma DG não dava feedback visual até rolar a página inteira) →
+  // métricas agregadas → configuração ocasional (créditos, catálogo de DG) → histórico no fim.
+  return `
+<div class="pg-title"><i class="ti ti-swords" style="color:var(--acc)"></i>Planejamento de Rush</div>
+<div class="pg-sub">Monte um carrinho de DGs, salve por data e o custo será deduzido do farme daquele dia.</div>
+<button class="btn btn-d btn-xs" style="margin-bottom:14px" onclick="openGuidedRush()"><i class="ti ti-bolt" style="color:var(--gold)"></i>Prefere passo a passo? Montar no modo guiado</button>
+
+${paramsCard}
+${routesCard}
+${addDgCard}
+${cartCard}
+${metricsBlock}
+${creditsCard}
+${dungeonManagerCard}
+${savedRushesCard}`;
 }
