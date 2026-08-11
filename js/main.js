@@ -23,6 +23,8 @@ import {
   addItemCategory,
   removeItemCategory,
   setItemCategoryAssignment,
+  setCategoryAssignSearchQuery,
+  bulkAssignCategoryByKeyword,
 } from './features/admin.js';
 
 import { setDateFrom, setDateTo, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
@@ -203,6 +205,8 @@ Object.assign(window, {
   addItemCategory,
   removeItemCategory,
   setItemCategoryAssignment,
+  setCategoryAssignSearchQuery,
+  bulkAssignCategoryByKeyword,
   generateTelegramLinkCode,
   unlinkTelegram,
   setTelegramDropRelayEnabled,

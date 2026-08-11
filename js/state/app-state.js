@@ -247,6 +247,9 @@ export const AppState = {
   // Atalho no Relatório pra gerenciar categoria sem sair da página (mesma lista global do
   // Admin) — colapsado por padrão.
   isCategoryManagerOpen: false,
+  // Busca na tabela de "atribuir categoria aos itens já cadastrados" — pode ter dezenas de linhas,
+  // uma por item conhecido. Não persiste (mesmo espírito de pricingSearchQuery).
+  categoryAssignSearchQuery: '',
   // Modo guiado (assistente passo a passo). action: null|'venda'|'meta'|'sessao'; step: número do
   // passo ou 'done'/'done-start'/'done-end'; data: campos coletados no caminho; error: aviso inline.
   quickMode: { action: null, step: 0, data: {}, error: '' },

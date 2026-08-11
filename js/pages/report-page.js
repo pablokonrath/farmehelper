@@ -1,6 +1,8 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredDrops, getItemPrice, getItemCategory, summarizeDropsByItem } from '../features/drops.js';
-import { renderAlzValue } from '../utils/formatting.js';
+import { getHistoricalSummary } from '../features/drop-history.js';
+import { renderAlzValue, formatAlzGamer } from '../utils/formatting.js';
+import { normalizeForSearch } from '../utils/parsing.js';
 import { esc, escAttr } from '../utils/escape.js';
 
 const NO_CATEGORY_LABEL = 'Sem categoria';
@@ -10,6 +12,10 @@ const NO_CATEGORY_LABEL = 'Sem categoria';
 // ela organiza.
 function renderCategoryManagerCard() {
   if (!AppState.isMasterAdmin) return '';
+  const searchKey = normalizeForSearch(AppState.categoryAssignSearchQuery.trim());
+  const knownNames = [...AppState.knownItemNames].sort((a, b) => a.localeCompare(b));
+  const filteredNames = searchKey ? knownNames.filter(name => normalizeForSearch(name).includes(searchKey)) : knownNames;
+
   return `
 <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
   <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleCategoryManager()">
@@ -25,18 +31,106 @@ function renderCategoryManagerCard() {
       <div style="flex:1"><label class="lbl">Nova categoria</label><input class="inp" id="newItemCategory" placeholder="ex: Sets"></div>
       <button class="btn btn-p" onclick="addItemCategory()"><i class="ti ti-plus"></i>Adicionar</button>
     </div>
-    ${!AppState.knownItemNames.length ? '' : `
-    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Atribuir categoria aos itens já cadastrados:</div>
+    ${!AppState.itemCategories.length ? '' : `
+    <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px">
+      <label class="lbl" style="margin-bottom:6px">Atribuir em massa por palavra-chave</label>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Categoriza de uma vez todo item cadastrado cujo nome contém a palavra — em vez de escolher item por item na tabela abaixo.</div>
+      <div class="row">
+        <select class="inp" id="bulkCatSelect" style="width:180px">
+          ${AppState.itemCategories.map(cat => `<option value="${esc(cat)}">${esc(cat)}</option>`).join('')}
+        </select>
+        <input class="inp" id="bulkCatKeyword" placeholder="ex: Nucleo" style="flex:1" onkeydown="if(event.key==='Enter')bulkAssignCategoryByKeyword(document.getElementById('bulkCatSelect').value, this.value)">
+        <button class="btn btn-d btn-xs" onclick="bulkAssignCategoryByKeyword(document.getElementById('bulkCatSelect').value, document.getElementById('bulkCatKeyword').value)"><i class="ti ti-wand"></i>Aplicar em massa</button>
+      </div>
+    </div>`}
+    ${!knownNames.length ? '' : `
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <div style="font-size:12px;color:var(--muted);flex:1">Atribuir categoria item a item:</div>
+      ${knownNames.length > 8 ? `<input class="inp inp-sm" style="width:200px" placeholder="Buscar item..." value="${esc(AppState.categoryAssignSearchQuery)}" oninput="setCategoryAssignSearchQuery(this.value)">` : ''}
+    </div>
+    ${!filteredNames.length ? '<div class="empty" style="padding:10px 0">Nenhum item bate com essa busca.</div>' : `
     <table><thead><tr><th>Item</th><th style="width:180px">Categoria</th></tr></thead><tbody>
-    ${[...AppState.knownItemNames].sort((a, b) => a.localeCompare(b)).map(name => `<tr>
+    ${filteredNames.map(name => `<tr>
       <td>${esc(name)}</td>
       <td><select class="inp inp-sm" onchange="setItemCategoryAssignment('${escAttr(name)}', this.value)">
         <option value="">Sem categoria</option>
         ${AppState.itemCategories.map(cat => `<option value="${esc(cat)}"${AppState.itemCategoryAssignments[name] === cat ? ' selected' : ''}>${esc(cat)}</option>`).join('')}
       </select></td>
     </tr>`).join('')}
-    </tbody></table>`}
+    </tbody></table>`}`}
   </div>` : ''}
+</div>`;
+}
+
+function isoDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// offsetMonths=0 é o mês corrente (do dia 1 até hoje); -1 é o mês civil anterior completo (do
+// dia 1 ao último dia). "Civil" de propósito — diferente do bloco rolante de N dias que "Sua
+// evolução" (Visão geral) já faz; aqui é o calendário mesmo, o corte que "relatório mensal" evoca.
+function monthRange(offsetMonths) {
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth() + offsetMonths, 1);
+  const to = offsetMonths === 0 ? now : new Date(now.getFullYear(), now.getMonth() + offsetMonths + 1, 0);
+  return { from: isoDate(from), to: isoDate(to) };
+}
+
+const MONTH_LABEL_FMT = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+function monthLabel(offsetMonths) {
+  const now = new Date();
+  return MONTH_LABEL_FMT.format(new Date(now.getFullYear(), now.getMonth() + offsetMonths, 1));
+}
+
+// Mês corrente × mês civil anterior, por CATEGORIA — o ângulo que só esta página pode dar (Sua
+// evolução, na Visão geral, já compara período a período, mas só no agregado, sem quebrar por
+// categoria). Sempre olha tudo (ignora o filtro De/Até e "só rastreados" desta página, igual Sua
+// evolução ignora o dela) — comparar dois meses inteiros perderia sentido recortado por um filtro
+// pensado pra outro período.
+function computeCategoryPeriodComparison() {
+  const current = monthRange(0);
+  const previous = monthRange(-1);
+  const sumByCategory = (from, to) => {
+    const { items } = getHistoricalSummary(from, to, { respeitarFiltrosDaPagina: false });
+    const byCat = {};
+    items.forEach(it => {
+      const cat = getItemCategory(it.name) || NO_CATEGORY_LABEL;
+      byCat[cat] = (byCat[cat] || 0) + it.total;
+    });
+    return byCat;
+  };
+  const curr = sumByCategory(current.from, current.to);
+  const prev = sumByCategory(previous.from, previous.to);
+  const rows = [...new Set([...Object.keys(curr), ...Object.keys(prev)])]
+    .map(category => {
+      const currentTotal = curr[category] || 0;
+      const previousTotal = prev[category] || 0;
+      const diff = currentTotal - previousTotal;
+      const diffPct = previousTotal > 0 ? (diff / previousTotal) * 100 : null; // null = sem base (novo)
+      return { category, currentTotal, previousTotal, diff, diffPct };
+    })
+    .sort((a, b) => b.currentTotal - a.currentTotal);
+  return { rows, hasAny: rows.some(r => r.currentTotal > 0 || r.previousTotal > 0) };
+}
+
+function renderCategoryComparisonCard() {
+  const { rows, hasAny } = computeCategoryPeriodComparison();
+  if (!hasAny) return '';
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-calendar-stats"></i>${monthLabel(0)} vs ${monthLabel(-1)}, por categoria</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Mês civil inteiro (não o bloco de dias de "Sua evolução" na Visão geral) — sempre olha tudo, ignora o filtro De/Até e "só rastreados" desta página, pra comparar os dois meses por igual. "Novo" = não farmou nada dessa categoria no mês passado, sem base pra calcular variação.</div>
+  <table><thead><tr><th>Categoria</th><th>${monthLabel(0)}</th><th>${monthLabel(-1)}</th><th>Variação</th></tr></thead><tbody>
+  ${rows.map(r => `<tr>
+    <td style="font-weight:500">${esc(r.category)}</td>
+    <td>${r.currentTotal ? renderAlzValue(r.currentTotal) : '<span style="color:var(--muted)">—</span>'}</td>
+    <td style="color:var(--muted)">${r.previousTotal ? renderAlzValue(r.previousTotal) : '<span style="color:var(--muted)">—</span>'}</td>
+    <td style="font-weight:600">${r.diffPct == null
+      ? '<span class="badge badge-acc">Novo</span>'
+      : `<span style="color:${r.diff >= 0 ? 'var(--ok)' : 'var(--err)'}">${r.diff >= 0 ? '+' : ''}${formatAlzGamer(r.diff)} (${r.diffPct >= 0 ? '+' : ''}${r.diffPct.toFixed(0)}%)</span>`}
+    </td>
+  </tr>`).join('')}
+  </tbody></table>
 </div>`;
 }
 
@@ -56,6 +150,13 @@ export function renderReportPage() {
     return a.localeCompare(b);
   });
 
+  // Quantos itens DISTINTOS (não drops) ainda não têm categoria no período — mede o quanto falta
+  // categorizar pra esta página valer a pena; sem isso, não tinha nenhum sinal de quão incompleto
+  // (ou completo) o cadastro estava.
+  const uncategorizedCount = summarizeDropsByItem(dropsByCategory[NO_CATEGORY_LABEL] || []).length;
+  const uncategorizedNotice = !uncategorizedCount ? '' : `
+<div class="notice"><i class="ti ti-alert-circle" style="flex-shrink:0;margin-top:1px"></i><div><strong>${uncategorizedCount} ${uncategorizedCount > 1 ? 'itens distintos' : 'item distinto'}</strong> sem categoria neste período.${AppState.isMasterAdmin ? ' Categorize abaixo em "Gerenciar categorias" (busca e atribuição em massa disponíveis).' : ' Fale com o admin mestre pra categorizar.'}</div></div>`;
+
   return `
 <div class="pg-title"><i class="ti ti-notebook" style="color:var(--acc)"></i>Relatório</div>
 <div class="pg-sub">Drops agrupados por categoria (gerencie logo abaixo), com base nos filtros da visão geral.</div>
@@ -63,7 +164,9 @@ export function renderReportPage() {
   <span style="font-size:13px;color:var(--txt2)">${drops.length.toLocaleString('pt-BR')} drops</span>
   <button class="btn btn-d btn-xs" onclick="exportDropsToCSV()" style="margin-left:auto"><i class="ti ti-download"></i>Exportar CSV</button>
 </div>
+${renderCategoryComparisonCard()}
 ${renderCategoryManagerCard()}
+${uncategorizedNotice}
 ${!categories.length ? '<div class="empty" style="padding:60px">Nenhum dado carregado.</div>' :
 categories.map(category => {
   const categoryDrops = dropsByCategory[category];
