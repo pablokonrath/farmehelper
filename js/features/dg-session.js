@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
+import { getCostPerGem } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -335,9 +336,12 @@ export function entryCostPerRun(dg, gemValue, ticketValue) {
 // quem quiser comparar por lucro de verdade (ver o toggle Bruto/Líquido em Sessões de farme) sem
 // precisar de uma segunda função nem mudar quem já usa o bruto.
 export function computeDgComparison() {
-  const cfg = AppState.resetConfig;
-  const gemValue = cfg.gemValueAlz || 0;
-  const ticketValue = cfg.ticketValueAlz || 0;
+  // Valor da gema/ticket vem de Parâmetros do dia (rush-page.js) — a MESMA fonte que o carrinho
+  // de rush usa de verdade pra cobrar de você (calculateRushCartCost em rush-cart.js). Não tem
+  // um segundo "valor da gema" digitado só pra essa conta; antes tinha (resetConfig.gemValueAlz/
+  // ticketValueAlz) e podia divergir do que o carrinho realmente cobrava pela mesma DG.
+  const gemValue = getCostPerGem();
+  const ticketValue = +AppState.rushTicketPrice || 0;
 
   const byDg = {};
   AppState.dgSessions.forEach(s => {
@@ -433,7 +437,7 @@ export function setResetConfig(field, value) {
 // toggle Bruto/Líquido) — aqui só falta ratear o custo do RESET em cima do líquido.
 export function computeResetWorth() {
   const cfg = AppState.resetConfig;
-  const gemValue = cfg.gemValueAlz || 0;
+  const gemValue = getCostPerGem(); // mesma fonte de Parâmetros do dia usada em computeDgComparison
   const runsPerReset = Math.max(1, cfg.runsPerReset || 1);
   const resetCostPerRun = ((cfg.resetCostGems || 0) * gemValue) / runsPerReset;
 

@@ -262,9 +262,12 @@ export const AppState = {
   openCards: {},
   // Painel de "recuperar sessão esquecida" (Sessões de farme) aberto ou não — só UI, não persiste.
   forgottenSessionRecoveryOpen: false,
-  // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings). Valor de gema/ticket
-  // em Alz pra converter custos; custo do reset em gemas e quantas runs cada reset devolve.
-  resetConfig: { gemValueAlz: 0, ticketValueAlz: 0, resetCostGems: 500, runsPerReset: 1 },
+  // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings): só o custo do reset
+  // em si (gemas) e quantas runs cada reset devolve. Valor da gema/ticket em Alz NÃO mora aqui —
+  // vem de rushCardCashPrice/rushTicketPrice (Parâmetros do dia), a mesma fonte que o carrinho de
+  // rush usa de verdade. Antes existia um segundo par de campos aqui (gemValueAlz/ticketValueAlz)
+  // que duplicava isso e podia divergir do que o carrinho realmente cobrava pela mesma DG.
+  resetConfig: { resetCostGems: 500, runsPerReset: 1 },
   // Bruto ou líquido (desconta custo de entrada) na tabela "Qual DG rende mais". Só UI, não
   // persiste — mesmo motivo do trendShowNet da Visão geral.
   dgComparisonShowNet: false,

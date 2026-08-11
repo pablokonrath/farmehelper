@@ -1,12 +1,12 @@
 import { AppState } from '../state/app-state.js';
 import { saveRushRoutes, saveAppliedRoutes } from '../state/persistence.js';
-import { buildCartItem, calculateRushCartCost } from './rush-cart.js';
+import { buildCartItem, calculateRushCartCost, getCostPerGem } from './rush-cart.js';
 import { computeDgComparison, computeResetWorth, DAILY_RUN_LIMIT } from './dg-session.js';
 import { renderPage } from '../router.js';
 
 // Custo extra (em Alz) de rodar uma DG além do limite diário de ${DAILY_RUN_LIMIT}, usando reset
 // por gemas — mesma conta de "Vale a pena resetar?" em Sessões de farme, só que amortizada pra
-// quantas repetições passaram do limite. Sem valor de gema configurado (AppState.resetConfig),
+// quantas repetições passaram do limite. Sem preço do Card Cash configurado (Parâmetros do dia),
 // devolve 0 — não dá pra estimar sem esse dado, então trata como se não fosse resetar.
 function extraResetCostAlz(repetitions) {
   const param = buildResetParamForRepetitions(repetitions);
@@ -15,14 +15,17 @@ function extraResetCostAlz(repetitions) {
 
 // Monta o { used, qty, price } que buildCartItem espera, pras repetições que passam do limite
 // diário — mesma amortização usada em extraResetCostAlz, só que no formato que o carrinho
-// entende, pra o custo aplicado no carrinho bater com o estimado na sugestão/comparativo.
+// entende, pra o custo aplicado no carrinho bater com o estimado na sugestão/comparativo. Valor
+// da gema vem de getCostPerGem() (Parâmetros do dia) — mesma fonte usada em todo o resto do
+// custo de reset, não um valor à parte.
 function buildResetParamForRepetitions(repetitions) {
   const cfg = AppState.resetConfig;
   const extraRuns = Math.max(0, repetitions - DAILY_RUN_LIMIT);
-  if (!(cfg.gemValueAlz > 0) || extraRuns <= 0) return null;
+  const gemValue = getCostPerGem();
+  if (!(gemValue > 0) || extraRuns <= 0) return null;
   const runsPerReset = Math.max(1, cfg.runsPerReset || 1);
   const resetBatches = Math.ceil(extraRuns / runsPerReset);
-  return { used: true, qty: resetBatches * (cfg.resetCostGems || 0), price: cfg.gemValueAlz };
+  return { used: true, qty: resetBatches * (cfg.resetCostGems || 0), price: gemValue };
 }
 
 // Soma repetições numa lista de itens de carrinho já montada — dungeonId repetido tem as

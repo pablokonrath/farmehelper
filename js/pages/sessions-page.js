@@ -3,6 +3,7 @@ import { getActiveSessionSummary, computeDgComparison, computeResetWorth, comput
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
+import { getCostPerGem } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
@@ -283,7 +284,7 @@ export function renderSessionsPage() {
   const liquidoDg = !!AppState.dgComparisonShowNet;
   const comparisonSorted = !liquidoDg ? comparison
     : [...comparison].sort((x, y) => (y.netAlzPerRun ?? -1) - (x.netAlzPerRun ?? -1));
-  const gemValueSet = (AppState.resetConfig.gemValueAlz || 0) > 0;
+  const gemValueSet = getCostPerGem() > 0;
   const temDgComGema = comparison.some(c => {
     const dg = AppState.dungeonList.find(d => d.id === c.dungeonId);
     return dg?.gemsPerRun > 0;
@@ -294,8 +295,8 @@ export function renderSessionsPage() {
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div>
     <div style="display:flex;gap:6px">${botaoDgMode(false, 'Bruto')}${botaoDgMode(true, 'Líquido')}</div></div>
-  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer. <strong>Líquido</strong> desconta o custo de entrada da run (Alz + tickets + gemas, mesmos valores configurados em "Vale a pena resetar?" abaixo) — é a mesma conta, só que aplicada em toda DG, não só nas que valem resetar.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
-  ${liquidoDg && !gemValueSet && temDgComGema ? `<div style="font-size:11px;color:var(--warn);margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Valor da gema não configurado (em "Vale a pena resetar?" abaixo) — o custo de entrada em gemas de algumas DGs ainda não entra nesta conta.</div>` : ''}
+  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer. <strong>Líquido</strong> desconta o custo de entrada da run (Alz + tickets + gemas, os mesmos valores de <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> que o carrinho de rush usa de verdade) — é a mesma conta de "Vale a pena resetar?" abaixo, só que aplicada em toda DG, não só nas que valem resetar.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
+  ${liquidoDg && !gemValueSet && temDgComGema ? `<div style="font-size:11px;color:var(--warn);margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Preço do Card Cash não configurado em <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> — o custo de entrada em gemas de algumas DGs ainda não entra nesta conta.</div>` : ''}
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
     : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th>${liquidoDg ? '<th>Custo entrada / run</th>' : ''}<th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
@@ -411,15 +412,16 @@ export function renderSessionsPage() {
   const resetCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-refresh"></i>Vale a pena resetar?</div></div>
-  ${infoToggle('sessions-reset-worth', 'Resetar o limite do DG custa gemas. Só compensa se o líquido por run (Alz do drop menos o custo de entrada) superar o custo do reset rateado por run.')}
+  ${infoToggle('sessions-reset-worth', 'Resetar o limite do DG custa gemas. Só compensa se o líquido por run (Alz do drop menos o custo de entrada) superar o custo do reset rateado por run. Valor da gema e do ticket vêm de Parâmetros do dia — os mesmos que o carrinho de rush usa de verdade pra cobrar de você, não um valor à parte só pra esta conta.')}
   <div class="g4" style="margin-bottom:14px">
-    <div><label class="lbl">Valor da gema (Alz)</label><input class="inp" type="text" inputmode="numeric" placeholder="ex: 60.000" value="${rc.gemValueAlz ? formatNumber(rc.gemValueAlz) : ''}" oninput="maskAlzInputLive(this)" onchange="setResetConfig('gemValueAlz', this.value)"></div>
-    <div><label class="lbl">Valor do ticket (Alz)</label><input class="inp" type="text" inputmode="numeric" placeholder="opcional" value="${rc.ticketValueAlz ? formatNumber(rc.ticketValueAlz) : ''}" oninput="maskAlzInputLive(this)" onchange="setResetConfig('ticketValueAlz', this.value)"></div>
+    <div><label class="lbl">Valor da gema (Alz)</label><div class="inp" style="display:flex;align-items:center;color:var(--muted)">${getCostPerGem() ? formatAlzGamer(getCostPerGem()) : '—'}</div></div>
+    <div><label class="lbl">Valor do ticket (Alz)</label><div class="inp" style="display:flex;align-items:center;color:var(--muted)">${(+AppState.rushTicketPrice || 0) ? formatAlzGamer(+AppState.rushTicketPrice) : '—'}</div></div>
     <div><label class="lbl">Custo do reset (gemas)</label><input class="inp" type="number" min="0" value="${rc.resetCostGems}" onchange="setResetConfig('resetCostGems', this.value)"></div>
     <div><label class="lbl">Runs por reset</label><input class="inp" type="number" min="1" value="${rc.runsPerReset}" onchange="setResetConfig('runsPerReset', this.value)"></div>
   </div>
+  <div style="font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:12px">Gema e ticket são só leitura aqui — <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">edite em Parâmetros do dia</a>.</div>
   ${!reset.gemValueSet
-    ? '<div class="empty">Informe o valor da gema (em Alz) para calcular — o reset é pago em gemas.</div>'
+    ? `<div class="empty">Informe o preço do Card Cash em <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> para calcular — o reset é pago em gemas.</div>`
     : `<div style="font-size:13px;margin-bottom:12px">Cada run extra via reset custa <strong style="color:var(--err)">${formatAlzGamer(reset.resetCostPerRun)}</strong>. Um DG só vale resetar se o líquido por run passar disso.</div>
     ${!reset.rows.length
       ? '<div class="empty">Nenhum DG com runs informadas ainda — preencha as runs no histórico acima.</div>'
