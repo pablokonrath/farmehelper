@@ -132,6 +132,12 @@ export const AppState = {
   // sobre acumulado desde a criação, histórico de preço é sobre tendência de sempre.
   salesDateFrom: '',
   salesDateTo: '',
+  // Baixa manual do radar "Possível estoque não vendido" (ver computeLikelyUnsoldInventory em
+  // sales.js): { [itemName]: { qty, reason: 'vendido'|'colecao'|'craft', date } }. `qty` é o total
+  // já "resolvido" até a última baixa — some do que aparece como não vendido; se cair mais desse
+  // item depois, só o excedente NOVO volta a aparecer. Guardado por nome (mesma chave sem +N que
+  // o resto do módulo de vendas), em app_settings.
+  unsoldInventoryDismissals: {},
   rushHistory: {},
   // Rotas de DGs reutilizáveis (molde de rush, sem data fixa) — [{id, name, items: [{dungeonId,
   // repetitions}]}]. Ver rush-routes.js.

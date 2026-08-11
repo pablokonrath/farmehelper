@@ -138,6 +138,7 @@ export async function loadPersistedState() {
   AppState.salesLog = appSettings.salesLog ?? [];
   AppState.priceHistory = appSettings.priceHistory ?? {};
   AppState.salesGoals = appSettings.salesGoals ?? [];
+  AppState.unsoldInventoryDismissals = appSettings.unsoldInventoryDismissals ?? {};
   // Sessões de DG vêm da tabela própria agora. Migração transparente: se a tabela ainda está vazia
   // mas há sessões no blob antigo (app_settings.dgSessions), usa o blob e migra pra tabela no fim.
   const legacyDgSessions = appSettings.dgSessions ?? [];
@@ -242,6 +243,10 @@ export function saveSalesGoals() {
 
 export function saveSalesLog() {
   return put('app-settings.php', { salesLog: AppState.salesLog });
+}
+
+export function saveUnsoldInventoryDismissals() {
+  return put('app-settings.php', { unsoldInventoryDismissals: AppState.unsoldInventoryDismissals });
 }
 
 export function savePriceHistory() {

@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveSalesLog, savePriceHistory, saveItemPrices } from '../state/persistence.js';
+import { saveSalesLog, savePriceHistory, saveItemPrices, saveUnsoldInventoryDismissals } from '../state/persistence.js';
 import { getItemPrice, getAllDrops, summarizeDropsByItem } from './drops.js';
 import { parseAlzInput, parseDateInputBR, formatAlzGamer, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
@@ -76,6 +76,11 @@ export function checkSalePriceDrop(itemName, unitPrice) {
 // que caiu pode ter virado craft, uso pessoal ou coleção, então isso NUNCA soma num total de "Alz
 // preso" em lugar nenhum do app (mesmo motivo pelo qual computeSalesSummary não faz essa conta) —
 // serve só pra lembrar que aquele item existe e vale revisar se ainda tá pra vender.
+//
+// Desconta o que já foi dado baixa manual (ver dismissUnsoldInventory) — sem isso, todo item que o
+// jogador já decidiu que "não é venda esquecida, foi craft/coleção/vendido sem registrar" ia
+// continuar aparecendo pra sempre, especialmente pesado pra quem só começou a registrar vendas
+// recentemente (o histórico de drop é muito mais antigo que o de venda).
 export function computeLikelyUnsoldInventory(limit = 6) {
   const dropped = {};
   summarizeDropsByItem(getAllDrops()).forEach(i => { dropped[i.name] = i.qty; });
@@ -89,12 +94,36 @@ export function computeLikelyUnsoldInventory(limit = 6) {
   return Object.entries(dropped)
     .map(([itemName, droppedQty]) => {
       const soldQty = sold[itemName] || 0;
-      const unsoldQty = Math.max(0, droppedQty - soldQty);
+      const dismissedQty = AppState.unsoldInventoryDismissals[itemName]?.qty || 0;
+      const unsoldQty = Math.max(0, droppedQty - soldQty - dismissedQty);
       return { itemName, droppedQty, soldQty, unsoldQty, estValue: unsoldQty * getItemPrice(itemName) };
     })
     .filter(i => i.unsoldQty > 0 && i.estValue > 0)
     .sort((a, b) => b.estValue - a.estValue)
     .slice(0, limit);
+}
+
+// Dá baixa no "estoque não vendido" de um item, marcando TUDO que hoje aparece como não vendido
+// como resolvido (vendido fora do registro, virou coleção, ou foi usado de insumo em craft) — pra
+// não ficar sinalizando de novo. Se cair mais desse item depois, só o excedente NOVO reaparece
+// (ver computeLikelyUnsoldInventory), então isso não é "silenciar pra sempre", é "já tratei até
+// aqui".
+export function dismissUnsoldInventory(itemName, reason) {
+  const droppedQty = summarizeDropsByItem(getAllDrops()).find(i => i.name === itemName)?.qty || 0;
+  const soldQty = AppState.salesLog
+    .filter(s => stripEnhancementSuffix(s.itemName) === itemName)
+    .reduce((sum, s) => sum + s.qty, 0);
+  AppState.unsoldInventoryDismissals[itemName] = { qty: Math.max(0, droppedQty - soldQty), reason, date: todayISODate() };
+  saveUnsoldInventoryDismissals().catch(err => console.error('Falha ao salvar baixa de estoque:', err));
+  renderPage();
+}
+
+// Desfaz a baixa — o item volta a ser cruzado normalmente (some do total de "excedente resolvido")
+// e reaparece no radar se ainda houver diferença entre dropado e vendido.
+export function restoreUnsoldInventory(itemName) {
+  delete AppState.unsoldInventoryDismissals[itemName];
+  saveUnsoldInventoryDismissals().catch(err => console.error('Falha ao salvar baixa de estoque:', err));
+  renderPage();
 }
 
 // Uma venda "igual demais" já lançada no MESMO dia (mesmo item, quantidade e valor) — pega o erro

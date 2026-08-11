@@ -54,19 +54,35 @@ export function renderSalesPage() {
 </div>`;
 
   const unsoldInventory = computeLikelyUnsoldInventory();
-  const unsoldInventoryCard = !unsoldInventory.length ? '' : `
+  const dismissedEntries = Object.entries(AppState.unsoldInventoryDismissals);
+  const dismissReasonLabel = { vendido: 'vendido sem registrar', colecao: 'coleção', craft: 'craft' };
+  const unsoldInventoryCard = (!unsoldInventory.length && !dismissedEntries.length) ? '' : `
 <div class="card">
   <div class="ctitle"><i class="ti ti-package"></i>Possível estoque não vendido</div>
-  ${infoToggle('sales-unsold', 'Cruza tudo que já <strong>caiu</strong> (histórico completo de drops) com tudo que já foi <strong>vendido</strong>, item a item — o que caiu bastante e vendeu pouco sobe pro topo. Não é auditoria: parte pode ter virado craft, uso pessoal ou coleção, então esse valor nunca soma em nenhum total "preso" do app. É só um radar pra lembrar que o item existe e vale revisar se ainda faz sentido vender. Sempre olha o histórico completo, ignora o filtro De/Até acima.')}
+  ${infoToggle('sales-unsold', 'Cruza tudo que já <strong>caiu</strong> (histórico completo de drops) com tudo que já foi <strong>vendido</strong>, item a item — o que caiu bastante e vendeu pouco sobe pro topo. Não é auditoria: parte pode ter virado craft, uso pessoal ou coleção, então esse valor nunca soma em nenhum total "preso" do app. Dê baixa (botões à direita) no que já foi resolvido — vendido sem registrar, virou coleção ou craft — pra parar de aparecer aqui; só o que cair de NOVO depois da baixa volta a sinalizar. Sempre olha o histórico completo, ignora o filtro De/Até acima.')}
+  ${!unsoldInventory.length ? '<div class="empty" style="padding:8px 0">Nada pendente no radar agora.</div>' : `
   <div style="display:flex;flex-direction:column;gap:6px">
-    ${unsoldInventory.map(i => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px">
+    ${unsoldInventory.map(i => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;flex-wrap:wrap">
       <div><span style="font-weight:600">${esc(i.itemName)}</span> <span style="font-size:11px;color:var(--muted)">— ${i.droppedQty}× caiu, ${i.soldQty}× vendido</span></div>
-      <div style="text-align:right">
-        <div style="font-weight:700;color:var(--gold)">${i.unsoldQty}×</div>
-        <div style="font-size:11px;color:var(--muted)" title="${formatNumber(i.estValue)} Alz">~${formatAlzGamer(i.estValue)}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-left:auto">
+        <div style="text-align:right">
+          <div style="font-weight:700;color:var(--gold)">${i.unsoldQty}×</div>
+          <div style="font-size:11px;color:var(--muted)" title="${formatNumber(i.estValue)} Alz">~${formatAlzGamer(i.estValue)}</div>
+        </div>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-d btn-xs" title="Já vendi isso, só não registrei aqui" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','vendido')">Vendido</button>
+          <button class="btn btn-d btn-xs" title="Virou coleção — não pretendo vender" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','colecao')">Coleção</button>
+          <button class="btn btn-d btn-xs" title="Foi usado como insumo de craft" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','craft')">Craft</button>
+        </div>
       </div>
     </div>`).join('')}
-  </div>
+  </div>`}
+  ${dismissedEntries.length ? `<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+    <label class="lbl" style="margin-bottom:6px">Baixa já dada</label>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${dismissedEntries.map(([name, d]) => `<span class="badge badge-muted" style="display:flex;align-items:center;gap:6px">${esc(name)} <span style="opacity:.7">(${dismissReasonLabel[d.reason] || d.reason})</span><button aria-label="Desfazer baixa de ${esc(name)}" title="Desfazer — volta a sinalizar se ainda houver diferença" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:0;display:flex" onclick="restoreUnsoldInventory('${escAttr(name)}')"><i class="ti ti-arrow-back-up"></i></button></span>`).join('')}
+    </div>
+  </div>` : ''}
 </div>`;
 
   const goalsProgress = computeSalesGoalsProgress();

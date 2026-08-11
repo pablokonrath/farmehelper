@@ -12,7 +12,7 @@ import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
-import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale } from './features/sales.js';
+import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
@@ -223,6 +223,8 @@ Object.assign(window, {
   startEditingSale,
   cancelEditingSale,
   repeatLastSale,
+  dismissUnsoldInventory,
+  restoreUnsoldInventory,
   setPriceHistoryItem,
   addSalesGoal,
   deleteSalesGoal,
