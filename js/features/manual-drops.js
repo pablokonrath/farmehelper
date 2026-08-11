@@ -1,60 +1,17 @@
 import { AppState } from '../state/app-state.js';
-import { saveManualDrops, saveItemPrices } from '../state/persistence.js';
+import { saveManualDrops } from '../state/persistence.js';
 import { updateBalanceSidebar } from './drops.js';
-import { processNewDropsForAlerts } from './alerts.js';
-import { checkFarmGoalReached } from './farm-goal.js';
-import { recordPriceChange } from './sales.js';
-import { parseDateInputBR, parseAlzInput } from '../utils/formatting.js';
-import { todayISODate } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
-// Um item dropado fora do log oficial vira `quantity` registros individuais (mesmo formato
-// dos drops do log), agrupados por batchId só para poder editar/apagar o lote de uma vez.
-// O valor informado (opcional) é salvo em AppState.itemPrices, a mesma tabela de preços
-// usada pelo Cálculo de farme — não existe um preço "só do manual".
-export function addManualDrop() {
-  const nameInput = document.getElementById('mdName');
-  const qtyInput = document.getElementById('mdQty');
-  const dateInput = document.getElementById('mdDate');
-  const priceInput = document.getElementById('mdPrice');
-
-  const name = nameInput?.value.trim();
-  if (!name) return;
-  const quantity = Math.max(1, parseInt(qtyInput?.value) || 1);
-  const date = parseDateInputBR(dateInput?.value) || todayISODate();
-  const batchId = 'm' + Date.now();
-
-  const rawPrice = priceInput?.value.trim();
-  if (rawPrice) {
-    AppState.itemPrices[name] = parseAlzInput(rawPrice);
-    recordPriceChange(name, AppState.itemPrices[name]);
-    saveItemPrices();
-  }
-
-  const newEntries = [];
-  for (let i = 0; i < quantity; i++) {
-    const entry = {
-      date,
-      time: '00:00:00',
-      timestamp: new Date(date + 'T00:00:00'),
-      category: 0,
-      name,
-      manual: true,
-      batchId,
-    };
-    AppState.manualDrops.push(entry);
-    newEntries.push(entry);
-  }
-
-  nameInput.value = '';
-  qtyInput.value = '1';
-  if (priceInput) priceInput.value = '';
-  saveManualDrops();
-  updateBalanceSidebar();
-  processNewDropsForAlerts(newEntries);
-  checkFarmGoalReached();
-  renderPage();
-}
+// A opção de ADICIONAR um drop manual foi retirada (pedido do jogador, 11/08/2026): misturava
+// item que não é farme de verdade (comprado, craftado, recebido de presente/evento) com o log
+// oficial, contaminando toda métrica do app que assume "isso é farme" — Meta de farme, Drops/hora,
+// watchdog ("sem dropar item rastreado"), "itens caindo agora" da sessão ativa. A ideia de
+// registrar item que não vem do log continua fazendo sentido, só que como algo SEPARADO (sem
+// entrar em getAllDrops), ainda não implementado.
+//
+// Lotes que já existiam de antes continuam contando pro total (getAllDrops em drops.js) e ainda
+// podem ser removidos — só não dá mais pra criar um novo, por isso só sobrou a função de baixo.
 
 export function deleteManualDropBatch(batchId) {
   if (!confirm('Remover estes itens adicionados manualmente?')) return;

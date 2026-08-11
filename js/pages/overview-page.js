@@ -556,8 +556,9 @@ export function renderOverviewPage() {
   // Drops/hora precisa de horário exato de cada drop, que só o log ao vivo tem (o histórico
   // agregado guarda o dia, não a hora) — por isso essa métrica continua só sobre o log.
   //
-  // Exclui drop MANUAL, não só filtra por ter timestamp: addManualDrop grava um timestamp real
-  // (00:00:00 do dia escolhido, ver manual-drops.js), então "tem timestamp" sozinho não bastava
+  // Exclui drop MANUAL, não só filtra por ter timestamp: um lote manual (de antes da opção de
+  // adicionar sair do ar, ver manual-drops.js) grava um timestamp real (00:00:00 do dia escolhido),
+  // então "tem timestamp" sozinho não bastava
   // pra afastar o problema que o comentário antigo aqui já descrevia — um manual de outro dia (ou
   // de hoje à meia-noite) ainda entrava no MIN/MAX e esticava/encolhia a janela em horas, mesmo
   // com a ordenação por MIN/MAX já corrigida. getTodayFarmRate() já evita isso do mesmo jeito.
@@ -622,27 +623,21 @@ export function renderOverviewPage() {
   const totalsByDate = history.totalsByDate;
   const datesWithData = Object.keys(totalsByDate).sort();
 
+  // A opção de ADICIONAR foi retirada (pedido do jogador, 11/08/2026) — misturava item que não é
+  // farme de verdade (comprado, craftado, recebido) com o log oficial, contaminando toda métrica
+  // que assume "isso é farme" (Meta de farme, Drops/hora, watchdog, "itens caindo agora" da sessão
+  // ativa). Lotes já existentes de antes continuam contando pro total (ver getAllDrops em drops.js)
+  // e continuam podendo ser removidos aqui — só não dá mais pra criar um novo.
   const manualBatches = summarizeManualDropBatches();
-  const manualSuggestions = Object.keys(AppState.itemPrices);
-  const manualDropsCard = `
+  const manualDropsCard = !manualBatches.length ? '' : `
 <div class="card" style="padding:0;overflow:hidden">
   <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleManualDropsManager()">
-    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-hand-stop"></i>Adicionar drop manual <span style="font-size:11px;font-weight:400;color:var(--muted)">${AppState.manualDrops.length} itens</span></div>
+    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-hand-stop"></i>Drops manuais <span style="font-size:11px;font-weight:400;color:var(--muted)">${AppState.manualDrops.length} itens</span></div>
     <i class="ti ti-chevron-${AppState.isManualDropsOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
   </div>
   ${AppState.isManualDropsOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Para itens dropados fora do log oficial do jogo. Entram no total de farme junto com os drops do arquivo.</div>
-    <div class="row" style="margin-bottom:12px">
-      <div style="flex:1"><label class="lbl">Nome do item</label>
-        <input class="inp" id="mdName" placeholder="ex: Nucleo de Aprimoramento" list="mdSugg">
-        <datalist id="mdSugg">${manualSuggestions.map(name => `<option value="${esc(name)}">`).join('')}</datalist></div>
-      <div style="width:140px"><label class="lbl">Valor unitário (Alz)</label><input class="inp" id="mdPrice" type="text" inputmode="numeric" placeholder="opcional" oninput="maskAlzInputLive(this)"></div>
-      <div style="width:100px"><label class="lbl">Quantidade</label><input class="inp" id="mdQty" type="number" min="1" value="1"></div>
-      <div style="width:150px"><label class="lbl">Data</label>${renderDateInputBR({ id: 'mdDate', value: todayISODate() })}</div>
-      <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addManualDrop()"><i class="ti ti-plus"></i>Adicionar</button></div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:-6px;margin-bottom:12px">Deixe o valor em branco para manter o preço já cadastrado desse item (se houver).</div>
-    ${manualBatches.length ? `<table><thead><tr><th>Data</th><th>Item</th><th>Quantidade</th><th>Valor</th><th style="width:40px"></th></tr></thead><tbody>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px"><i class="ti ti-info-circle"></i> Lotes adicionados manualmente antes dessa opção sair do ar — ainda contam pro total de farme, só não dá mais pra criar um novo.</div>
+    <table><thead><tr><th>Data</th><th>Item</th><th>Quantidade</th><th>Valor</th><th style="width:40px"></th></tr></thead><tbody>
     ${manualBatches.map(b => `<tr>
       <td>${formatDateBR(b.date)}</td>
       <td>${esc(b.name)}</td>
@@ -650,7 +645,7 @@ export function renderOverviewPage() {
       <td>${getItemPrice(b.name) ? renderAlzValue(getItemPrice(b.name) * b.qty) : '<span style="color:var(--muted)">—</span>'}</td>
       <td><button aria-label="Remover drop manual de ${esc(b.name)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteManualDropBatch('${b.batchId}')"><i class="ti ti-trash"></i></button></td>
     </tr>`).join('')}
-    </tbody></table>` : '<div class="empty">Nenhum item manual adicionado ainda.</div>'}
+    </tbody></table>
   </div>` : ''}
 </div>`;
 
@@ -661,7 +656,7 @@ export function renderOverviewPage() {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return buildNextStepCard() + metaCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    return buildNextStepCard() + metaCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log</div></div>`;
   }
 
   return `
@@ -670,8 +665,9 @@ export function renderOverviewPage() {
 ${buildNextStepCard()}
 ${/* Ordem pensada pra quem abre a página querendo um número, não um painel: meta de hoje ->
      filtro (que comanda tudo abaixo) -> os totais -> contexto -> ferramentas. Recorde pessoal e
-     "adicionar drop manual" são motivação e ferramenta, não dado operacional — foram pro fim,
-     porque no celular empurravam o "Total de farme" pra ~4 telas abaixo. */''}
+     os drops manuais (lotes de antes da opção de adicionar sair do ar, só gerenciáveis agora) são
+     motivação e ferramenta, não dado operacional — foram pro fim, porque no celular empurravam o
+     "Total de farme" pra ~4 telas abaixo. */''}
 ${metaCard}
 <div class="card">
   <div class="row">
