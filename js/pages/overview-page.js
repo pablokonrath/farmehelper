@@ -334,7 +334,7 @@ function buildTrendCard() {
   // modo Líquido com rush registrado — em Bruto não existe "investimento" pra comparar contra.
   const roiTexto = b => !liquido || !b.rushSpent ? '' : (() => {
     const roi = Math.round((b.netAlz / b.rushSpent) * 100);
-    return `<div style="font-size:10px;color:${roi >= 0 ? 'var(--ok)' : 'var(--err)'};margin-top:2px">retorno ${roi >= 0 ? '+' : ''}${roi}%</div>`;
+    return `<div style="font-size:var(--fs-2xs);color:${roi >= 0 ? 'var(--ok)' : 'var(--err)'};margin-top:2px">retorno ${roi >= 0 ? '+' : ''}${roi}%</div>`;
   })();
 
   // Meta de semana/mês: extensão da Meta diária pra este card, que já sabe pra onde o período tá
