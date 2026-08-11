@@ -17,6 +17,12 @@ export function setSessionsHistoryDate(value) {
   renderPage();
 }
 
+// Bruto ou líquido na tabela "Qual DG rende mais" (ver comparisonCard).
+export function setDgComparisonMode(liquido) {
+  AppState.dgComparisonShowNet = !!liquido;
+  renderPage();
+}
+
 // Progresso do rush de hoje: cruza o rush salvo do dia com as runs de fato feitas hoje em cada DG
 // (computeRunsDoneToday soma sessões encerradas + a ativa) contra o planejado — fração real, não
 // um booleano "existe sessão" (isso marcava uma DG de 20 repetições como feita com só 1 run).
@@ -270,23 +276,40 @@ export function renderSessionsPage() {
     ? AppState.dgSessions.reduce((min, s) => (s.date && s.date < min ? s.date : min), AppState.dgSessions[0].date || today)
     : null;
 
+  // Líquido reordena por netAlzPerRun em vez do bruto de computeDgComparison — SÓ pra exibição
+  // desta tabela (uma cópia). O array original continua ordenado por bruto pra quem mais usa
+  // ele (rota, "o que fazer agora" da Visão geral), sem herdar uma troca de critério que eles
+  // não pediram.
+  const liquidoDg = !!AppState.dgComparisonShowNet;
+  const comparisonSorted = !liquidoDg ? comparison
+    : [...comparison].sort((x, y) => (y.netAlzPerRun ?? -1) - (x.netAlzPerRun ?? -1));
+  const gemValueSet = (AppState.resetConfig.gemValueAlz || 0) > 0;
+  const temDgComGema = comparison.some(c => {
+    const dg = AppState.dungeonList.find(d => d.id === c.dungeonId);
+    return dg?.gemsPerRun > 0;
+  });
+
+  const botaoDgMode = (v, txt) => `<button class="btn btn-xs ${liquidoDg === v ? 'btn-p' : 'btn-d'}" onclick="setDgComparisonMode(${v})">${txt}</button>`;
   const comparisonCard = `
 <div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div></div>
-  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-trophy"></i>Qual DG rende mais</div>
+    <div style="display:flex;gap:6px">${botaoDgMode(false, 'Bruto')}${botaoDgMode(true, 'Líquido')}</div></div>
+  ${infoToggle('sessions-comparison', `Ordenado por <strong style="color:var(--gold)">Alz por run</strong> — como DG tem limite diário de entradas, o que decide onde gastar suas runs é o rendimento por run, não por hora. Informe as runs de cada sessão pra esta coluna aparecer. <strong>Líquido</strong> desconta o custo de entrada da run (Alz + tickets + gemas, mesmos valores configurados em "Vale a pena resetar?" abaixo) — é a mesma conta, só que aplicada em toda DG, não só nas que valem resetar.${totalSessionsEver ? ` Baseado em <strong style="color:var(--txt)">${totalSessionsEver} sessões</strong> registradas${earliestSessionDate ? ' desde ' + formatDateBR(earliestSessionDate) : ''} — o histórico não é mais apagado com o tempo.` : ''}`)}
+  ${liquidoDg && !gemValueSet && temDgComGema ? `<div style="font-size:11px;color:var(--warn);margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Valor da gema não configurado (em "Vale a pena resetar?" abaixo) — o custo de entrada em gemas de algumas DGs ainda não entra nesta conta.</div>` : ''}
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
-    : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th><th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
-      ${comparison.map((c, i) => `<tr>
+    : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th>${liquidoDg ? '<th>Custo entrada / run</th>' : ''}<th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
+      ${comparisonSorted.map((c, i) => `<tr>
         <td class="rank">${i + 1}</td>
         <td style="font-weight:500">${esc(c.dungeonName)}</td>
         <td>${c.sessions}</td>
         <td>${c.runs || '—'}</td>
         <td style="color:var(--txt2)">${c.msPerRun != null ? formatDuration(c.msPerRun) : '<span style="color:var(--muted)">—</span>'}</td>
         <td>${formatDuration(c.durationMs)}</td>
-        <td style="color:${getAlzTierColor(c.totalAlz)}" title="${formatNumber(c.totalAlz)} Alz">${formatAlzGamer(c.totalAlz)}</td>
-        <td style="color:var(--gold);font-weight:700">${c.alzPerRun != null ? formatAlzGamer(c.alzPerRun) : '<span style="color:var(--muted);font-weight:400">informe as runs</span>'}</td>
-        <td style="color:var(--muted)">${c.alzPerHour != null ? formatAlzGamer(c.alzPerHour) + '/h' : '—'}</td>
+        ${liquidoDg ? `<td style="color:var(--muted)">${formatAlzGamer(c.entryCostPerRun)}</td>` : ''}
+        <td style="color:${getAlzTierColor(liquidoDg ? c.netTotalAlz : c.totalAlz)}" title="${formatNumber(liquidoDg ? c.netTotalAlz : c.totalAlz)} Alz">${formatAlzGamer(liquidoDg ? c.netTotalAlz : c.totalAlz)}</td>
+        <td style="color:var(--gold);font-weight:700">${(liquidoDg ? c.netAlzPerRun : c.alzPerRun) != null ? formatAlzGamer(liquidoDg ? c.netAlzPerRun : c.alzPerRun) : '<span style="color:var(--muted);font-weight:400">informe as runs</span>'}</td>
+        <td style="color:var(--muted)">${(liquidoDg ? c.netAlzPerHour : c.alzPerHour) != null ? formatAlzGamer(liquidoDg ? c.netAlzPerHour : c.alzPerHour) + '/h' : '—'}</td>
       </tr>`).join('')}
       </tbody></table>`}
 </div>`;

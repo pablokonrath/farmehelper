@@ -317,9 +317,28 @@ export function sessionTotalAlz(session) {
   return total;
 }
 
+// Custo de entrada de UMA run de uma DG (Alz direto + tickets×preço + gemas×preço) — a mesma
+// conta que "Vale a pena resetar?" já fazia inline. Fatorado aqui pra "líquido" significar
+// exatamente a mesma coisa em todo lugar que compara DG (comparação, reset, rotas), em vez de
+// três fórmulas que podem divergir se uma mudar e as outras não.
+export function entryCostPerRun(dg, gemValue, ticketValue) {
+  if (!dg) return 0;
+  return (dg.alzCost || 0) + (dg.ticketsPerRun || 0) * ticketValue + (dg.gemsPerRun || 0) * gemValue;
+}
+
 // Agrega as sessões salvas por DG, ordenado por Alz/hora (qual DG rende mais). É a ferramenta de
 // decisão: "onde meu tempo de macro rende melhor".
+//
+// Alz/run e Alz/hora aqui são BRUTOS (só o que caiu, sem descontar o custo de entrada) — a ordem
+// de sort e os consumidores existentes (rota, próximo passo da Visão geral) dependem desse
+// critério bruto continuar estável. Os campos líquidos (netAlzPerRun etc.) vêm JUNTO, prontos pra
+// quem quiser comparar por lucro de verdade (ver o toggle Bruto/Líquido em Sessões de farme) sem
+// precisar de uma segunda função nem mudar quem já usa o bruto.
 export function computeDgComparison() {
+  const cfg = AppState.resetConfig;
+  const gemValue = cfg.gemValueAlz || 0;
+  const ticketValue = cfg.ticketValueAlz || 0;
+
   const byDg = {};
   AppState.dgSessions.forEach(s => {
     const agg = byDg[s.dungeonId] || (byDg[s.dungeonId] = {
@@ -333,15 +352,27 @@ export function computeDgComparison() {
     agg.totalAlz += sessionTotalAlz(s);
   });
   return Object.values(byDg)
-    .map(a => ({
-      ...a,
-      durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
-      alzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? a.totalAlz / (a.activeMs / 3600000) : null,
-      alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
-      // Tempo médio por run = tempo ativo somado ÷ runs somadas — mesma ideia do Alz/run, sem
-      // precisar de nenhum campo novo (usado pra sugerir rota pelo tempo disponível do jogador).
-      msPerRun: a.runs > 0 ? a.activeMs / a.runs : null,
-    }))
+    .map(a => {
+      const dg = AppState.dungeonList.find(d => d.id === a.dungeonId);
+      const costPerRun = entryCostPerRun(dg, gemValue, ticketValue);
+      // Sem runs registradas não dá pra saber quantas entradas o total pagou — cai pro mesmo
+      // valor do bruto (custo 0) em vez de virar null, já que "sem dado de custo" não é o mesmo
+      // erro que "sem dado de rendimento" (alzPerRun/netAlzPerRun continuam null por runs=0).
+      const netTotalAlz = a.totalAlz - costPerRun * a.runs;
+      return {
+        ...a,
+        durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
+        alzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? a.totalAlz / (a.activeMs / 3600000) : null,
+        alzPerRun: a.runs > 0 ? a.totalAlz / a.runs : null,
+        // Tempo médio por run = tempo ativo somado ÷ runs somadas — mesma ideia do Alz/run, sem
+        // precisar de nenhum campo novo (usado pra sugerir rota pelo tempo disponível do jogador).
+        msPerRun: a.runs > 0 ? a.activeMs / a.runs : null,
+        entryCostPerRun: costPerRun,
+        netTotalAlz,
+        netAlzPerRun: a.runs > 0 ? netTotalAlz / a.runs : null,
+        netAlzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? netTotalAlz / (a.activeMs / 3600000) : null,
+      };
+    })
     // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide
     // onde gastar as entradas é o rendimento por run (quem não tem runs informadas vai pro fim).
     .sort((x, y) => (y.alzPerRun ?? -1) - (x.alzPerRun ?? -1));
@@ -398,31 +429,24 @@ export function setResetConfig(field, value) {
 
 // Pra cada DG com Alz/run medido: desconta o custo de entrada da run (Alz + tickets + gemas, pelos
 // valores informados) e o custo do reset rateado por run. Se sobrar lucro, vale resetar.
+// entryCostPerRun/netAlzPerRun já vêm prontos de computeDgComparison (mesma conta usada lá pro
+// toggle Bruto/Líquido) — aqui só falta ratear o custo do RESET em cima do líquido.
 export function computeResetWorth() {
   const cfg = AppState.resetConfig;
   const gemValue = cfg.gemValueAlz || 0;
-  const ticketValue = cfg.ticketValueAlz || 0;
   const runsPerReset = Math.max(1, cfg.runsPerReset || 1);
   const resetCostPerRun = ((cfg.resetCostGems || 0) * gemValue) / runsPerReset;
 
   const rows = computeDgComparison()
     .filter(c => c.alzPerRun != null)
-    .map(c => {
-      const dg = AppState.dungeonList.find(d => d.id === c.dungeonId);
-      const entryCostPerRun = dg
-        ? (dg.alzCost || 0) + (dg.ticketsPerRun || 0) * ticketValue + (dg.gemsPerRun || 0) * gemValue
-        : 0;
-      const netAlzPerRun = c.alzPerRun - entryCostPerRun;
-      const profitAfterReset = netAlzPerRun - resetCostPerRun;
-      return {
-        dungeonName: c.dungeonName,
-        alzPerRun: c.alzPerRun,
-        entryCostPerRun,
-        netAlzPerRun,
-        profitAfterReset,
-        worth: profitAfterReset > 0,
-      };
-    })
+    .map(c => ({
+      dungeonName: c.dungeonName,
+      alzPerRun: c.alzPerRun,
+      entryCostPerRun: c.entryCostPerRun,
+      netAlzPerRun: c.netAlzPerRun,
+      profitAfterReset: c.netAlzPerRun - resetCostPerRun,
+      worth: c.netAlzPerRun - resetCostPerRun > 0,
+    }))
     .sort((a, b) => b.profitAfterReset - a.profitAfterReset);
 
   return { resetCostPerRun, rows, gemValueSet: gemValue > 0 };

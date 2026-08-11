@@ -265,6 +265,9 @@ export const AppState = {
   // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings). Valor de gema/ticket
   // em Alz pra converter custos; custo do reset em gemas e quantas runs cada reset devolve.
   resetConfig: { gemValueAlz: 0, ticketValueAlz: 0, resetCostGems: 500, runsPerReset: 1 },
+  // Bruto ou líquido (desconta custo de entrada) na tabela "Qual DG rende mais". Só UI, não
+  // persiste — mesmo motivo do trendShowNet da Visão geral.
+  dgComparisonShowNet: false,
 };
 
 export function resetTrackedKeywordsToDefault() {
