@@ -2,7 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { getItemPrice } from './drops.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
-import { renderPage } from '../router.js';
+import { renderPage, navigateTo } from '../router.js';
 
 export function setDropSourceQuery(value) {
   AppState.dropSourceQuery = value;
@@ -21,6 +21,21 @@ export function setDropSourceTargetQty(value) {
 export function setDropSourceDungeon(value) {
   AppState.dropSourceDungeonId = value;
   renderPage();
+}
+
+// "Ir farmar aqui": leva pra Sessões de farme com essa DG já pré-selecionada no formulário de
+// iniciar sessão — não inicia nada sozinho (o jogador ainda escolhe o tempo por run e confirma),
+// só poupa achar de novo, num seletor que pode ter dezenas de DGs, o que já foi achado aqui.
+export function goFarmDungeon(dungeonId) {
+  AppState.pendingSessionDungeonId = dungeonId;
+  navigateTo('sessoes');
+}
+
+// Consome a pré-seleção acima — chamado junto do botão "Iniciar" de Sessões de farme, depois que
+// ela já cumpriu seu papel (pré-marcar o seletor). Sem renderPage aqui de propósito: startDgSession
+// (chamado antes, no mesmo clique) já re-renderiza a página inteira em seguida.
+export function clearPendingSessionDungeon() {
+  AppState.pendingSessionDungeonId = '';
 }
 
 // Núcleo estatístico compartilhado pelas duas direções da busca (item→DGs em findDropSources,

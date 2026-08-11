@@ -176,6 +176,11 @@ export const AppState = {
   // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma
   // página, ferramenta independente. Não persiste, mesmo espírito das outras duas acima.
   dropSourceDungeonId: '',
+  // DG escolhida em "Onde dropa" (botão "Ir farmar aqui") pra pré-selecionar no formulário de
+  // iniciar sessão em Sessões de farme — fecha o ciclo "achei onde farmar" → "vou farmar lá" sem
+  // precisar procurar a mesma DG de novo num seletor com dezenas de opções. Consumido uma vez (o
+  // botão "Iniciar" limpa depois de usar) — não persiste.
+  pendingSessionDungeonId: '',
   // Histórico permanente de drops, agregado por dia+item ([{date, name, qty}]) — o log do jogo
   // só guarda ~30 dias, então sem isso todo farme mais antigo sumia. Ver drop-history.js.
   dropSnapshot: [],

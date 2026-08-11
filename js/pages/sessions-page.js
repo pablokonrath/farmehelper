@@ -292,11 +292,11 @@ export function renderSessionsPage() {
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
           <select class="inp" id="dgSessionSelect">
-            ${renderDungeonOptionsGrouped(AppState.dungeonList, undefined, null, rushPriorityGroups)}
+            ${renderDungeonOptionsGrouped(AppState.dungeonList, undefined, AppState.pendingSessionDungeonId || null, rushPriorityGroups)}
           </select></div>
         <div style="width:150px"><label class="lbl">Tempo por run (min)</label>
           <input class="inp" id="dgSessionRunMinutes" type="number" min="0" step="0.5" placeholder="opcional"></div>
-        <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value, document.getElementById('dgSessionRunMinutes').value)"><i class="ti ti-player-play"></i>Iniciar</button></div>
+        <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value, document.getElementById('dgSessionRunMinutes').value);clearPendingSessionDungeon()"><i class="ti ti-player-play"></i>Iniciar</button></div>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.${pendingRushDungeons.length ? ' As DGs que ainda faltam no rush de hoje aparecem no topo da lista e saem de lá conforme você completa as runs.' : ''}</div>
       <label class="tgl-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer">

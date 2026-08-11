@@ -89,7 +89,9 @@ export function renderDropSourcePage() {
   const resultDgIds = new Set(results.map(r => r.dungeonId));
   const knownExtra = query ? findKnownSourcesForQuery(query).filter(d => !resultDgIds.has(d.id)) : [];
 
-  const reverseDgId = AppState.dropSourceDungeonId;
+  // Sem escolha explícita, cai na DG da sessão ativa (se houver uma) — pousa na página já
+  // mostrando "o que essa DG me dá" enquanto você tá farmando nela, sem escolher nada.
+  const reverseDgId = AppState.dropSourceDungeonId || AppState.activeDgSession?.dungeonId || '';
   const reverseResult = reverseDgId ? findDungeonDrops(reverseDgId) : null;
 
   return `
@@ -118,8 +120,9 @@ export function renderDropSourcePage() {
       ? '<div class="empty">Digite o nome (completo ou parte) de um item e aperte Enter ou "Buscar" pra ver de quais DGs ele já caiu.</div>'
       : !results.length
         ? `<div class="empty">Nenhuma sessão registrou "${esc(query)}" até agora.</div>`
-        : `<table><thead><tr><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th><th>Taxa por run</th><th>Média/run</th>${targetQty > 0 ? `<th>Runs p/ ${targetQty.toLocaleString('pt-BR')}×</th>` : ''}</tr></thead><tbody>
-          ${results.map(r => `<tr>
+        : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Quantidade</th><th>Última vez</th><th>Taxa por run</th><th>Média/run</th>${targetQty > 0 ? `<th>Runs p/ ${targetQty.toLocaleString('pt-BR')}×</th>` : ''}<th style="width:110px"></th></tr></thead><tbody>
+          ${results.map((r, i) => `<tr>
+            <td class="rank">${i + 1}</td>
             <td style="font-weight:500">${esc(r.dungeonName)}</td>
             <td>${r.sessions}</td>
             <td>${r.qty.toLocaleString('pt-BR')}×</td>
@@ -139,6 +142,7 @@ export function renderDropSourcePage() {
               }
               return `≈${runsNeeded.toLocaleString('pt-BR')} runs${range} <span style="color:var(--muted);font-size:11px;font-weight:400">(≈${days.toLocaleString('pt-BR')} dia${days > 1 ? 's' : ''} a ${DAILY_RUN_LIMIT}/dia)</span>`;
             })()}</td>` : ''}
+            <td><button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(r.dungeonId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar</button></td>
           </tr>`).join('')}
           </tbody></table>`}
   ${knownExtra.length ? `<div style="margin-top:${results.length ? '14px' : '0'};padding-top:${results.length ? '12px' : '0'};${results.length ? 'border-top:1px solid var(--border);' : ''}">
@@ -172,15 +176,19 @@ ${!routeYield.length ? '' : `
     ? ''
     : !reverseResult.items.length
       ? '<div class="empty">Nenhuma sessão encerrada dessa DG registrou item ainda.</div>'
-      : `<table><thead><tr><th>Item</th><th>Quantidade</th><th>Taxa por run</th><th>Preço cadastrado</th><th>Alz esperado/run</th></tr></thead><tbody>
-        ${reverseResult.items.map(i => `<tr>
+      : `<table><thead><tr><th style="width:36px">#</th><th>Item</th><th>Quantidade</th><th>Taxa por run</th><th>Preço cadastrado</th><th>Alz esperado/run</th></tr></thead><tbody>
+        ${reverseResult.items.map((i, idx) => `<tr>
+          <td class="rank">${idx + 1}</td>
           <td style="font-weight:500">${esc(i.name)}</td>
           <td>${i.qty.toLocaleString('pt-BR')}×</td>
           <td>${rateWithConfidence(i)}</td>
           <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
           <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
         </tr>`).join('')}
-        </tbody></table>`}
+        </tbody></table>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+        <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
+      </div>`}
 </div>
 ${renderItemDungeonSourcesCard()}`;
 }
