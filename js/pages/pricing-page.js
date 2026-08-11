@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveFilterKeywordsFlag } from '../state/persistence.js';
-import { summarizeDropsByItem, getAllDrops } from '../features/drops.js';
-import { daysSincePriceUpdate } from '../features/sales.js';
+import { summarizeDropsByItem, getAllDrops, isFixedPriceItem } from '../features/drops.js';
+import { daysSincePriceUpdate, STALE_PRICE_DAYS } from '../features/sales.js';
 import { renderAlzValue, formatNumber } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
@@ -17,8 +17,14 @@ export function toggleFilterByKeywords(checked) {
 // Coluna "Atualizado" da lista de preços: sinaliza (sem bloquear nada) quando um preço não é
 // revisto há mais de 2 semanas — o único jeito de "confirmar" é editando (mesmo que pelo mesmo
 // valor só muda o número), já que é a mesma ação que qualquer atualização de preço de verdade.
-const STALE_PRICE_DAYS = 14;
+//
+// Itens de preço fixo (ex: Joia Enfraquecida, tabelada pelo próprio jogo) nunca acionam esse
+// aviso — não é o jogador que revisa esse preço contra o mercado, então "sem revisar há muito
+// tempo" não significa nada de errado, significa só que o preço nunca precisou mudar.
 function priceAgeCell(name) {
+  if (isFixedPriceItem(name)) {
+    return `<td style="font-size:12px;color:var(--muted)"><i class="ti ti-lock"></i> Fixo (jogo)</td>`;
+  }
   const days = daysSincePriceUpdate(name);
   const stale = days != null && days > STALE_PRICE_DAYS;
   const label = days == null ? '—' : days === 0 ? 'hoje' : days === 1 ? 'ontem' : `há ${days} dias`;

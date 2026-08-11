@@ -10,6 +10,17 @@ export function getItemCategory(itemName) {
   return AppState.itemCategoryAssignments[itemName] ?? AppState.itemCategoryAssignments[stripEnhancementSuffix(itemName)] ?? null;
 }
 
+// Itens cujo valor é tabelado pelo próprio jogo (ex: joia trocável em NPC por preço fixo), não
+// pelo mercado entre jogadores — diferente de todo resto do itemPrices, que é estimativa própria
+// de cada um. Curado à mão (não tem como derivar isso do nome sozinho) — usado só pra SILENCIAR
+// o aviso de "preço desatualizado" nesses itens (ver daysSincePriceUpdate em sales.js): o preço
+// nunca muda, então "sem revisar há muito tempo" não é sinal de nada errado.
+const FIXED_PRICE_ITEMS = new Set(['Joia Enfraquecida'].map(normalizeForSearch));
+
+export function isFixedPriceItem(itemName) {
+  return FIXED_PRICE_ITEMS.has(normalizeForSearch(stripEnhancementSuffix(itemName)));
+}
+
 // Peças de equipamento genéricas (armadura/arma básica por classe) — caem aos montes em toda
 // DG, não têm valor de venda e só incham "o que caiu" em cada sessão. Excluídas de vez, não
 // precisam aparecer em lugar nenhum do app (pedido explícito do jogador).

@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
-import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
-import { computeSalesSummary, computeSalesSummaryByItem, getSalePriceHistory, getSoldItemNames } from '../features/sales.js';
+import { getAllDrops, summarizeDropsByItem, isFixedPriceItem } from '../features/drops.js';
+import { computeSalesSummary, computeSalesSummaryByItem, computeLikelyUnsoldInventory, getSalePriceHistory, getSoldItemNames, daysSincePriceUpdate, STALE_PRICE_DAYS } from '../features/sales.js';
 import { computeSalesGoalsProgress, totalAllocatedPercentage, computeTodayGoalsAllocation } from '../features/sales-goals.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
@@ -47,9 +47,26 @@ export function renderSalesPage() {
 </div>`;
 
   const kpis = `
-<div class="g2" style="margin-bottom:12px">
+<div class="g3" style="margin-bottom:12px">
   <div class="kpi"><div class="kpi-lbl">Total vendido (real)</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(summary.realTotal)}" title="${formatNumber(summary.realTotal)} Alz">${formatAlzGamer(summary.realTotal)}</div><div class="kpi-sub">${summary.count} venda(s)</div></div>
   <div class="kpi"><div class="kpi-lbl">Real vs. estimado</div><div class="kpi-val" style="font-size:22px;color:${summary.diff >= 0 ? 'var(--ok)' : 'var(--err)'}" title="${formatNumber(summary.diff)} Alz">${summary.diff >= 0 ? '+' : ''}${formatAlzGamer(summary.diff)}</div><div class="kpi-sub">vs. ${formatAlzGamer(summary.estimatedTotal)} cadastrado</div></div>
+  <div class="kpi"><div class="kpi-lbl">Ticket médio</div><div class="kpi-val" style="font-size:22px" title="${formatNumber(summary.avgTicket)} Alz">${formatAlzGamer(summary.avgTicket)}</div><div class="kpi-sub">por venda registrada</div></div>
+</div>`;
+
+  const unsoldInventory = computeLikelyUnsoldInventory();
+  const unsoldInventoryCard = !unsoldInventory.length ? '' : `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-package"></i>Possível estoque não vendido</div>
+  ${infoToggle('sales-unsold', 'Cruza tudo que já <strong>caiu</strong> (histórico completo de drops) com tudo que já foi <strong>vendido</strong>, item a item — o que caiu bastante e vendeu pouco sobe pro topo. Não é auditoria: parte pode ter virado craft, uso pessoal ou coleção, então esse valor nunca soma em nenhum total "preso" do app. É só um radar pra lembrar que o item existe e vale revisar se ainda faz sentido vender. Sempre olha o histórico completo, ignora o filtro De/Até acima.')}
+  <div style="display:flex;flex-direction:column;gap:6px">
+    ${unsoldInventory.map(i => `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px">
+      <div><span style="font-weight:600">${esc(i.itemName)}</span> <span style="font-size:11px;color:var(--muted)">— ${i.droppedQty}× caiu, ${i.soldQty}× vendido</span></div>
+      <div style="text-align:right">
+        <div style="font-weight:700;color:var(--gold)">${i.unsoldQty}×</div>
+        <div style="font-size:11px;color:var(--muted)" title="${formatNumber(i.estValue)} Alz">~${formatAlzGamer(i.estValue)}</div>
+      </div>
+    </div>`).join('')}
+  </div>
 </div>`;
 
   const goalsProgress = computeSalesGoalsProgress();
@@ -86,7 +103,10 @@ export function renderSalesPage() {
 
   const form = `
 <div class="card">
-  <div class="ctitle"><i class="ti ti-cash"></i>${editingSale ? `Editando venda de ${esc(editingSale.itemName)}` : 'Registrar venda'}</div>
+  <div class="sh">
+    <div class="ctitle" style="margin:0"><i class="ti ti-cash"></i>${editingSale ? `Editando venda de ${esc(editingSale.itemName)}` : 'Registrar venda'}</div>
+    ${!editingSale && AppState.salesLog.length ? `<button class="btn btn-d btn-xs" onclick="repeatLastSale()" title="Preenche item e preço com a última venda registrada"><i class="ti ti-repeat"></i>Repetir última venda</button>` : ''}
+  </div>
   <div id="sMsg" style="display:none;font-size:12px;color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:6px;padding:8px 10px;margin-bottom:10px"></div>
   <div class="row" style="align-items:flex-end">
     <div style="flex:1"><label class="lbl">Item</label>
@@ -105,7 +125,9 @@ export function renderSalesPage() {
 
   const list = `
 <div class="card">
-  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-receipt"></i>Vendas <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${sales.length}${isFiltered ? ` de ${AppState.salesLog.length}` : ''}</span></div></div>
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-receipt"></i>Vendas <span style="color:var(--muted);font-size:12px;font-weight:400;margin-left:4px">${sales.length}${isFiltered ? ` de ${AppState.salesLog.length}` : ''}</span></div>
+    ${sales.length ? `<button class="btn btn-d btn-xs" onclick="exportSalesToCSV()" style="margin-left:auto"><i class="ti ti-download"></i>Exportar CSV</button>` : ''}
+  </div>
   ${!sales.length
     ? `<div class="empty">${isFiltered ? 'Nenhuma venda no período filtrado.' : 'Nenhuma venda registrada ainda.'}</div>`
     : `<table><thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Valor unit.</th><th>Total real</th><th>Estimado</th><th>Diferença</th><th style="width:64px"></th></tr></thead><tbody>
@@ -139,14 +161,31 @@ export function renderSalesPage() {
   ${infoToggle('sales-by-item', 'Quebra do "Real vs. estimado" item a item — pra achar rápido qual item específico tá rendendo menos que o esperado (venda abaixo do preço cadastrado), em vez de ver só a diferença geral escondida no meio de itens indo bem. Ordenado do que mais precisa de atenção pro que mais está surpreendendo pra cima.')}
   ${belowExpected.length ? `<div style="font-size:11px;color:var(--err);margin-bottom:10px"><i class="ti ti-alert-triangle"></i> ${belowExpected.length} item(ns) vendendo abaixo do preço cadastrado — considere revisar o preço ou a hora de vender.</div>` : ''}
   <table><thead><tr><th>Item</th><th>Qtd</th><th>Total real</th><th>Estimado</th><th>Diferença</th></tr></thead><tbody>
-    ${byItem.map(i => `<tr>
-      <td style="font-weight:500">${esc(i.itemName)}</td>
+    ${byItem.map(i => {
+      // Item "vendendo abaixo do esperado" com preço cadastrado sem revisão há muito tempo (e que
+      // não é de valor fixo do jogo) pode ser o ESTIMADO desatualizado, não a venda — sem esse
+      // aviso, o jogador ia procurar o problema no lugar errado (achar que vendeu mal quando o que
+      // tá errado é o preço cadastrado como referência).
+      const stale = i.diff < 0 && !isFixedPriceItem(i.itemName) && (daysSincePriceUpdate(i.itemName) ?? 0) > STALE_PRICE_DAYS;
+      return `<tr>
+      <td style="font-weight:500">${esc(i.itemName)}${stale ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Preço cadastrado sem revisão há mais de ${STALE_PRICE_DAYS} dias — a diferença pode ser o preço desatualizado, não a venda"></i>` : ''}</td>
       <td>${i.qty}×</td>
       <td style="font-weight:600">${renderAlzValue(i.realTotal)}</td>
       <td style="color:var(--muted)">${renderAlzValue(i.estimatedTotal)}</td>
       <td style="color:${i.diff >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600">${i.diff >= 0 ? '+' : ''}${formatAlzGamer(i.diff)}</td>
-    </tr>`).join('')}
+    </tr>`;
+    }).join('')}
   </tbody></table>
+</div>`;
+
+  const salesDatesCount = new Set(sales.map(s => s.date)).size;
+  const salesTrendCard = `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-chart-bar"></i>Vendas ao longo do tempo</div>
+  ${infoToggle('sales-trend', 'Total realizado (soma do que você recebeu de verdade) por dia — mostra o RITMO de venda, diferente do "Histórico de preço" abaixo (que é só a variação do preço unitário de um item, não o volume). Respeita o filtro De/Até no topo da página.')}
+  ${salesDatesCount < 2
+    ? '<div class="empty">Registre vendas em pelo menos 2 dias diferentes pra ver o gráfico.</div>'
+    : '<div class="chart-wrap" style="height:200px"><canvas id="sc"></canvas></div>'}
 </div>`;
 
   const priceCard = `
@@ -172,9 +211,11 @@ export function renderSalesPage() {
 <div class="pg-sub">Registre suas vendas reais e compare com o preço estimado, veja a variação de preço de cada item.</div>
 ${filterCard}
 ${kpis}
+${unsoldInventoryCard}
 ${goalsCard}
 ${form}
 ${list}
 ${itemBreakdownCard}
+${salesTrendCard}
 ${priceCard}`;
 }

@@ -1,9 +1,16 @@
 import { AppState } from '../state/app-state.js';
 import { saveSalesLog, savePriceHistory, saveItemPrices } from '../state/persistence.js';
-import { getItemPrice } from './drops.js';
-import { parseAlzInput, parseDateInputBR, formatAlzGamer } from '../utils/formatting.js';
+import { getItemPrice, getAllDrops, summarizeDropsByItem } from './drops.js';
+import { parseAlzInput, parseDateInputBR, formatAlzGamer, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
+
+// Quantos dias sem revisar um preço cadastrado é considerado "desatualizado" — mesmo limite usado
+// em Cálculo de farme (priceAgeCell) e no aviso de item vendendo abaixo do esperado em Vendas.
+// Compartilhado aqui (não duplicado nas duas páginas) porque as duas leem o mesmo dado
+// (daysSincePriceUpdate) com o mesmo critério — mudar um sem o outro deixaria os dois lugares
+// discordando sobre o que é "desatualizado".
+export const STALE_PRICE_DAYS = 14;
 
 // Registra a mudança de preço de um item no histórico (1 ponto por dia: atualiza se já mexeu
 // hoje, adiciona se for dia novo, ignora se o preço não mudou). Chamado sempre que um preço é
@@ -64,6 +71,60 @@ export function checkSalePriceDrop(itemName, unitPrice) {
   return dropPct >= PRICE_DROP_WARNING_THRESHOLD ? { avg, dropPct: Math.round(dropPct * 100) } : null;
 }
 
+// Estoque provável: pra cada item, quanto já caiu (todo o histórico de drops) menos quanto já foi
+// vendido — o item que mais caiu e menos vendeu sobe pro topo. É radar, não auditoria: parte do
+// que caiu pode ter virado craft, uso pessoal ou coleção, então isso NUNCA soma num total de "Alz
+// preso" em lugar nenhum do app (mesmo motivo pelo qual computeSalesSummary não faz essa conta) —
+// serve só pra lembrar que aquele item existe e vale revisar se ainda tá pra vender.
+export function computeLikelyUnsoldInventory(limit = 6) {
+  const dropped = {};
+  summarizeDropsByItem(getAllDrops()).forEach(i => { dropped[i.name] = i.qty; });
+
+  const sold = {};
+  AppState.salesLog.forEach(s => {
+    const key = stripEnhancementSuffix(s.itemName);
+    sold[key] = (sold[key] || 0) + s.qty;
+  });
+
+  return Object.entries(dropped)
+    .map(([itemName, droppedQty]) => {
+      const soldQty = sold[itemName] || 0;
+      const unsoldQty = Math.max(0, droppedQty - soldQty);
+      return { itemName, droppedQty, soldQty, unsoldQty, estValue: unsoldQty * getItemPrice(itemName) };
+    })
+    .filter(i => i.unsoldQty > 0 && i.estValue > 0)
+    .sort((a, b) => b.estValue - a.estValue)
+    .slice(0, limit);
+}
+
+// Uma venda "igual demais" já lançada no MESMO dia (mesmo item, quantidade e valor) — pega o erro
+// clássico de clicar "Registrar" duas vezes ou lançar de novo sem lembrar que já tinha feito.
+// excludeId ignora a própria venda quando é uma edição (senão toda edição "encontraria" a si
+// mesma como duplicata).
+function findDuplicateSale(itemName, qty, unitPrice, date, excludeId) {
+  const key = stripEnhancementSuffix(itemName);
+  return AppState.salesLog.find(s =>
+    s.id !== excludeId && s.date === date && s.qty === qty && s.unitPrice === unitPrice &&
+    stripEnhancementSuffix(s.itemName) === key
+  );
+}
+
+// Preenche o formulário com o último item vendido (nome + preço unitário, quantidade volta pra 1)
+// SEM entrar em modo de edição — pra vender o mesmo item várias vezes seguidas (comum vender um
+// lote em unidades) sem redigitar nome/preço a cada venda e arriscar errar algo na repetição.
+export function repeatLastSale() {
+  const last = [...AppState.salesLog].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)).pop();
+  if (!last) return;
+  const itemEl = document.getElementById('saleItem');
+  const qtyEl = document.getElementById('saleQty');
+  const priceEl = document.getElementById('salePrice');
+  if (itemEl) itemEl.value = last.itemName;
+  if (qtyEl) qtyEl.value = 1;
+  if (priceEl) priceEl.value = formatNumber(last.unitPrice);
+  priceEl?.focus();
+  priceEl?.select();
+}
+
 // Mostra uma confirmação rápida (mesmo padrão do "rMsg" em Planejamento de Rush) depois de
 // registrar/editar — fecha o loop: sem isso, nada na tela dizia que a venda entrou OU que o preço
 // cadastrado do item foi atualizado sozinho (efeito que já acontece, só ficava invisível).
@@ -96,6 +157,9 @@ export function addSale() {
   const qty = Math.max(1, parseInt(document.getElementById('saleQty')?.value) || 1);
   const unitPrice = Math.round(parseAlzInput(rawTotal) / qty);
   const date = parseDateInputBR(document.getElementById('saleDate')?.value) || todayISODate();
+
+  const dup = findDuplicateSale(name, qty, unitPrice, date, AppState.editingSaleId);
+  if (dup && !confirm(`Já existe uma venda igual a essa (${qty}× ${name} por ${formatAlzGamer(unitPrice * qty)}) registrada em ${formatDateBR(date)}. Confirma que não é duplicada?`)) return;
 
   const drop = checkSalePriceDrop(name, unitPrice);
   if (drop && !confirm(`Você tá vendendo "${name}" ${drop.dropPct}% abaixo da sua média recente (~${formatAlzGamer(drop.avg)}). Confirma mesmo assim?`)) return;
@@ -189,9 +253,10 @@ export function daysSincePriceUpdate(itemName) {
   return Math.max(0, Math.floor(diffMs / 86400000));
 }
 
-// Total vendido (real) e o que valeria pelo preço cadastrado (estimado). Não estima valor "em
-// estoque" (dropado − vendido) — nem todo drop é vendido (parte vai pra coleção ou vira insumo
-// de craft), então esse número nunca representou Alz de verdade parado em algum lugar.
+// Total vendido (real) e o que valeria pelo preço cadastrado (estimado). Não soma o valor do que
+// ainda não foi vendido (dropado − vendido) nesse total — nem todo drop é vendido (parte vai pra
+// coleção ou vira insumo de craft), então isso nunca representou Alz de verdade parado em algum
+// lugar. Esse cruzamento existe à parte, só como radar informativo: ver computeLikelyUnsoldInventory.
 //
 // `from`/`to` (ISO, opcionais) filtram por data — mesmo filtro De/Até já usado na Visão geral.
 // Chamado sem argumentos (ex: o aviso de preço desatualizado em overview-page.js) continua
@@ -208,7 +273,7 @@ export function computeSalesSummary(from = '', to = '') {
     count++;
   });
 
-  return { realTotal, estimatedTotal, diff: realTotal - estimatedTotal, count };
+  return { realTotal, estimatedTotal, diff: realTotal - estimatedTotal, count, avgTicket: count ? Math.round(realTotal / count) : 0 };
 }
 
 // Mesmo total de computeSalesSummary, mas quebrado por item — pra achar rápido qual item específico

@@ -4,7 +4,7 @@ import { renderPricingPage } from './pages/pricing-page.js';
 import { renderRushPage } from './pages/rush-page.js';
 import { renderAlertsPage } from './pages/alerts-page.js';
 import { renderReportPage } from './pages/report-page.js';
-import { renderDropChart, destroyDropChart, renderPriceChart, destroyPriceChart } from './features/drop-chart.js';
+import { renderDropChart, destroyDropChart, renderPriceChart, destroyPriceChart, renderSalesChart, destroySalesChart } from './features/drop-chart.js';
 import { renderSalesPage } from './pages/sales-page.js';
 import { updateCartPreview } from './features/rush-cart.js';
 import { renderSessionsPage } from './pages/sessions-page.js';
@@ -26,6 +26,7 @@ export function renderPage() {
   const main = document.getElementById('main');
   destroyDropChart();
   destroyPriceChart();
+  destroySalesChart();
   document.getElementById('pageWatermark')?.setAttribute('data-page', AppState.currentPage);
 
   if (AppState.currentPage === 'overview') main.innerHTML = renderOverviewPage();
@@ -45,5 +46,5 @@ export function renderPage() {
 function afterPageRender() {
   if (AppState.currentPage === 'overview') renderDropChart();
   if (AppState.currentPage === 'rush') updateCartPreview();
-  if (AppState.currentPage === 'vendas') renderPriceChart();
+  if (AppState.currentPage === 'vendas') { renderPriceChart(); renderSalesChart(); }
 }

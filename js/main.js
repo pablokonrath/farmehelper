@@ -12,7 +12,7 @@ import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
-import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale } from './features/sales.js';
+import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
@@ -81,7 +81,7 @@ import {
   applySuggestedCreditQuantities,
 } from './features/rush-cart.js';
 import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute } from './features/rush-routes.js';
-import { exportDropsToCSV } from './features/export.js';
+import { exportDropsToCSV, exportSalesToCSV } from './features/export.js';
 import { maskDateInputBR, parseDateInputBR, maskAlzInputLive, maskTimeInputBR } from './utils/formatting.js';
 
 // Abre/fecha a gaveta lateral no celular (o botão hambúrguer, ver index.html/styles.css).
@@ -177,6 +177,7 @@ Object.assign(window, {
   setRushCreditMarketPrice,
   setRushCreditItemName,
   exportDropsToCSV,
+  exportSalesToCSV,
   maskDateInputBR,
   parseDateInputBR,
   maskAlzInputLive,
@@ -221,6 +222,7 @@ Object.assign(window, {
   deleteSale,
   startEditingSale,
   cancelEditingSale,
+  repeatLastSale,
   setPriceHistoryItem,
   addSalesGoal,
   deleteSalesGoal,
