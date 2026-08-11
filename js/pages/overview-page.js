@@ -276,19 +276,27 @@ function buildTrendCard() {
     ? ['Últimos 7 dias', '7 dias antes', '7 dias antes disso']
     : ['Últimos 30 dias', '30 dias antes', '30 dias antes disso'];
 
-  // Projeção: no ritmo atual, onde você fecha o período corrente. Só faz sentido com o período
-  // em andamento — por isso usa dias FARMADOS até agora, não dias corridos (quem farma 3x por
-  // semana não deve ser projetado como se farmasse todo dia).
+  // Projeção: no ritmo atual, onde você fecha o período CALENDÁRIO corrente (semana Seg-Dom ou
+  // mês em curso). Precisa do total acumulado DESSE período específico, do início dele até hoje —
+  // não dá pra reaproveitar "atual" acima porque aquele bloco é uma janela ROLANTE (últimos 7/30
+  // dias terminando hoje, sempre cheia), enquanto diaDoPeriodo conta dias do calendário. Misturar
+  // os dois inflava a projeção: numa terça, diaDoPeriodo é 2, mas o total rolante já cobre 7 dias
+  // inteiros — dividir um pelo outro multiplicava a taxa diária por ~3,5x.
   const hoje = new Date();
   const diaDoPeriodo = dias === 30 ? hoje.getDate() : (hoje.getDay() || 7);
   const totalDoPeriodo = dias === 30 ? new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate() : 7;
-  const ritmoPorDiaCorrido = diaDoPeriodo > 0 ? atual.totalAlz / Math.min(diaDoPeriodo, dias) : 0;
+  const inicioPeriodo = dias === 30
+    ? new Date(hoje.getFullYear(), hoje.getMonth(), 1)
+    : new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - (diaDoPeriodo - 1));
+  const periodoEmAndamento = getHistoricalSummary(todayISODate(inicioPeriodo), todayISODate(hoje), { respeitarFiltrosDaPagina: false });
+  const diasFarmadosNoPeriodo = Object.values(periodoEmAndamento.totalsByDate).filter(v => v > 0).length;
+  const ritmoPorDiaCorrido = diaDoPeriodo > 0 ? periodoEmAndamento.totalAlz / diaDoPeriodo : 0;
   const projecao = ritmoPorDiaCorrido * totalDoPeriodo;
-  const projecaoTexto = atual.diasComFarme < 2 ? '' : `
+  const projecaoTexto = diasFarmadosNoPeriodo < 2 ? '' : `
     <div style="font-size:var(--fs-sm);color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
       <i class="ti ti-target" style="color:var(--gold)"></i> No seu ritmo atual, ${dias === 30 ? 'este mês' : 'esta semana'} fecha em
       <strong style="color:${getAlzTierColor(projecao)}" title="${formatNumber(Math.round(projecao))} Alz">${formatAlzGamer(projecao)}</strong>
-      <span style="font-size:var(--fs-2xs)">(${formatAlzGamer(atual.totalAlz)} até agora, em ${atual.diasComFarme} dia(s) de farme)</span>
+      <span style="font-size:var(--fs-2xs)">(${formatAlzGamer(periodoEmAndamento.totalAlz)} até agora, em ${diasFarmadosNoPeriodo} dia(s) de farme)</span>
     </div>`;
 
   const botao = (v, txt) => `<button class="btn btn-xs ${dias === v ? 'btn-p' : 'btn-d'}" onclick="setTrendPeriod(${v})">${txt}</button>`;
