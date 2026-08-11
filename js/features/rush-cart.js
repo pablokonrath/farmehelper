@@ -13,6 +13,19 @@ export function getCostPerGem() {
   return Math.round((+AppState.rushCardCashPrice || 0) / 1000);
 }
 
+// O que falta em Parâmetros do dia pra cobrar esta DG certo — [] = nada falta. Só cobra o preço
+// que a PRÓPRIA dg consome (ticketsPerRun/gemsPerRun), não pede ticket de uma DG que só usa Alz.
+// Existe pra travar ANTES do custo entrar em qualquer conta como 0 em silêncio — sem isso, o
+// carrinho, o líquido de "Qual DG rende mais" e o Total líquido da Visão geral ficam menores do
+// que o gasto real sem avisar em lugar nenhum (pedido do jogador: "obrigatório... pra não ficar
+// nada errado").
+export function missingCostConfigFor(dungeon) {
+  const missing = [];
+  if ((dungeon.ticketsPerRun || 0) > 0 && !(+AppState.rushTicketPrice > 0)) missing.push('o preço do ticket');
+  if ((dungeon.gemsPerRun || 0) > 0 && !(getCostPerGem() > 0)) missing.push('o preço do Card Cash (gema)');
+  return missing;
+}
+
 // A parte variável do preço de um crédito: 1 unidade do item específico daquela categoria,
 // comprado em Alz, preço que muda todo dia. Se o item estiver vinculado (rushCreditItemNames) E
 // já tiver preço cadastrado em Cálculo de farme, puxa sozinho (linked:true) — senão cai no preço
@@ -164,10 +177,23 @@ export function addDungeonToCart() {
   const dungeon = AppState.dungeonList.find(d => d.id === select.value);
   if (!dungeon) return;
 
+  // Trava aqui, na fonte, em vez de deixar a DG entrar no carrinho com custo 0 — é o ponto onde
+  // já dá pra saber com certeza que vai faltar preço, antes de qualquer conta ser feita em cima.
+  const missing = missingCostConfigFor(dungeon);
+  if (missing.length) {
+    alert(`Falta configurar ${missing.join(' e ')} em Parâmetros do dia antes de adicionar "${dungeon.name}" — sem isso o custo dela entraria como 0 Alz, sem avisar.`);
+    return;
+  }
+
   const repetitions = parseInt(document.getElementById('dgRp').value) || 1;
   const usedReset = document.getElementById('dgReset').checked;
   const resetGemQuantity = usedReset ? (parseInt(document.getElementById('dgGemQty')?.value) || 0) : 0;
   const resetGemUnitPrice = usedReset ? parseAlzInput(document.getElementById('dgGemPrice')?.value) : 0;
+
+  if (usedReset && resetGemQuantity > 0 && !(resetGemUnitPrice > 0)) {
+    alert('Informe o valor da gema de reset antes de adicionar — sem isso o custo do reset entraria como 0 Alz, sem avisar.');
+    return;
+  }
 
   AppState.rushCart.push({
     dungeonId: dungeon.id,
@@ -338,7 +364,30 @@ export function updateResetCostPreview() {
   if (breakdown) breakdown.textContent = `${quantity} gema${quantity !== 1 ? 's' : ''} x ${formatAlzGamer(unitPrice)}`;
 }
 
+// Portão final antes de gravar o "gasto de hoje" (o número que Total líquido, na Visão geral, e
+// o líquido de "Qual DG rende mais" usam) — pega qualquer item que tenha chegado no carrinho sem
+// passar por addDungeonToCart (rota aplicada, sugestão por tempo, Modo guiado, ou um item de
+// reset editado depois que o Card Cash mudou). resetGemUnitPrice é checado à parte porque fica
+// CONGELADO no item desde quando foi adicionado — pode estar 0 mesmo com o Card Cash configurado
+// agora, se foi adicionado antes disso.
+function findMissingCostInCart(cart) {
+  const missing = new Set();
+  cart.forEach(item => {
+    if ((item.ticketsPerRun || 0) > 0 && !(+AppState.rushTicketPrice > 0)) missing.add('o preço do ticket');
+    if ((item.gemsPerRun || 0) > 0 && !(getCostPerGem() > 0)) missing.add('o preço do Card Cash (gema)');
+    if (item.usedReset && (item.resetGemQuantity || 0) > 0 && !((item.resetGemUnitPrice || 0) > 0)) {
+      missing.add(`o valor da gema de reset de "${item.name}"`);
+    }
+  });
+  return [...missing];
+}
+
 export function saveRushForDay() {
+  const missing = findMissingCostInCart(AppState.rushCart);
+  if (missing.length) {
+    alert(`Não dá pra salvar: falta ${missing.join(', ')}. Configure em Parâmetros do dia (ou corrija o item no carrinho) antes de salvar — sem isso o custo de hoje ficaria contado errado.`);
+    return;
+  }
   const cost = calculateRushCartCost();
   AppState.rushHistory[AppState.rushCartDate] = { total: cost.total, items: [...AppState.rushCart] };
   saveRushHistory();
