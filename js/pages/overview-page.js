@@ -72,6 +72,14 @@ function buildNextStepCard() {
 </div>`;
   }
 
+  // Aviso de "esfriando" (ver computeDgComparison, novo em Sessões de farme): a melhorDg aqui é
+  // sempre pelo histórico INTEIRO, então pode estar recomendando uma DG cujas últimas sessões já
+  // renderam bem menos — o mesmo aviso que a tabela "Qual DG rende mais" já mostra por linha,
+  // só que aqui é justamente a ÚNICA recomendação da tela, então vale reforçar em vez de omitir.
+  const avisoEsfriando = melhorDg?.cooling
+    ? ` <span style="color:var(--warn)">Atenção: as últimas sessões renderam só ${formatAlzGamer(melhorDg.recentAlzPerRun)}/run — pode estar esfriando.</span>`
+    : '';
+
   // 2) Sem rush montado hoje: aponta onde a entrada rende mais, que é a decisão que o limite
   // diário de runs impõe. Só com dado real — sem histórico, não inventa recomendação.
   if (!rush?.items?.length && melhorDg) {
@@ -81,7 +89,7 @@ function buildNextStepCard() {
     <i class="ti ti-bulb" style="color:var(--gold);font-size:20px"></i>
     <div style="flex:1;min-width:200px">
       <div style="font-weight:700">Você ainda não montou o rush de hoje</div>
-      <div style="font-size:var(--fs-sm);color:var(--muted)">Pelo seu histórico, a entrada rende mais em <strong style="color:var(--txt)">${esc(melhorDg.dungeonName)}</strong> — ${formatAlzGamer(melhorDg.alzPerRun)}/run</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">Pelo seu histórico, a entrada rende mais em <strong style="color:var(--txt)">${esc(melhorDg.dungeonName)}</strong> — ${formatAlzGamer(melhorDg.alzPerRun)}/run${avisoEsfriando}</div>
     </div>
     <button class="btn btn-p btn-xs" onclick="navigateTo('rush')"><i class="ti ti-swords"></i>Montar rush</button>
   </div>
@@ -96,7 +104,7 @@ function buildNextStepCard() {
     <i class="ti ti-circle-check" style="color:var(--ok);font-size:20px"></i>
     <div style="flex:1;min-width:200px">
       <div style="font-weight:700">Rush de hoje concluído</div>
-      <div style="font-size:var(--fs-sm);color:var(--muted)">Todas as runs planejadas foram feitas.${melhorDg ? ` Sobrou tempo? ${esc(melhorDg.dungeonName)} é a sua melhor entrada (${formatAlzGamer(melhorDg.alzPerRun)}/run).` : ''}</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">Todas as runs planejadas foram feitas.${melhorDg ? ` Sobrou tempo? ${esc(melhorDg.dungeonName)} é a sua melhor entrada (${formatAlzGamer(melhorDg.alzPerRun)}/run).${avisoEsfriando}` : ''}</div>
     </div>
   </div>
 </div>`;
