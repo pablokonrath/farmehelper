@@ -8,10 +8,11 @@ import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
 import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod } from './pages/sessions-page.js';
+import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
-import { addSale, deleteSale, setPriceHistoryItem } from './features/sales.js';
+import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
@@ -214,8 +215,12 @@ Object.assign(window, {
   setSessionsHistoryDate,
   setDgComparisonMode,
   setDgComparisonPeriod,
+  setSalesDateFrom,
+  setSalesDateTo,
   addSale,
   deleteSale,
+  startEditingSale,
+  cancelEditingSale,
   setPriceHistoryItem,
   addSalesGoal,
   deleteSalesGoal,

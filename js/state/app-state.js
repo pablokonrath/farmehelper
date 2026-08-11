@@ -124,6 +124,14 @@ export const AppState = {
   // o preço muda (ver recordPriceChange em sales.js). Também em app_settings, sem migração.
   priceHistory: {},
   priceHistoryItem: '',
+  // Id da venda sendo editada no formulário de Vendas (null = formulário em modo "nova venda").
+  // Só UI, não persiste.
+  editingSaleId: null,
+  // Filtro De/Até de Vendas — comanda os totais e a lista, igual ao filtro da Visão geral. Não
+  // persiste (sempre abre sem filtro). Cofres e Histórico de preço ignoram de propósito: cofre é
+  // sobre acumulado desde a criação, histórico de preço é sobre tendência de sempre.
+  salesDateFrom: '',
+  salesDateTo: '',
   rushHistory: {},
   // Rotas de DGs reutilizáveis (molde de rush, sem data fixa) — [{id, name, items: [{dungeonId,
   // repetitions}]}]. Ver rush-routes.js.

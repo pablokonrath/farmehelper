@@ -20,16 +20,22 @@ export function recordPriceChange(name, price) {
   savePriceHistory();
 }
 
+// Toda venda confirmada (nova ou correção de uma existente) atualiza o preço cadastrado do item
+// (mesma tabela usada em Cálculo de farme, Visão geral, raridade — em qualquer lugar que precise
+// de um preço pra multiplicar). Uma venda real é o dado mais confiável que existe sobre quanto o
+// item vale AGORA, mais confiável que qualquer preço digitado à mão — então ao invés de exigir
+// que o jogador mantenha os preços cadastrados em dia manualmente, cada venda já faz essa
+// manutenção sozinha. Fatorado aqui pra recordSale e a edição de venda em addSale usarem a MESMA
+// lógica, em vez de duas cópias que podem divergir.
+function applyAutoItemPrice(itemName, unitPrice) {
+  if (!itemName || !(unitPrice > 0)) return;
+  AppState.itemPrices[itemName] = unitPrice;
+  recordPriceChange(itemName, unitPrice); // vale pra data de HOJE mesmo com venda retroativa, ver manual-drops.js
+  saveItemPrices();
+}
+
 // Insere uma venda no log (sem re-renderizar) — usado tanto pela página de Vendas quanto pelo
 // Modo guiado, pra não duplicar o formato do registro.
-//
-// Toda venda também atualiza o preço cadastrado do item (mesma tabela usada em Cálculo de farme,
-// Visão geral, raridade — em qualquer lugar que precise de um preço pra multiplicar). Uma venda
-// real é o dado mais confiável que existe sobre quanto o item vale AGORA, mais confiável que
-// qualquer preço digitado à mão — então ao invés de exigir que o jogador mantenha os preços
-// cadastrados em dia manualmente, cada venda já faz essa manutenção sozinha. Vale pra data de
-// hoje (ver recordPriceChange) mesmo que a venda seja lançada com data retroativa — igual ao
-// padrão já usado em manual-drops.js.
 export function recordSale({ itemName, qty, unitPrice, date }) {
   AppState.salesLog.push({
     id: 's' + Date.now() + Math.random().toString(36).slice(2, 6),
@@ -39,11 +45,7 @@ export function recordSale({ itemName, qty, unitPrice, date }) {
     date: date || todayISODate(),
   });
   saveSalesLog();
-  if (itemName && unitPrice > 0) {
-    AppState.itemPrices[itemName] = unitPrice;
-    recordPriceChange(itemName, unitPrice);
-    saveItemPrices();
-  }
+  applyAutoItemPrice(itemName, unitPrice);
 }
 
 // Compara um preço de venda com a média das últimas vendas recentes do mesmo item — pra pegar
@@ -62,14 +64,35 @@ export function checkSalePriceDrop(itemName, unitPrice) {
   return dropPct >= PRICE_DROP_WARNING_THRESHOLD ? { avg, dropPct: Math.round(dropPct * 100) } : null;
 }
 
+// Mostra uma confirmação rápida (mesmo padrão do "rMsg" em Planejamento de Rush) depois de
+// registrar/editar — fecha o loop: sem isso, nada na tela dizia que a venda entrou OU que o preço
+// cadastrado do item foi atualizado sozinho (efeito que já acontece, só ficava invisível).
+function showSaleMessage(text) {
+  const el = document.getElementById('sMsg');
+  if (!el) return;
+  el.style.display = 'block';
+  el.textContent = text;
+  clearTimeout(el._hideTimer);
+  el._hideTimer = setTimeout(() => (el.style.display = 'none'), 5000);
+}
+
 // Pede o valor TOTAL recebido, não o valor por unidade — é isso que o jogo mostra quando vende
 // um lote ("recebeu X Alz"), então digitar o total e deixar o app dividir evita a conta de
 // cabeça (e o arredondamento torto de quem faz ela errado). O valor por unidade guardado no log
 // (e usado pra atualizar o preço cadastrado, ver recordSale) é sempre total ÷ quantidade.
+//
+// Com AppState.editingSaleId setado (ver startEditingSale), CORRIGE a venda existente em vez de
+// criar outra — sem isso, o único jeito de consertar um erro de digitação era excluir e digitar
+// tudo de novo, um passo a mais onde já rolou erro uma vez.
 export function addSale() {
   const name = document.getElementById('saleItem')?.value.trim();
   const rawTotal = document.getElementById('salePrice')?.value.trim();
-  if (!name || !rawTotal) return;
+  // Falha silenciosa era o pior cenário aqui: clicar "Registrar" sem preencher tudo não fazia
+  // nada, sem avisar — fácil de achar que a venda entrou e só notar a falta dias depois.
+  if (!name || !rawTotal) {
+    alert('Preencha o item e o valor recebido antes de registrar — os dois são obrigatórios.');
+    return;
+  }
   const qty = Math.max(1, parseInt(document.getElementById('saleQty')?.value) || 1);
   const unitPrice = Math.round(parseAlzInput(rawTotal) / qty);
   const date = parseDateInputBR(document.getElementById('saleDate')?.value) || todayISODate();
@@ -77,12 +100,47 @@ export function addSale() {
   const drop = checkSalePriceDrop(name, unitPrice);
   if (drop && !confirm(`Você tá vendendo "${name}" ${drop.dropPct}% abaixo da sua média recente (~${formatAlzGamer(drop.avg)}). Confirma mesmo assim?`)) return;
 
-  recordSale({ itemName: name, qty, unitPrice, date });
+  if (AppState.editingSaleId) {
+    const sale = AppState.salesLog.find(s => s.id === AppState.editingSaleId);
+    if (sale) {
+      sale.itemName = name;
+      sale.qty = qty;
+      sale.unitPrice = unitPrice;
+      sale.date = date;
+      saveSalesLog();
+      applyAutoItemPrice(name, unitPrice);
+    }
+    AppState.editingSaleId = null;
+    renderPage();
+    showSaleMessage(`Venda corrigida: ${qty}× ${name} — ${formatAlzGamer(unitPrice * qty)}.`);
+  } else {
+    recordSale({ itemName: name, qty, unitPrice, date });
+    renderPage();
+    showSaleMessage(`Venda registrada: ${qty}× ${name} — ${formatAlzGamer(unitPrice * qty)}. Preço de "${name}" atualizado pra ${formatAlzGamer(unitPrice)}.`);
+  }
+}
+
+// Carrega uma venda já registrada de volta no formulário pra corrigir (item, quantidade, valor ou
+// data) sem precisar excluir e digitar tudo de novo.
+export function startEditingSale(id) {
+  AppState.editingSaleId = id;
+  renderPage();
+  document.getElementById('saleItem')?.focus();
+}
+
+export function cancelEditingSale() {
+  AppState.editingSaleId = null;
   renderPage();
 }
 
 export function deleteSale(id) {
+  const sale = AppState.salesLog.find(s => s.id === id);
+  if (!sale) return;
+  // Exclusão de venda é irreversível e some com o dado que também atualizou o preço cadastrado
+  // do item — mesmo padrão de confirmação já usado em excluir sessão/rota, só que faltava aqui.
+  if (!confirm(`Remover a venda de ${sale.qty}× "${sale.itemName}" (${formatAlzGamer(sale.unitPrice * sale.qty)})? Essa ação não pode ser desfeita.`)) return;
   AppState.salesLog = AppState.salesLog.filter(s => s.id !== id);
+  if (AppState.editingSaleId === id) AppState.editingSaleId = null;
   saveSalesLog();
   renderPage();
 }
@@ -134,13 +192,40 @@ export function daysSincePriceUpdate(itemName) {
 // Total vendido (real) e o que valeria pelo preço cadastrado (estimado). Não estima valor "em
 // estoque" (dropado − vendido) — nem todo drop é vendido (parte vai pra coleção ou vira insumo
 // de craft), então esse número nunca representou Alz de verdade parado em algum lugar.
-export function computeSalesSummary() {
+//
+// `from`/`to` (ISO, opcionais) filtram por data — mesmo filtro De/Até já usado na Visão geral.
+// Chamado sem argumentos (ex: o aviso de preço desatualizado em overview-page.js) continua
+// olhando o log inteiro, pra não quebrar quem já depende do total geral.
+export function computeSalesSummary(from = '', to = '') {
   let realTotal = 0;
   let estimatedTotal = 0;
+  let count = 0;
   AppState.salesLog.forEach(s => {
+    if (from && s.date < from) return;
+    if (to && s.date > to) return;
     realTotal += s.unitPrice * s.qty;
     estimatedTotal += getItemPrice(s.itemName) * s.qty;
+    count++;
   });
 
-  return { realTotal, estimatedTotal, diff: realTotal - estimatedTotal, count: AppState.salesLog.length };
+  return { realTotal, estimatedTotal, diff: realTotal - estimatedTotal, count };
+}
+
+// Mesmo total de computeSalesSummary, mas quebrado por item — pra achar rápido qual item específico
+// tá rendendo menos que o esperado (real bem abaixo do estimado) em vez de só ver a diferença geral
+// escondida no meio de itens que estão indo bem. Ordenado pela maior diferença negativa primeiro
+// (o que mais precisa de atenção sobe pro topo).
+export function computeSalesSummaryByItem(from = '', to = '') {
+  const byItem = {};
+  AppState.salesLog.forEach(s => {
+    if (from && s.date < from) return;
+    if (to && s.date > to) return;
+    const entry = byItem[s.itemName] || (byItem[s.itemName] = { itemName: s.itemName, qty: 0, realTotal: 0, estimatedTotal: 0 });
+    entry.qty += s.qty;
+    entry.realTotal += s.unitPrice * s.qty;
+    entry.estimatedTotal += getItemPrice(s.itemName) * s.qty;
+  });
+  return Object.values(byItem)
+    .map(entry => ({ ...entry, diff: entry.realTotal - entry.estimatedTotal }))
+    .sort((a, b) => a.diff - b.diff);
 }

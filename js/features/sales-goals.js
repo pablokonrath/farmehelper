@@ -38,17 +38,40 @@ export function deleteSalesGoal(id) {
 // criada (não retroage sobre vendas antigas — a meta só "começa a contar" a partir de quando você
 // a criou, mesma ideia do checkpoint usado no craft removido, mas sem checkpoint móvel: aqui é
 // fixo na criação, já que a meta não "reinicia" sozinha, só é excluída quando quiser.
+//
+// Também projeta um ritmo (Alz/dia alocado à meta desde a criação) e, a partir dele, uma
+// data estimada de conclusão — sem isso, o cofre só mostrava "quanto falta", nunca "em quanto
+// tempo, no ritmo atual" (a pergunta que decide se vale reforçar farm/venda pra bater a meta
+// antes de um evento, por exemplo). null quando ainda não completou 1 dia de dado ou já bateu.
 export function computeSalesGoalsProgress() {
+  const today = todayISODate();
   return AppState.salesGoals.map(goal => {
     const sinceDate = todayISODate(new Date(goal.createdAt));
     const accumulated = AppState.salesLog
       .filter(s => s.date >= sinceDate)
       .reduce((sum, s) => sum + (s.unitPrice * s.qty * goal.percentage) / 100, 0);
+    const complete = accumulated >= goal.targetAlz;
+
+    const daysElapsed = Math.max(1, Math.round((new Date(today) - new Date(sinceDate)) / 86400000) + 1);
+    const dailyPace = accumulated / daysElapsed;
+    let etaDays = null;
+    let etaDate = null;
+    if (!complete && dailyPace > 0) {
+      const remaining = goal.targetAlz - accumulated;
+      etaDays = Math.ceil(remaining / dailyPace);
+      const eta = new Date(today);
+      eta.setDate(eta.getDate() + etaDays);
+      etaDate = todayISODate(eta);
+    }
+
     return {
       ...goal,
       accumulated,
       progress: goal.targetAlz > 0 ? Math.min(1, accumulated / goal.targetAlz) : 0,
-      complete: accumulated >= goal.targetAlz,
+      complete,
+      dailyPace,
+      etaDays,
+      etaDate,
     };
   });
 }
