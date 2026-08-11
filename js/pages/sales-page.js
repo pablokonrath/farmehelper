@@ -60,11 +60,11 @@ export function renderSalesPage() {
       <input class="inp" id="saleItem" placeholder="ex: Anel Fatal" list="saleItemSugg">
       <datalist id="saleItemSugg">${itemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
     <div style="width:100px"><label class="lbl">Quantidade</label><input class="inp" id="saleQty" type="number" min="1" value="1"></div>
-    <div style="width:150px"><label class="lbl">Valor de venda (unit.)</label><input class="inp" id="salePrice" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
+    <div style="width:150px"><label class="lbl">Valor recebido (total)</label><input class="inp" id="salePrice" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
     <div style="width:150px"><label class="lbl">Data</label>${renderDateInputBR({ id: 'saleDate', value: todayISODate() })}</div>
     <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addSale()"><i class="ti ti-plus"></i>Registrar</button></div>
   </div>
-  <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> O "real vs. estimado" compara o valor que você vendeu com o preço cadastrado do item em Cálculo de farme.</div>
+  <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> É o total da venda (não por unidade) — a gente divide pela quantidade. O "real vs. estimado" compara com o preço cadastrado do item em Cálculo de farme, e toda venda já atualiza esse preço cadastrado sozinha.</div>
 </div>`;
 
   const list = `

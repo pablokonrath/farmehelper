@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveSalesLog, savePriceHistory } from '../state/persistence.js';
+import { saveSalesLog, savePriceHistory, saveItemPrices } from '../state/persistence.js';
 import { getItemPrice } from './drops.js';
 import { parseAlzInput, parseDateInputBR, formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
@@ -22,6 +22,14 @@ export function recordPriceChange(name, price) {
 
 // Insere uma venda no log (sem re-renderizar) — usado tanto pela página de Vendas quanto pelo
 // Modo guiado, pra não duplicar o formato do registro.
+//
+// Toda venda também atualiza o preço cadastrado do item (mesma tabela usada em Cálculo de farme,
+// Visão geral, raridade — em qualquer lugar que precise de um preço pra multiplicar). Uma venda
+// real é o dado mais confiável que existe sobre quanto o item vale AGORA, mais confiável que
+// qualquer preço digitado à mão — então ao invés de exigir que o jogador mantenha os preços
+// cadastrados em dia manualmente, cada venda já faz essa manutenção sozinha. Vale pra data de
+// hoje (ver recordPriceChange) mesmo que a venda seja lançada com data retroativa — igual ao
+// padrão já usado em manual-drops.js.
 export function recordSale({ itemName, qty, unitPrice, date }) {
   AppState.salesLog.push({
     id: 's' + Date.now() + Math.random().toString(36).slice(2, 6),
@@ -31,6 +39,11 @@ export function recordSale({ itemName, qty, unitPrice, date }) {
     date: date || todayISODate(),
   });
   saveSalesLog();
+  if (itemName && unitPrice > 0) {
+    AppState.itemPrices[itemName] = unitPrice;
+    recordPriceChange(itemName, unitPrice);
+    saveItemPrices();
+  }
 }
 
 // Compara um preço de venda com a média das últimas vendas recentes do mesmo item — pra pegar
@@ -49,12 +62,16 @@ export function checkSalePriceDrop(itemName, unitPrice) {
   return dropPct >= PRICE_DROP_WARNING_THRESHOLD ? { avg, dropPct: Math.round(dropPct * 100) } : null;
 }
 
+// Pede o valor TOTAL recebido, não o valor por unidade — é isso que o jogo mostra quando vende
+// um lote ("recebeu X Alz"), então digitar o total e deixar o app dividir evita a conta de
+// cabeça (e o arredondamento torto de quem faz ela errado). O valor por unidade guardado no log
+// (e usado pra atualizar o preço cadastrado, ver recordSale) é sempre total ÷ quantidade.
 export function addSale() {
   const name = document.getElementById('saleItem')?.value.trim();
-  const rawPrice = document.getElementById('salePrice')?.value.trim();
-  if (!name || !rawPrice) return;
+  const rawTotal = document.getElementById('salePrice')?.value.trim();
+  if (!name || !rawTotal) return;
   const qty = Math.max(1, parseInt(document.getElementById('saleQty')?.value) || 1);
-  const unitPrice = parseAlzInput(rawPrice);
+  const unitPrice = Math.round(parseAlzInput(rawTotal) / qty);
   const date = parseDateInputBR(document.getElementById('saleDate')?.value) || todayISODate();
 
   const drop = checkSalePriceDrop(name, unitPrice);

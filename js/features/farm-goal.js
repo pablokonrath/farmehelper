@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getTodayFarmedAlz } from './drops.js';
-import { saveDailyGoal } from '../state/persistence.js';
+import { saveDailyGoal, saveWeeklyGoal, saveMonthlyGoal } from '../state/persistence.js';
 import { showGoalToast } from './alerts.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -24,6 +24,20 @@ export function initFarmGoalBaseline() {
   if (AppState.dailyGoalAlz > 0 && getTodayFarmedAlz() >= AppState.dailyGoalAlz) {
     AppState.goalCelebratedForDate = todayISODate();
   }
+}
+
+// Metas de semana/mês — mesmo campo de valor da diária, mas sem a cerimônia de comemoração
+// (fecham no fim de um período mais longo, não faz sentido um toast de "bateu" no meio do card).
+export function setWeeklyGoal(value) {
+  AppState.weeklyGoalAlz = parseInt(String(value).replace(/\D/g, ''), 10) || 0;
+  saveWeeklyGoal();
+  renderPage();
+}
+
+export function setMonthlyGoal(value) {
+  AppState.monthlyGoalAlz = parseInt(String(value).replace(/\D/g, ''), 10) || 0;
+  saveMonthlyGoal();
+  renderPage();
 }
 
 // Chamada quando caem drops novos (log ao vivo / manual) — comemora uma única vez no dia em que

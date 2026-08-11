@@ -178,8 +178,9 @@ function renderVenda(qm) {
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else if (qm.step === 3) {
     stepText = 'Passo 3 de 4';
-    inner = `<label class="lbl">Por quanto vendeu CADA unidade? (Alz)</label>
-      <input class="inp" id="qm-price" type="text" inputmode="numeric" placeholder="ex: 500.000.000" value="${d.unitPrice ? formatNumber(d.unitPrice) : ''}" oninput="maskAlzInputLive(this)">${errLine(qm)}
+    inner = `<label class="lbl">Por quanto vendeu NO TOTAL? (Alz)</label>
+      <input class="inp" id="qm-price" type="text" inputmode="numeric" placeholder="ex: 500.000.000" value="${d.unitPrice ? formatNumber(d.unitPrice * d.qty) : ''}" oninput="maskAlzInputLive(this)">
+      <div class="hint">A gente divide pela quantidade e já deixa o preço desse item atualizado.</div>${errLine(qm)}
       <button class="btn btn-p" style="margin-top:14px" onclick="quickNext()">Próximo <i class="ti ti-arrow-right"></i></button>`;
   } else {
     stepText = 'Passo 4 de 4 · confirmar';

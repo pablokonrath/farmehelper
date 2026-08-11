@@ -133,6 +133,8 @@ export async function loadPersistedState() {
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
+  AppState.weeklyGoalAlz = appSettings.weeklyGoalAlz ?? 0;
+  AppState.monthlyGoalAlz = appSettings.monthlyGoalAlz ?? 0;
   AppState.salesLog = appSettings.salesLog ?? [];
   AppState.priceHistory = appSettings.priceHistory ?? {};
   AppState.salesGoals = appSettings.salesGoals ?? [];
@@ -224,6 +226,14 @@ export function saveRushParams() {
 
 export function saveDailyGoal() {
   return put('app-settings.php', { dailyGoalAlz: AppState.dailyGoalAlz });
+}
+
+export function saveWeeklyGoal() {
+  return put('app-settings.php', { weeklyGoalAlz: AppState.weeklyGoalAlz });
+}
+
+export function saveMonthlyGoal() {
+  return put('app-settings.php', { monthlyGoalAlz: AppState.monthlyGoalAlz });
 }
 
 export function saveSalesGoals() {

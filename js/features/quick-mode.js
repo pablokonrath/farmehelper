@@ -64,9 +64,9 @@ export function quickNext() {
     } else if (qm.step === 2) {
       qm.data.qty = Math.max(1, parseInt(val('qm-qty'), 10) || 1); qm.step = 3;
     } else if (qm.step === 3) {
-      const price = parseAlzInput(val('qm-price'));
-      if (!(price > 0)) return fail('Informe por quanto vendeu (Alz).');
-      qm.data.unitPrice = price; qm.step = 4;
+      const total = parseAlzInput(val('qm-price'));
+      if (!(total > 0)) return fail('Informe por quanto vendeu, no total (Alz).');
+      qm.data.unitPrice = Math.round(total / qm.data.qty); qm.step = 4;
     } else if (qm.step === 4) {
       recordSale({ itemName: qm.data.itemName, qty: qm.data.qty, unitPrice: qm.data.unitPrice, date: todayISODate() });
       qm.step = 'done';

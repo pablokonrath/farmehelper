@@ -7,6 +7,7 @@ import { getEventConfig, computeEventProgress } from '../features/event-tracker.
 import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
+import { computeSalesSummary } from '../features/sales.js';
 import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
@@ -129,9 +130,13 @@ function buildMetaCard() {
   // pra não poluir o card em dias sem rush.
   const rushSpentHoje = AppState.rushHistory[todayISODate()]?.total || 0;
   const netHoje = todayFarmed - rushSpentHoje;
+  // Retorno = líquido ÷ gasto, não líquido ÷ farmado — é "cada Alz que você meteu em rush voltou
+  // quanto", a pergunta que decide se vale manter o nível de rush atual ou reduzir.
+  const roiHoje = rushSpentHoje > 0 ? Math.round((netHoje / rushSpentHoje) * 100) : null;
   const liquidoHojeTexto = rushSpentHoje <= 0 ? '' : `
   <div style="margin-top:6px;font-size:11px;color:var(--muted)">
     Líquido hoje (descontando ${formatAlzGamer(rushSpentHoje)} de rush): <strong style="color:${getAlzTierColor(netHoje)}" title="${formatNumber(netHoje)} Alz">${formatAlzGamer(netHoje)}</strong>
+    <span style="color:${roiHoje >= 0 ? 'var(--ok)' : 'var(--err)'}">· retorno ${roiHoje >= 0 ? '+' : ''}${roiHoje}%</span>
   </div>`;
 
   return `
@@ -156,8 +161,8 @@ function buildMetaCard() {
   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:12px;flex-wrap:wrap;gap:8px">
     <span style="color:var(--muted)"><i class="ti ti-bolt" style="color:var(--gold)"></i> Rendimento: <strong style="color:var(--txt)">${rate ? formatAlzGamer(rate.alzPerHour) + '/h' : '—'}</strong></span>
     ${statusRight}
-  </div>
-  ${liquidoHojeTexto}`}
+  </div>`}
+  ${liquidoHojeTexto}
 </div>`;
 }
 
@@ -325,6 +330,33 @@ function buildTrendCard() {
       <span style="font-size:var(--fs-2xs)">(${formatAlzGamer(totalPeriodoBase)}${liquido ? ' líquido' : ''} até agora, em ${diasFarmadosNoPeriodo} dia(s) de farme)</span>
     </div>`;
 
+  // Retorno do bloco inteiro (não por dia): líquido ÷ gasto em rush do mesmo bloco. Só aparece em
+  // modo Líquido com rush registrado — em Bruto não existe "investimento" pra comparar contra.
+  const roiTexto = b => !liquido || !b.rushSpent ? '' : (() => {
+    const roi = Math.round((b.netAlz / b.rushSpent) * 100);
+    return `<div style="font-size:10px;color:${roi >= 0 ? 'var(--ok)' : 'var(--err)'};margin-top:2px">retorno ${roi >= 0 ? '+' : ''}${roi}%</div>`;
+  })();
+
+  // Meta de semana/mês: extensão da Meta diária pra este card, que já sabe pra onde o período tá
+  // indo. Sempre bruto (mesmo critério da meta diária), independente do toggle Bruto/Líquido
+  // acima — esse toggle é só de exibição da comparação/projeção, não muda o que conta como meta.
+  const metaPeriodo = dias === 30 ? AppState.monthlyGoalAlz : AppState.weeklyGoalAlz;
+  const setMetaFn = dias === 30 ? 'setMonthlyGoal' : 'setWeeklyGoal';
+  const metaAcumulado = periodoEmAndamento.totalAlz;
+  const metaBatida = metaPeriodo > 0 && metaAcumulado >= metaPeriodo;
+  const metaPct = metaPeriodo > 0 ? Math.min(100, Math.round((metaAcumulado / metaPeriodo) * 100)) : 0;
+  const metaPeriodoTexto = `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;gap:8px;flex-wrap:wrap">
+        <span style="color:var(--muted);display:flex;align-items:center;gap:6px">Meta ${dias === 30 ? 'do mês' : 'da semana'}
+          <input class="inp inp-sm" style="width:110px" type="text" inputmode="numeric" placeholder="Alz" value="${metaPeriodo > 0 ? formatNumber(metaPeriodo) : ''}" oninput="maskAlzInputLive(this)" onblur="${setMetaFn}(this.value)"></span>
+        ${metaPeriodo > 0 ? `<span style="color:${metaBatida ? 'var(--ok)' : 'var(--muted)'}">${metaBatida ? '🎉 batida' : `faltam ${formatAlzGamer(Math.max(0, metaPeriodo - metaAcumulado))}`}</span>` : ''}
+      </div>
+      ${metaPeriodo > 0 ? `<div style="height:6px;background:var(--surf2);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${metaPct}%;background:${metaBatida ? 'var(--ok)' : 'var(--acc)'}"></div>
+      </div>` : ''}
+    </div>`;
+
   const botaoPeriodo = (v, txt) => `<button class="btn btn-xs ${dias === v ? 'btn-p' : 'btn-d'}" onclick="setTrendPeriod(${v})">${txt}</button>`;
   const botaoModo = (v, txt) => `<button class="btn btn-xs ${liquido === v ? 'btn-p' : 'btn-d'}" onclick="setTrendMode(${v})">${txt}</button>`;
 
@@ -333,16 +365,18 @@ function buildTrendCard() {
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-chart-bar"></i>Sua evolução</div>
     <div style="display:flex;gap:6px">${botaoPeriodo(7, 'Semana')}${botaoPeriodo(30, 'Mês')}</div></div>
   <div style="display:flex;gap:6px;margin:-4px 0 10px">${botaoModo(false, 'Bruto')}${botaoModo(true, 'Líquido')}</div>
-  ${infoToggle('overview-trend', `Compara blocos de ${dias} dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num período você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. <strong>Bruto</strong> é só o valor dos itens que caíram; <strong>líquido</strong> desconta o que você gastou em rush (crédito, tickets, gemas) nos mesmos dias — pode ficar negativo se o rush custou mais do que rendeu naquele período. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso. Ignora o filtro de data acima de propósito: a janela deste card é a dele.`)}
+  ${infoToggle('overview-trend', `Compara blocos de ${dias} dias usando a média por <strong>dia farmado</strong> (não por dia corrido): se num período você jogou 20 dias e no outro 5, comparar o total diria mais sobre presença do que sobre o quanto seu farme rende. <strong>Bruto</strong> é só o valor dos itens que caíram; <strong>líquido</strong> desconta o que você gastou em rush (crédito, tickets, gemas) nos mesmos dias — pode ficar negativo se o rush custou mais do que rendeu naquele período. "Retorno" é o líquido dividido pelo gasto em rush do mesmo bloco. Só existe porque o FarmHub arquiva o histórico — o log do jogo sozinho não guarda tudo isso. Ignora o filtro de data acima de propósito: a janela deste card é a dele.`)}
   ${variacao == null ? '' : `<div style="font-size:13px;margin-bottom:12px">Nos últimos ${dias} dias você rendeu${liquido ? ' líquido' : ''} <strong style="color:${subiu ? 'var(--ok)' : 'var(--err)'}">${subiu ? '+' : ''}${variacao}%</strong> por dia farmado, comparado com os ${dias} dias anteriores.</div>`}
   <div class="g3">
     ${blocos.map((b, i) => `<div class="kpi">
       <div class="kpi-lbl">${rotulo[i]}</div>
       <div class="kpi-val" style="font-size:18px;color:${getAlzTierColor(metricaBloco(b))}" title="${formatNumber(Math.round(metricaBloco(b)))} Alz${liquido ? ' líquido' : ''} por dia farmado">${b.diasComFarme ? formatAlzGamer(metricaBloco(b)) : '—'}</div>
       <div class="kpi-sub">${b.diasComFarme ? `${liquido ? 'líquido ' : ''}por dia farmado · ${b.diasComFarme} dia(s)` : 'sem farme registrado'}</div>
+      ${roiTexto(b)}
     </div>`).join('')}
   </div>
   ${projecaoTexto}
+  ${metaPeriodoTexto}
 </div>`;
 }
 
@@ -515,6 +549,24 @@ export function renderOverviewPage() {
   <a href="#" onclick="navigateTo('calculo');return false" style="color:var(--acc);text-decoration:underline">Cadastrar preços</a>
 </div></div>`;
 
+  // Todo Alz desta página vem do preço CADASTRADO, não do que você realmente recebeu ao vender —
+  // e o app já mede a diferença entre os dois (computeSalesSummary, tela de Vendas), só nunca
+  // trazia esse resultado pra cá. Exige uma amostra mínima (uma venda isolada não prova nada) e um
+  // desvio mínimo (todo mundo diverge um pouco; só vale avisar quando o gap é grande o bastante
+  // pra distorcer os números da página). Cada venda já atualiza o preço cadastrado sozinha agora
+  // (ver recordSale em sales.js), então esse aviso tende a ficar cada vez mais raro com o tempo —
+  // e quando aparecer, é sinal de item vendido raramente ou editado manualmente depois.
+  const salesSummary = computeSalesSummary();
+  const MIN_VENDAS_PRA_AVISAR_PRECO = 3;
+  const MIN_DESVIO_PRA_AVISAR_PRECO = 10; // %
+  const desvioPrecoPct = salesSummary.estimatedTotal > 0 ? Math.round((salesSummary.diff / salesSummary.estimatedTotal) * 100) : 0;
+  const avisoPrecoDesatualizado = salesSummary.count < MIN_VENDAS_PRA_AVISAR_PRECO || Math.abs(desvioPrecoPct) < MIN_DESVIO_PRA_AVISAR_PRECO ? '' : `
+<div class="notice"><i class="ti ti-scale" style="flex-shrink:0;margin-top:1px"></i><div>
+  <strong>Seus preços cadastrados estão ${desvioPrecoPct > 0 ? `${desvioPrecoPct}% abaixo` : `${Math.abs(desvioPrecoPct)}% acima`} do que você realmente vende.</strong>
+  Nas suas ${salesSummary.count} vendas registradas: ${renderAlzValue(salesSummary.realTotal)} recebido de verdade contra ${renderAlzValue(salesSummary.estimatedTotal)} pelo preço cadastrado — e é esse preço cadastrado que todo número desta página usa.
+  <a href="#" onclick="navigateTo('vendas');return false" style="color:var(--acc);text-decoration:underline">Ver em Vendas</a>
+</div></div>`;
+
   const totalsByDate = history.totalsByDate;
   const datesWithData = Object.keys(totalsByDate).sort();
 
@@ -557,7 +609,7 @@ export function renderOverviewPage() {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return buildNextStepCard() + metaCard + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
+    return buildNextStepCard() + metaCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log, ou adicione itens manualmente acima</div></div>`;
   }
 
   return `
@@ -587,6 +639,7 @@ ${metaCard}
 </div>
 ${coverageNotice}
 ${avisoSemPreco}
+${avisoPrecoDesatualizado}
 <div class="g3" style="margin-bottom:10px">
   <div class="kpi"><div class="kpi-lbl">Total de farme</div><div class="kpi-val" style="font-size:22px;color:${getAlzTierColor(totalFarmed)}" title="${formatNumber(totalFarmed)} Alz">${formatAlzGamer(totalFarmed)}</div></div>
   <div class="kpi"><div class="kpi-lbl">Total gasto em rush</div><div class="kpi-val" style="color:${getAlzTierColor(totalRushSpent)}" title="${formatNumber(totalRushSpent)} Alz">${formatAlzGamer(totalRushSpent)}</div><div class="kpi-sub">deduzido por dia dentro do período filtrado</div></div>

@@ -232,6 +232,10 @@ export const AppState = {
   // Data em que a meta de hoje já foi comemorada (in-memory) — evita repetir o parabéns a cada
   // drop depois de bater, e evita comemorar de novo ao recarregar com a meta já batida.
   goalCelebratedForDate: null,
+  // Metas de semana/mês (Alz), mesmo conceito da diária mas sobre o período calendário em curso —
+  // exibidas dentro do card "Sua evolução". Sempre bruto, igual a meta diária. Ver farm-goal.js.
+  weeklyGoalAlz: 0,
+  monthlyGoalAlz: 0,
   // Cofres de Alz em Vendas (nome na UI; campo interno segue "salesGoals") — "envelopes" com %
   // fixa do que você vende: toda venda registrada DEPOIS que o cofre foi criado contribui esse %
   // pro total acumulado dele. Vários cofres podem coexistir (a soma das % não precisa fechar
