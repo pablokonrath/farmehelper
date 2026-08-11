@@ -1,5 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
+import { getItemPrice } from './drops.js';
+import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { renderPage } from '../router.js';
 
 export function setDropSourceQuery(value) {
@@ -12,6 +14,25 @@ export function setDropSourceQuery(value) {
 export function setDropSourceTargetQty(value) {
   AppState.dropSourceTargetQty = value;
   renderPage();
+}
+
+// Ferramenta na direção OPOSTA da busca acima ("o que essa DG dropa", ver findDungeonDrops) —
+// mesma página, seletor próprio, não persiste.
+export function setDropSourceDungeon(value) {
+  AppState.dropSourceDungeonId = value;
+  renderPage();
+}
+
+// Núcleo estatístico compartilhado pelas duas direções da busca (item→DGs em findDropSources,
+// DG→itens em findDungeonDrops): a partir de quantos drops caíram em quantos runs, devolve a taxa
+// pontual + a faixa provável (95%, ver utils/stats.js) + o nível de confiança. Fatorado aqui pra
+// não duplicar a mesma conta de Poisson nas duas funções.
+function summarizeRate(qtyWithRuns, totalRuns) {
+  return {
+    dropRate: totalRuns > 0 ? qtyWithRuns / totalRuns : null,
+    rateRange: dropRateRange(qtyWithRuns, totalRuns),
+    confidence: rateConfidence(qtyWithRuns),
+  };
 }
 
 // Busca só quando o jogador confirma (Enter ou botão "Buscar"), não a cada letra digitada —
@@ -29,10 +50,6 @@ export function getKnownSessionItemNames() {
   AppState.dgSessions.forEach(s => Object.keys(s.items || {}).forEach(name => names.add(name)));
   return [...names].sort();
 }
-
-// Abaixo disso, a taxa de drop calculada é rasa demais pra confiar (poucos dados) — mostra o
-// número, mas com aviso de amostra pequena em vez de passar confiança que não existe.
-const MIN_RUNS_FOR_CONFIDENT_RATE = 50;
 
 // Cruza o item buscado com o histórico de sessões de DG já encerradas: em quais DGs ele já caiu,
 // quantas vezes, quanto no total, e a última vez visto. Usa dgSessions (já sincronizado do
@@ -66,8 +83,7 @@ export function findDropSources(query) {
     }, 0);
     agg.totalRuns = totalRuns;
     agg.qtyWithRuns = qtyWithRuns;
-    agg.dropRate = totalRuns > 0 ? qtyWithRuns / totalRuns : null;
-    agg.lowConfidence = totalRuns > 0 && totalRuns < MIN_RUNS_FOR_CONFIDENT_RATE;
+    Object.assign(agg, summarizeRate(qtyWithRuns, totalRuns));
     // Sinaliza quando a taxa é baseada em menos drops do que aparece na coluna "Quantidade" —
     // significa que parte do histórico ficou de fora da conta por falta de runs preenchidos.
     agg.rateExcludesSomeDrops = qtyWithRuns < agg.qty;
@@ -81,6 +97,41 @@ export function findDropSources(query) {
     if (b.dropRate == null) return -1;
     return b.dropRate - a.dropRate;
   });
+}
+
+// Direção OPOSTA de findDropSources: em vez de "onde esse item dropa", responde "o que essa DG
+// dropa" — todo item já visto nas sessões encerradas dessa DG, ordenado pelo que rende mais Alz
+// esperado por run (taxa × preço cadastrado), não só pela quantidade bruta. É o mesmo histórico
+// (dgSessions), só agrupado na direção contrária — útil na hora de decidir ONDE farmar, não só
+// pra confirmar de onde um item específico já saiu.
+export function findDungeonDrops(dungeonId) {
+  if (!dungeonId) return null;
+  const dg = AppState.dungeonList.find(d => d.id === dungeonId);
+  const sessions = AppState.dgSessions.filter(s => s.dungeonId === dungeonId);
+  const sessionsWithRuns = sessions.filter(s => (s.runs || 0) > 0);
+  const totalRuns = sessionsWithRuns.reduce((sum, s) => sum + s.runs, 0);
+
+  const byItem = {};
+  sessions.forEach(s => {
+    Object.entries(s.items || {}).forEach(([name, qty]) => {
+      const agg = byItem[name] || (byItem[name] = { name, qty: 0, qtyWithRuns: 0, lastDate: '' });
+      agg.qty += qty;
+      if (s.date > agg.lastDate) agg.lastDate = s.date;
+    });
+  });
+  sessionsWithRuns.forEach(s => {
+    Object.entries(s.items || {}).forEach(([name, qty]) => {
+      byItem[name].qtyWithRuns += qty;
+    });
+  });
+
+  const items = Object.values(byItem).map(agg => {
+    const rate = summarizeRate(agg.qtyWithRuns, totalRuns);
+    const price = getItemPrice(agg.name);
+    return { ...agg, ...rate, price, expectedAlzPerRun: rate.dropRate != null ? rate.dropRate * price : null };
+  }).sort((a, b) => (b.expectedAlzPerRun ?? -1) - (a.expectedAlzPerRun ?? -1));
+
+  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items };
 }
 
 // Rendimento esperado do item buscado, por ROTA salva (não por DG isolada) — soma repetições ×

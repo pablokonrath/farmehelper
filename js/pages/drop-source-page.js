@@ -1,19 +1,21 @@
 import { AppState } from '../state/app-state.js';
-import { findDropSources, getKnownSessionItemNames, computeRouteItemYield } from '../features/drop-source.js';
+import { findDropSources, findDungeonDrops, getKnownSessionItemNames, computeRouteItemYield } from '../features/drop-source.js';
+import { findKnownSourcesForQuery } from '../features/item-dungeon-sources.js';
 import { DAILY_RUN_LIMIT } from '../features/dg-session.js';
-import { formatDateBR } from '../utils/formatting.js';
+import { formatDateBR, renderAlzValue } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 
 // Cadastro manual (curado) de quais DGs cada item pode dropar — diferente da busca acima, que é
-// estatística. Alimenta o destaque de "item esperado" em Sessões de farme. Só admin mestre edita
-// (mesmo padrão de Relatório → Gerenciar categorias).
+// estatística. Alimenta o destaque de "item esperado" em Sessões de farme, E complementa a busca
+// desta página quando o histórico pessoal ainda não tem dado (ver findKnownSourcesForQuery). Só
+// admin mestre edita (mesmo padrão de Relatório → Gerenciar categorias).
 function renderItemDungeonSourcesCard() {
   if (!AppState.isMasterAdmin) return '';
   const entries = Object.entries(AppState.itemDungeonSources).sort((a, b) => a[0].localeCompare(b[0]));
   return `
 <div class="card">
   <div class="ctitle" style="margin-bottom:4px"><i class="ti ti-list-check"></i>Itens × DGs (cadastro manual)</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre quais DGs cada item pode dropar — diferente da busca acima (que é baseada no seu histórico), isto é curado por você e serve pra destacar os itens esperados em Sessões de farme.</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre quais DGs cada item pode dropar — diferente da busca acima (que é baseada no seu histórico), isto é curado por você e serve pra destacar os itens esperados em Sessões de farme, além de complementar a busca acima quando ainda não há sessão registrada.</div>
   <div class="row" style="margin-bottom:14px">
     <div style="flex:1"><input class="inp" id="newItemDungeonSource" placeholder="Nome do item" list="dsSugg" onkeydown="if(event.key==='Enter')addItemDungeonSourceItem()"></div>
     <button class="btn btn-p" onclick="addItemDungeonSourceItem()"><i class="ti ti-plus"></i>Adicionar</button>
@@ -61,12 +63,34 @@ function formatAvgPerRun(rate) {
   return low === high ? `≈${low} por run` : `≈${low} a ${high} por run`;
 }
 
+// Faixa provável (min–max) ao lado da taxa pontual — só quando a amostra já é boa o bastante pra
+// a faixa dizer algo útil (amostra "baixa" produz uma faixa larga demais, que mais atrapalha do
+// que ajuda; nesse caso já tem o ícone de alerta separado avisando).
+function rateWithConfidence(entry) {
+  if (entry.dropRate == null) return '<span style="color:var(--muted)" title="Nenhuma sessão desta DG tem \'Runs feitas\' preenchido">— sem runs</span>';
+  const range = entry.rateRange && entry.confidence.nivel !== 'baixa'
+    ? ` <span style="color:var(--muted);font-size:11px">(${formatDropRate(entry.rateRange.min)}–${formatDropRate(entry.rateRange.max)})</span>`
+    : '';
+  const warn = entry.confidence.nivel === 'baixa'
+    ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${entry.confidence.rotulo} — poucos drops registrados ainda, taxa pouco confiável"></i>`
+    : '';
+  return `≈${formatDropRate(entry.dropRate)}${range}${warn}`;
+}
+
 export function renderDropSourcePage() {
   const query = AppState.dropSourceQuery || '';
   const suggestions = getKnownSessionItemNames();
   const results = findDropSources(query);
   const routeYield = query ? computeRouteItemYield(query) : [];
   const targetQty = Number(AppState.dropSourceTargetQty) || 0;
+
+  // Cadastro curado (global) que ainda não tem sessão sua correspondente — só entra aqui o que
+  // NÃO já apareceu nos resultados estatísticos acima, pra não duplicar linha.
+  const resultDgIds = new Set(results.map(r => r.dungeonId));
+  const knownExtra = query ? findKnownSourcesForQuery(query).filter(d => !resultDgIds.has(d.id)) : [];
+
+  const reverseDgId = AppState.dropSourceDungeonId;
+  const reverseResult = reverseDgId ? findDungeonDrops(reverseDgId) : null;
 
   return `
 <div class="pg-title"><i class="ti ti-compass" style="color:var(--acc)"></i>Onde dropa</div>
@@ -100,19 +124,27 @@ export function renderDropSourcePage() {
             <td>${r.sessions}</td>
             <td>${r.qty.toLocaleString('pt-BR')}×</td>
             <td>${formatDateBR(r.lastDate)}</td>
-            <td>${r.dropRate == null
-              ? '<span style="color:var(--muted)" title="Nenhuma sessão desta DG tem \'Runs feitas\' preenchido">— sem runs</span>'
-              : `≈${formatDropRate(r.dropRate)} <span style="color:var(--muted);font-size:11px">(${r.qtyWithRuns}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>${r.lowConfidence ? ' <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Amostra pequena — poucos runs registrados, taxa pouco confiável ainda"></i>' : ''}${r.rateExcludesSomeDrops ? ` <i class="ti ti-info-circle" style="color:var(--muted)" title="A quantidade total (${r.qty}) inclui sessões sem 'Runs feitas' preenchido — a taxa usa só as ${r.qtyWithRuns} que têm runs pra comparar certo"></i>` : ''}`}
+            <td>${rateWithConfidence(r)} ${r.dropRate != null ? `<span style="color:var(--muted);font-size:11px">(${r.qtyWithRuns}/${r.totalRuns.toLocaleString('pt-BR')} runs)</span>` : ''}${r.rateExcludesSomeDrops ? ` <i class="ti ti-info-circle" style="color:var(--muted)" title="A quantidade total (${r.qty}) inclui sessões sem 'Runs feitas' preenchido — a taxa usa só as ${r.qtyWithRuns} que têm runs pra comparar certo"></i>` : ''}
             </td>
             <td style="color:var(--gold)">${r.dropRate == null ? '<span style="color:var(--muted)">—</span>' : formatAvgPerRun(r.dropRate)}</td>
             ${targetQty > 0 ? `<td style="font-weight:600">${(() => {
               if (r.dropRate == null) return '<span style="color:var(--muted)">—</span>';
               const runsNeeded = Math.ceil(targetQty / r.dropRate);
               const days = Math.ceil(runsNeeded / DAILY_RUN_LIMIT);
-              return `≈${runsNeeded.toLocaleString('pt-BR')} runs <span style="color:var(--muted);font-size:11px;font-weight:400">(≈${days.toLocaleString('pt-BR')} dia${days > 1 ? 's' : ''} a ${DAILY_RUN_LIMIT}/dia)</span>`;
+              let range = '';
+              if (r.rateRange && r.rateRange.min > 0 && r.confidence.nivel !== 'baixa') {
+                const optimistic = Math.ceil(targetQty / r.rateRange.max);
+                const pessimistic = Math.ceil(targetQty / r.rateRange.min);
+                range = ` <span style="color:var(--muted);font-size:11px;font-weight:400">(entre ${optimistic.toLocaleString('pt-BR')} e ${pessimistic.toLocaleString('pt-BR')})</span>`;
+              }
+              return `≈${runsNeeded.toLocaleString('pt-BR')} runs${range} <span style="color:var(--muted);font-size:11px;font-weight:400">(≈${days.toLocaleString('pt-BR')} dia${days > 1 ? 's' : ''} a ${DAILY_RUN_LIMIT}/dia)</span>`;
             })()}</td>` : ''}
           </tr>`).join('')}
           </tbody></table>`}
+  ${knownExtra.length ? `<div style="margin-top:${results.length ? '14px' : '0'};padding-top:${results.length ? '12px' : '0'};${results.length ? 'border-top:1px solid var(--border);' : ''}">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px"><i class="ti ti-bulb"></i> Também já é sabido que cai em (sem dado de taxa seu ainda):</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${knownExtra.map(d => `<span class="badge badge-muted">${esc(d.name)}</span>`).join('')}</div>
+  </div>` : ''}
 </div>
 ${!routeYield.length ? '' : `
 <div class="card">
@@ -128,5 +160,27 @@ ${!routeYield.length ? '' : `
   </tr>`).join('')}
   </tbody></table>
 </div>`}
+
+<div class="card">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-list-search"></i>O que uma DG dropa</div>${reverseResult && reverseResult.items.length ? `<span class="badge badge-acc">${reverseResult.items.length} item(ns)</span>` : ''}</div>
+  <div style="font-size:12px;color:var(--muted);margin:-4px 0 10px">Direção oposta da busca acima: escolha uma DG e veja tudo que ela já deixou cair no seu histórico, ordenado pelo que rende mais Alz esperado por run (taxa × preço cadastrado em Cálculo de farme) — útil pra decidir ONDE farmar, não só confirmar de onde um item já saiu.</div>
+  <select class="inp" style="margin-bottom:12px" onchange="setDropSourceDungeon(this.value)">
+    <option value="">Escolha uma DG...</option>
+    ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === reverseDgId ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
+  </select>
+  ${!reverseDgId
+    ? ''
+    : !reverseResult.items.length
+      ? '<div class="empty">Nenhuma sessão encerrada dessa DG registrou item ainda.</div>'
+      : `<table><thead><tr><th>Item</th><th>Quantidade</th><th>Taxa por run</th><th>Preço cadastrado</th><th>Alz esperado/run</th></tr></thead><tbody>
+        ${reverseResult.items.map(i => `<tr>
+          <td style="font-weight:500">${esc(i.name)}</td>
+          <td>${i.qty.toLocaleString('pt-BR')}×</td>
+          <td>${rateWithConfidence(i)}</td>
+          <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
+          <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+        </tr>`).join('')}
+        </tbody></table>`}
+</div>
 ${renderItemDungeonSourcesCard()}`;
 }

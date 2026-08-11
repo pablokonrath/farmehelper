@@ -173,6 +173,9 @@ export const AppState = {
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
   dropSourceTargetQty: '',
+  // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma
+  // página, ferramenta independente. Não persiste, mesmo espírito das outras duas acima.
+  dropSourceDungeonId: '',
   // Histórico permanente de drops, agregado por dia+item ([{date, name, qty}]) — o log do jogo
   // só guarda ~30 dias, então sem isso todo farme mais antigo sumia. Ver drop-history.js.
   dropSnapshot: [],

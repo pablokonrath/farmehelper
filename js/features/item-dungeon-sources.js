@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveItemDungeonSources, saveRarityThreshold, saveRarityDismissed } from '../state/persistence.js';
 import { isExcludedGearItem } from './drops.js';
+import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
 // Cadastra um item novo no mapa item → DGs (começa sem nenhuma DG marcada, o jogador marca
@@ -18,6 +19,10 @@ export function addItemDungeonSourceItem() {
 }
 
 export function removeItemDungeonSourceItem(itemName) {
+  // Diferente de excluir uma preferência pessoal (ex: dismissRarity, que tem botão de desfazer):
+  // isto é dado GLOBAL, compartilhado com todo mundo, sem histórico de restauração — um clique
+  // errado apaga o cadastro inteiro do item (todas as DGs vinculadas) pra todo mundo de vez.
+  if (!confirm(`Remover "${itemName}" do cadastro de Itens × DGs? Isso vale pra todo mundo, não só pra você, e não tem como desfazer.`)) return;
   delete AppState.itemDungeonSources[itemName];
   saveItemDungeonSources().catch(err => console.error('Falha ao salvar item x DG:', err));
   renderPage();
@@ -40,6 +45,21 @@ export function getManualExpectedItemNames(dungeonId) {
     if (dungeonIds.includes(dungeonId)) names.add(itemName);
   });
   return names;
+}
+
+// DGs que o cadastro curado (global, ver acima) associa a um item buscado em "Onde dropa" — vale
+// mesmo pra DG onde o jogador nunca farmou (sem sessão nenhuma), diferente de findDropSources (que
+// só enxerga o próprio histórico). Sem isso, buscar um item ainda não farmado por VOCÊ mostrava
+// "nenhuma sessão registrou" mesmo já sendo sabido de onde ele sai — os dois dados nunca se
+// cruzavam antes.
+export function findKnownSourcesForQuery(query) {
+  if (!query) return [];
+  const key = normalizeForSearch(query);
+  const dungeonIds = new Set();
+  Object.entries(AppState.itemDungeonSources).forEach(([itemName, ids]) => {
+    if (normalizeForSearch(itemName).includes(key)) ids.forEach(id => dungeonIds.add(id));
+  });
+  return [...dungeonIds].map(id => AppState.dungeonList.find(d => d.id === id)).filter(Boolean);
 }
 
 // Raridade é medida em % de chance por run — a MESMA unidade que a página "Onde dropa" já exibe
@@ -68,8 +88,11 @@ export function setRarityMaxPercent(value) {
 // comportamento errado: apertar o limiar de 2% pra 1% subia a exigência de 50 pra 100 runs e
 // derrubava DGs inteiras — então item de 0,5%, mais raro que os dois limiares, SUMIA ao apertar.
 // Um limiar mais frouxo tem que ser sempre um superconjunto do mais apertado; com a exigência
-// variando junto, deixava de ser. 50 runs é o mesmo piso que "Onde dropa" usa
-// (MIN_RUNS_FOR_CONFIDENT_RATE).
+// variando junto, deixava de ser.
+//
+// Mede RUNS totais da DG (pergunta diferente de rateConfidence em utils/stats.js, que mede
+// OCORRÊNCIAS de um item — aqui a pergunta é "já joguei essa DG o bastante pra confiar na lista
+// inteira de raridades dela", não "confio na taxa de UM item específico").
 export const MIN_RUNS_TO_JUDGE_RARITY = 50;
 
 export function getMinRunsToJudgeRarity() {
