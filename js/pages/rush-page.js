@@ -167,7 +167,7 @@ export function renderRushPage() {
   ${infoToggle('rush-add-dg', `Cada run usa o custo Alz da DG (se houver) + tickets × preço do ticket + gemas de entrada × custo por gema (sugestão: <span id="gemaSuggestion">${formatAlzGamer(getCostPerGem())}</span>, calculado a partir do Card Cash). Reset (opcional) soma gemas por cima disso.`)}
   <div class="g3" style="margin-bottom:10px">
     <div style="grid-column:span 2"><label class="lbl">DG</label>
-      <select class="inp" id="dgS">
+      <select class="inp" id="dgS" onchange="updateCartPreview()">
       ${renderDungeonOptionsGrouped(AppState.dungeonList, d => {
         const parts = [];
         if (d.alzCost > 0) parts.push(formatAlzGamer(d.alzCost) + '/run');
