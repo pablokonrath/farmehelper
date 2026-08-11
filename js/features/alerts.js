@@ -166,16 +166,23 @@ export function fireEventAlert(eventType, time) {
   notifyOS(`${label} às ${time}!`, { body: 'Hora de entrar.', tag: 'event-' + eventType + '-' + time });
 }
 
-// Teto pra não crescer sem fim — histórico de alerta é consulta/auditoria recente, não arquivo
-// permanente (isso já existe em drop-history.js pros drops). Poda os mais antigos sozinho a cada
-// alerta novo, sem exigir que o jogador lembre de clicar "Limpar" só por questão de tamanho —
-// "Limpar" continua existindo pra quando for intencional mesmo (resetar tudo), não pra manutenção
-// de rotina.
-const MAX_ALERT_HISTORY = 500;
+// Teto pra não crescer sem fim — histórico de alerta é consulta recente, não arquivo permanente
+// (isso já existe em drop-history.js pros drops). Poda os mais antigos sozinho a cada alerta novo,
+// sem exigir que o jogador lembre de clicar "Limpar" só por questão de tamanho — "Limpar" continua
+// existindo pra quando for intencional mesmo (resetar tudo), não pra manutenção de rotina.
+//
+// Guarda os últimos 50 OU tudo dentro das últimas 4h, o que for MAIS — nunca os dois cortes ao
+// mesmo tempo. Só por contagem, uma pausa longa (viajou, dormiu) esvaziaria o histórico até o
+// próximo alerta, escondendo o que rolou antes da pausa. Só por tempo, uma rajada real de alertas
+// toda dentro da janela de 4h ficaria truncada em 50. O maior dos dois cobre os dois casos.
+const MAX_ALERT_HISTORY = 50;
+const ALERT_HISTORY_MAX_AGE_MS = 4 * 60 * 60 * 1000; // 4 horas
 function trimAlertHistory() {
-  if (AppState.alertHistory.length > MAX_ALERT_HISTORY) {
-    AppState.alertHistory = AppState.alertHistory.slice(-MAX_ALERT_HISTORY);
-  }
+  if (AppState.alertHistory.length <= MAX_ALERT_HISTORY) return;
+  const cutoff = Date.now() - ALERT_HISTORY_MAX_AGE_MS;
+  const byCount = AppState.alertHistory.slice(-MAX_ALERT_HISTORY);
+  const byTime = AppState.alertHistory.filter(e => new Date(e.timestamp).getTime() >= cutoff);
+  AppState.alertHistory = byTime.length > byCount.length ? byTime : byCount;
 }
 
 function registerAlert(keyword, drop) {
