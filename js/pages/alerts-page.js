@@ -1,5 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getFilteredAlertHistory } from '../features/alerts.js';
+import { countKeywordMatches } from '../features/keywords.js';
 import { formatDateTimeBR } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 
@@ -127,23 +128,28 @@ export function renderAlertsPage() {
   </div>
 </div>`;
 
-  // 1.5) Palavras rastreadas — gerenciar direto aqui, sem precisar ir em Cálculo de farme só
-  // pra adicionar uma palavra nova (o filtro "mostrar só rastreados" continua lá, é sobre a
-  // lista de drops daquela página, não sobre alerta).
+  // 1.5) Palavras rastreadas — gerenciar direto aqui (o filtro "mostrar só rastreados" continua em
+  // Cálculo de farme, é sobre a lista de drops daquela página, não sobre alerta — mas gerenciar as
+  // palavras em si mora só aqui agora, junto do que elas efetivamente acionam).
   const trackedWordsCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-tags"></i>Palavras rastreadas</div>
   <div class="pg-sub" style="margin:-4px 0 10px">O que aciona os alertas acima — liga o sininho de uma palavra pra ser avisado quando um item com esse nome cair.</div>
   ${!AppState.trackedKeywords.length ? '<div class="empty" style="padding:14px 0">Nenhuma palavra rastreada ainda.</div>' : `
   <table style="margin-bottom:12px"><thead><tr><th>Palavra rastreada</th><th style="width:110px"><i class="ti ti-bell"></i> Alerta</th><th style="width:40px">Ações</th></tr></thead><tbody>
-  ${AppState.trackedKeywords.map(kw => `<tr>
-    <td style="font-weight:500">${esc(kw.word)}</td>
+  ${AppState.trackedKeywords.map(kw => {
+    const matches = countKeywordMatches(kw.word);
+    return `<tr>
+    <td style="font-weight:500">${esc(kw.word)}${matches === 0
+      ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Nenhum item já dropado bate com essa palavra — confira se não é erro de digitação, ou se o item simplesmente ainda não caiu"></i>`
+      : ` <span style="font-size:11px;color:var(--muted)" title="Itens distintos já dropados que contêm essa palavra">(${matches} ite${matches > 1 ? 'ns' : 'm'})</span>`}</td>
     <td><label class="tgl"><input type="checkbox" aria-label="Alerta pra ${esc(kw.word)}" ${kw.alertEnabled ? 'checked' : ''} onchange="toggleKeywordAlert('${escAttr(kw.word)}')"><div class="tgl-track"></div><div class="tgl-thumb"></div></label> <span style="font-size:11px;color:var(--muted)">${kw.alertEnabled ? 'ON' : 'OFF'}</span></td>
     <td><button aria-label="Remover palavra ${esc(kw.word)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeTrackedKeyword('${escAttr(kw.word)}')"><i class="ti ti-x"></i></button></td>
-  </tr>`).join('')}
+  </tr>`;
+  }).join('')}
   </tbody></table>`}
   <div class="row">
-    <div style="flex:1"><label class="lbl">Adicionar palavra</label><input class="inp" id="nKw" placeholder="ex: Fatal"></div>
+    <div style="flex:1"><label class="lbl">Adicionar palavra</label><input class="inp" id="nKw" placeholder="ex: Fatal" onkeydown="if(event.key==='Enter')addTrackedKeyword()"></div>
     <button class="btn btn-p" onclick="addTrackedKeyword()"><i class="ti ti-plus"></i>Adicionar</button>
     <button class="btn btn-d" onclick="resetTrackedKeywords()">Restaurar padrão</button>
   </div>

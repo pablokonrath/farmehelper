@@ -118,6 +118,14 @@ export const AppState = {
   isManualDropsOpen: false,
   itemPrices: {},
   editingItemPriceName: null,
+  // UI da tabela "Itens cadastrados" em Cálculo de farme — busca e ordenação. Não persiste (mesmo
+  // espírito de priceHistoryItem/dateFrom): é um jeito de olhar a mesma lista, não um dado em si.
+  pricingSearchQuery: '',
+  pricingSortBy: 'name', // 'name' | 'price' | 'updated'
+  pricingSortDir: 'asc',
+  // "Itens sem preço" no topo da página só mostra os primeiros 6 por padrão (a lista pode ter
+  // dezenas) — esse botão expande pra ver todos. Também não persiste.
+  pricingShowAllMissing: false,
   // Registro de vendas reais: [{ id, itemName, qty, unitPrice, date }] — guardado em app_settings.
   salesLog: [],
   // Histórico de preço por item: { item: [{ date, price }] } — 1 ponto por dia, atualizado quando

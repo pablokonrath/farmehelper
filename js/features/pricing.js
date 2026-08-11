@@ -8,7 +8,12 @@ import { renderPage } from '../router.js';
 export function addItemPrice() {
   const name = document.getElementById('cN').value.trim();
   const rawPrice = document.getElementById('cP')?.value.trim();
-  if (!name || !rawPrice) return;
+  // Falha silenciosa: clicar "Salvar" sem preencher os dois campos não fazia nada, sem avisar —
+  // fácil de achar que cadastrou e só notar a falta quando o item aparecer "sem preço" de novo.
+  if (!name || !rawPrice) {
+    alert('Preencha o nome do item e o valor antes de salvar — os dois são obrigatórios.');
+    return;
+  }
   AppState.itemPrices[name] = parseAlzInput(rawPrice);
   recordPriceChange(name, AppState.itemPrices[name]);
   saveItemPrices();

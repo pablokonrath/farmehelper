@@ -6,6 +6,14 @@ export function getItemPrice(itemName) {
   return AppState.itemPrices[itemName] ?? AppState.itemPrices[stripEnhancementSuffix(itemName)] ?? 0;
 }
 
+// Diferente de getItemPrice > 0: um item cadastrado como 0 de propósito (lixo que ainda cai, mas
+// não vale nada) TEM preço registrado — só vale 0. getItemPrice sozinho não distingue "decidi que
+// é 0" de "nunca decidi nada" (os dois retornam 0), o que fazia o aviso de "itens sem preço" (ver
+// pricing-page.js) cobrar pra sempre um item que o jogador já resolveu.
+export function hasRegisteredPrice(itemName) {
+  return AppState.itemPrices[itemName] !== undefined || AppState.itemPrices[stripEnhancementSuffix(itemName)] !== undefined;
+}
+
 export function getItemCategory(itemName) {
   return AppState.itemCategoryAssignments[itemName] ?? AppState.itemCategoryAssignments[stripEnhancementSuffix(itemName)] ?? null;
 }

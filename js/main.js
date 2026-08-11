@@ -26,7 +26,7 @@ import {
 } from './features/admin.js';
 
 import { setDateFrom, setDateTo, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
-import { toggleFilterByKeywords } from './pages/pricing-page.js';
+import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { addManualDrop, deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty } from './features/drop-source.js';
 import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, setRarityMaxPercent, dismissRarity, restoreRarity } from './features/item-dungeon-sources.js';
@@ -118,6 +118,9 @@ Object.assign(window, {
   dismissRarity,
   restoreRarity,
   toggleFilterByKeywords,
+  setPricingSearchQuery,
+  setPricingSort,
+  togglePricingShowAllMissing,
   addItemPrice,
   startEditingItemPrice,
   cancelEditingItemPrice,
