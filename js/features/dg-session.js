@@ -46,13 +46,39 @@ function summarizeDrops(drops) {
   return { totalAlz, bestItem: best && best.price > 0 ? best : null };
 }
 
+// Drops do log que ainda não pertencem a nenhuma sessão encerrada, dentro de uma janela recente.
+// Base de duas coisas: a detecção automática (session-autostart.js) e o retroagir do início
+// manual abaixo. Fica aqui porque é sobre o ciclo de vida da sessão, não sobre a detecção.
+const UNCLAIMED_WINDOW_MS = 30 * 60 * 1000;
+export function unclaimedDropsSince(windowMs = UNCLAIMED_WINDOW_MS) {
+  const lastEndAt = AppState.dgSessions.length ? Math.max(...AppState.dgSessions.map(s => s.endAt || 0)) : 0;
+  const cutoff = Math.max(lastEndAt, Date.now() - windowMs);
+  return AppState.drops.filter(d =>
+    d.timestamp && d.timestamp.getTime() > cutoff && !isExcludedGearItem(d.name));
+}
+
 // startAt opcional: a detecção automática (session-autostart.js) só percebe que você começou a
 // farmar depois dos primeiros drops, então precisa retroagir o início pro primeiro drop — senão
 // esses minutos iniciais ficariam fora da sessão.
+//
+// Sem startAt explícito (clique em "Iniciar" na mão), retroage do MESMO jeito, pro primeiro drop
+// que ainda não pertence a sessão nenhuma. Antes usava Date.now(): quem entrava na DG e só lembrava
+// de apertar "Iniciar" alguns minutos depois perdia todo o farme desses minutos, silenciosamente —
+// os drops estavam no log, mas ficavam fora de qualquer sessão e portanto fora de "Qual DG rende
+// mais", de tempo/run e de Onde dropa.
 export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } = {}) {
   if (!dungeonId) return;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dg) return;
+
+  let retroagidos = 0;
+  if (!startAt) {
+    const pendentes = unclaimedDropsSince();
+    if (pendentes.length) {
+      startAt = Math.min(...pendentes.map(d => d.timestamp.getTime()));
+      retroagidos = pendentes.length;
+    }
+  }
   // O watchdog liga junto com a sessão (resolve o "esqueci de ativar/desativar"). Se ele já estava
   // ligado (o jogador ligou na mão), NÃO reivindicamos — guardamos autoWatchdog só quando fomos nós
   // que ligamos, pra desligar apenas o que ligamos ao encerrar. Fica no registro da sessão ativa
@@ -79,6 +105,59 @@ export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } 
   };
   saveActiveDgSession();
   if (autoWatchdog) setWatchdogEnabled(true); // já reseta os relógios do watchdog e persiste
+  renderPage();
+
+  // Avisa que o início foi puxado pra trás — mudar silenciosamente o horário que a pessoa
+  // acha que iniciou seria pior que não retroagir.
+  if (retroagidos && !auto) {
+    showInfoToast(`Sessão contando desde o 1º drop — ${retroagidos} que já tinham caído entraram`);
+  }
+}
+
+// Troca a DG da sessão ATIVA (a de setSessionDungeon troca de sessão já encerrada, no histórico).
+// É o que torna a detecção automática confortável de verdade: você nunca aperta "Iniciar", ela
+// abre sozinha com um palpite, e corrigir o rótulo é um seletor ali na hora — em vez de esperar
+// encerrar e ir consertar no histórico depois.
+export function setActiveSessionDungeon(dungeonId) {
+  const s = AppState.activeDgSession;
+  const dg = AppState.dungeonList.find(d => d.id === dungeonId);
+  if (!s || !dg) return;
+  s.dungeonId = dg.id;
+  s.dungeonName = dg.name;
+  // Confirmar a DG na mão tira o aviso de "aberta automaticamente, confira": você acabou de
+  // conferir. A rota também é reavaliada — a nova DG pode pertencer a outra rota aplicada hoje.
+  s.autoStarted = false;
+  const rota = findAppliedRouteForDungeon(dg.id);
+  s.routeId = rota?.id || null;
+  s.routeName = rota?.name || null;
+  saveActiveDgSession();
+  renderPage();
+}
+
+// Reabre uma sessão já encerrada como ativa, devolvendo o registro dela pro estado "em andamento".
+// Usado quando os drops voltam pouco depois de um encerramento automático (ver checkAutoStartSession):
+// sem isso, encerrar rápido por inatividade partiria um único farme em várias sessões, inflando a
+// contagem de sessões e fragmentando o "melhor sessão única". Os itens não se perdem — eles são
+// recalculados da janela [startAt, endAt] no log quando a sessão encerrar de novo.
+export function resumeDgSession(session) {
+  AppState.dgSessions = AppState.dgSessions.filter(s => s.startAt !== session.startAt);
+  const autoWatchdog = !AppState.alertSettings.watchdogEnabled;
+  AppState.activeDgSession = {
+    dungeonId: session.dungeonId,
+    dungeonName: session.dungeonName,
+    routeId: session.routeId || null,
+    routeName: session.routeName || null,
+    startAt: session.startAt,
+    runs: session.runs || 0,
+    runMinutes: session.runMinutes || 0,
+    runsManuallySet: !!session.runs,
+    autoWatchdog,
+    autoStarted: false,
+    note: session.note,
+  };
+  saveDgSessions();
+  saveActiveDgSession();
+  if (autoWatchdog) setWatchdogEnabled(true);
   renderPage();
 }
 
@@ -316,7 +395,7 @@ export function getActiveSessionSummary() {
 export function endDgSession({ endAt } = {}) {
   const s = AppState.activeDgSession;
   if (!s) return;
-  AppState.dgSessions.push(buildSessionRecord({
+  const registro = buildSessionRecord({
     dungeonId: s.dungeonId,
     dungeonName: s.dungeonName,
     routeId: s.routeId,
@@ -324,7 +403,11 @@ export function endDgSession({ endAt } = {}) {
     startAt: s.startAt,
     endAt: endAt || Date.now(),
     runs: s.runs,
-  }));
+  });
+  // Anotação sobrevive ao encerrar/retomar (ver resumeDgSession) — foi escrita pelo jogador, não
+  // é dado derivado que possa ser recalculado.
+  if (s.note) registro.note = s.note;
+  AppState.dgSessions.push(registro);
   const wasAutoWatchdog = s.autoWatchdog;
   AppState.activeDgSession = null;
   saveDgSessions();

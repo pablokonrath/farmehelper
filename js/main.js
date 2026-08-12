@@ -6,7 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, setSessionNote, copyDaySummary, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setSessionNote, copyDaySummary, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
 import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
@@ -18,7 +18,7 @@ import { addItemGoal, deleteItemGoal } from './features/item-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
 import { runUndo } from './features/undo.js';
-import { toggleAutoSessionStart } from './features/session-autostart.js';
+import { toggleAutoSessionStart, setSessionIdleCloseMinutes } from './features/session-autostart.js';
 import { setEventEnabled, setEventItemName, setEventSince, setEventMultiplier } from './features/event-tracker.js';
 import {
   toggleCategoryManager,
@@ -235,6 +235,7 @@ Object.assign(window, {
   setActiveSessionRuns,
   setSessionRuns,
   setSessionDungeon,
+  setActiveSessionDungeon,
   setSessionNote,
   copyDaySummary,
   deleteSession,
@@ -271,6 +272,7 @@ Object.assign(window, {
   toggleInfoBox,
   toggleCard,
   toggleAutoSessionStart,
+  setSessionIdleCloseMinutes,
   runUndo,
 });
 

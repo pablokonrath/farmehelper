@@ -298,9 +298,16 @@ export function renderSessionsPage() {
         <div style="display:flex;align-items:center;gap:10px">
           ${dgIcon(AppState.activeDgSession.dungeonId, 34)}
           <div>
-          <div style="font-weight:700;font-size:15px">${esc(active.dungeonName)}${AppState.activeDgSession.routeName ? ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(AppState.activeDgSession.routeName)}</span>` : ''}</div>
-          <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
-          ${AppState.activeDgSession.autoStarted ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-alert-triangle"></i> Aberta automaticamente — confira se a DG está certa. Errada? Encerre e corrija a DG no histórico abaixo.</div>` : ''}
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            ${/* Seletor no lugar do nome fixo: com a sessão abrindo sozinha, corrigir a DG é a
+                 ação mais provável aqui — antes exigia encerrar e ir consertar no histórico. */''}
+            <select class="inp" style="width:200px;font-weight:700" onchange="setActiveSessionDungeon(this.value)" title="Trocar a DG desta sessão — os drops continuam os mesmos, só muda a que DG eles são atribuídos">
+              ${renderDungeonOptionsGrouped(AppState.dungeonList, undefined, AppState.activeDgSession.dungeonId)}
+            </select>
+            ${AppState.activeDgSession.routeName ? `<span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(AppState.activeDgSession.routeName)}</span>` : ''}
+          </div>
+          <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:4px"></div>
+          ${AppState.activeDgSession.autoStarted ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-alert-triangle"></i> Aberta automaticamente — confira a DG no seletor acima. Trocar ali já corrige, sem precisar encerrar.</div>` : ''}
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
             return expected.length ? `<div style="font-size:11px;color:var(--epic);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';
@@ -333,6 +340,11 @@ export function renderSessionsPage() {
         <label class="tgl"><input type="checkbox" aria-label="Cuidar da sessão sozinho" ${AppState.autoSessionEnabled ? 'checked' : ''} onchange="toggleAutoSessionStart(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
         Cuidar da sessão sozinho (abre quando começo a farmar, encerra quando os drops param)
       </label>
+      ${AppState.autoSessionEnabled ? `<div class="row" style="align-items:center;margin-top:10px;flex-wrap:wrap">
+        <div style="width:170px"><label class="lbl">Encerrar após (min) sem drop</label>
+          <input class="inp inp-sm" type="number" min="1" value="${AppState.sessionIdleCloseMinutes}" onchange="setSessionIdleCloseMinutes(this.value)"></div>
+        <div style="flex:1;min-width:240px;font-size:11px;color:var(--muted)">Pode deixar curto sem medo: se os drops voltarem dentro de ${AppState.sessionIdleCloseMinutes * 3}min, ele <strong>retoma a mesma sessão</strong> em vez de abrir outra — o intervalo parado não entra no tempo.</div>
+      </div>` : ''}
       <button style="background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;text-decoration:underline;margin-top:10px;padding:0" onclick="toggleForgottenSessionRecovery()"><i class="ti ti-history-toggle"></i> Esqueceu de marcar uma sessão? Recuperar pelo log</button>
       ${AppState.forgottenSessionRecoveryOpen ? forgottenSessionRecoveryPanel() : ''}`}
 </div>`;

@@ -204,6 +204,11 @@ export const AppState = {
   // Abrir sessão sozinho quando drops começam a cair sem nenhuma marcada. Ligado por padrão:
   // esquecer de marcar é a maior fonte de buraco no histórico. Ver session-autostart.js.
   autoSessionEnabled: true,
+  // Minutos sem nenhum drop até a sessão encerrar sozinha. Configurável (não mais fixo em código)
+  // porque o número certo depende de como VOCÊ farma: quem rusha com macro sem parar quer curto;
+  // quem alterna DG, vende no meio e volta quer folgado. Ver session-autostart.js — encerrar curto
+  // é seguro porque a sessão é RETOMADA se os drops voltarem logo, em vez de virar duas.
+  sessionIdleCloseMinutes: 5,
   // "Considero raro o que cai em até X% das runs" — mesma unidade que a taxa por run exibida em
   // Onde dropa, pra as duas telas falarem a mesma língua. Ajustável porque o que é raro depende
   // da economia do servidor. Ver item-dungeon-sources.js (DEFAULT_RARITY_MAX_PERCENT).

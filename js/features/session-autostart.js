@@ -1,11 +1,11 @@
 import { AppState } from '../state/app-state.js';
-import { isExcludedGearItem } from './drops.js';
-import { startDgSession, endDgSession, getActiveSessionSummary } from './dg-session.js';
+import { startDgSession, endDgSession, resumeDgSession, getActiveSessionSummary, unclaimedDropsSince } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
-import { saveAutoSessionEnabled } from '../state/persistence.js';
+import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
 import { stripEnhancementSuffix } from '../utils/parsing.js';
 import { formatAlzGamer } from '../utils/formatting.js';
+import { renderPage } from '../router.js';
 
 // A maior fonte de buraco no histórico é humana: esquecer de apertar "Iniciar" antes de entrar
 // na DG. Todo o farme daquele período existe no log, mas fica fora de qualquer sessão — e é a
@@ -50,18 +50,35 @@ function lastFarmedDungeon() {
   return AppState.dungeonList.find(d => d.id === latest.dungeonId) || null;
 }
 
-// Drops do log que já caíram e não pertencem a nenhuma sessão encerrada — a mesma ideia de
-// suggestForgottenSessionWindow, mas olhando só a janela recente (estamos detectando "agora").
-function unclaimedRecentDrops() {
-  const lastEndAt = AppState.dgSessions.length ? Math.max(...AppState.dgSessions.map(s => s.endAt || 0)) : 0;
-  const cutoff = Math.max(lastEndAt, Date.now() - RECENT_WINDOW_MS);
-  return AppState.drops.filter(d =>
-    d.timestamp && d.timestamp.getTime() > cutoff && !isExcludedGearItem(d.name));
-}
-
 export function toggleAutoSessionStart(enabled) {
   AppState.autoSessionEnabled = !!enabled;
   saveAutoSessionEnabled().catch(err => console.error('Falha ao salvar detecção automática:', err));
+}
+
+export function setSessionIdleCloseMinutes(value) {
+  AppState.sessionIdleCloseMinutes = Math.max(1, parseInt(value, 10) || 5);
+  saveSessionIdleCloseMinutes().catch(err => console.error('Falha ao salvar limite de inatividade:', err));
+  renderPage();
+}
+
+function idleCloseMs() {
+  return Math.max(1, +AppState.sessionIdleCloseMinutes || 5) * 60000;
+}
+
+// Sessão encerrada há pouco que provavelmente é o MESMO farme: você parou 5 minutos (foi vender,
+// trocou de canal, andou até a próxima entrada) e voltou. Retomar em vez de abrir outra é o que
+// permite o limite de inatividade ser curto sem custo — sem isso, um limite de 5min picaria um
+// farme de 3 horas em muitas sessões, inflando a contagem e fragmentando o recorde de melhor
+// sessão. A janela é 3× o limite: se ficou muito mais tempo que isso parado, aí é farme novo.
+function recentlyClosedSession() {
+  if (!AppState.dgSessions.length) return null;
+  const janela = idleCloseMs() * 3;
+  let ultima = null;
+  for (const s of AppState.dgSessions) {
+    if (!ultima || (s.endAt || 0) > (ultima.endAt || 0)) ultima = s;
+  }
+  if (!ultima?.endAt) return null;
+  return Date.now() - ultima.endAt <= janela ? ultima : null;
 }
 
 // Chamada a cada lote de drops novos do log (ver file-source.js). Barata: sai logo de cara no
@@ -71,10 +88,27 @@ export function checkAutoStartSession() {
   if (AppState.activeDgSession) return;
   if (!AppState.dungeonList.length) return;
 
-  const recent = unclaimedRecentDrops();
-  if (recent.length < MIN_DROPS_TO_DETECT) return;
+  const recent = unclaimedDropsSince(RECENT_WINDOW_MS);
+  if (!recent.length) return;
 
   const guess = guessDungeonFromDrops(recent);
+
+  // Antes de abrir uma sessão nova: os drops voltaram logo depois de um encerramento automático?
+  // Então é a continuação do mesmo farme — retoma aquela sessão. Só não retoma se os itens que
+  // caíram apontam com confiança pra uma DG DIFERENTE (você trocou de DG na pausa): aí é farme
+  // novo mesmo, e retomar atribuiria drops da DG nova à antiga.
+  const anterior = recentlyClosedSession();
+  if (anterior && (!guess || guess.dg.id === anterior.dungeonId)) {
+    resumeDgSession(anterior);
+    showGoalToast(
+      '▶️ Sessão retomada',
+      `Os drops voltaram, então continuei a sessão de ${anterior.dungeonName} em vez de abrir outra — o intervalo parado não conta no tempo.`
+    );
+    return;
+  }
+
+  if (recent.length < MIN_DROPS_TO_DETECT) return;
+
   const dungeon = guess?.dg || lastFarmedDungeon() || AppState.dungeonList[0];
   if (!dungeon) return;
 
@@ -85,21 +119,19 @@ export function checkAutoStartSession() {
   showGoalToast(
     '▶️ Sessão iniciada sozinha',
     guess
-      ? `Detectei farme em ${dungeon.name} (pelos itens que caíram). Se não for essa DG, é só trocar no seletor.`
-      : `Detectei farme sem sessão aberta e abri uma em ${dungeon.name} — confira se a DG está certa no seletor.`
+      ? `Detectei farme em ${dungeon.name} (pelos itens que caíram). Se não for essa DG, troque no seletor do card.`
+      : `Detectei farme sem sessão aberta e abri uma em ${dungeon.name} — confira a DG no seletor do card.`
   );
 }
-
-// Quanto tempo sem nenhum drop até considerar que o farme acabou. Bem mais folgado que o limite
-// do watchdog (que existe pra avisar de travamento em ~1min): aqui um alarme falso não é um aviso
-// à toa, é uma sessão partida no meio — e trocas de DG, pausa pra vender ou uma DG mais lenta
-// facilmente passam de 10 minutos sem drop.
-const IDLE_TO_CLOSE_MS = 20 * 60 * 1000;
 
 // Encerra a sessão sozinho quando os drops param. Sem isso, sair do PC com a sessão aberta faz o
 // tempo parado entrar na duração e afundar a média de tempo/run daquela DG PRA SEMPRE (é o que o
 // próprio histórico avisa). Fecha no horário do último drop, não no "agora" — o intervalo morto
 // não conta. Chamado no heartbeat do worker (~5s), com ou sem drop novo.
+//
+// O limite agora é seu (AppState.sessionIdleCloseMinutes, padrão 5min). Era fixo em 20min porque
+// encerrar cedo picava um farme longo em várias sessões; com a retomada automática acima isso
+// deixou de ser problema — voltar a dropar dentro da janela continua a MESMA sessão.
 export function checkAutoEndSession() {
   if (!AppState.autoSessionEnabled) return;
   if (!AppState.activeDgSession) return;
@@ -108,7 +140,7 @@ export function checkAutoEndSession() {
   // Sem nenhum drop ainda: mede a inatividade desde a abertura, senão uma sessão aberta por
   // engano (ou um auto-start que não vingou) ficaria aberta pra sempre.
   const referencia = summary?.lastDropAt || AppState.activeDgSession.startAt;
-  if (Date.now() - referencia < IDLE_TO_CLOSE_MS) return;
+  if (Date.now() - referencia < idleCloseMs()) return;
 
   const nome = AppState.activeDgSession.dungeonName;
   const total = summary?.totalAlz || 0;
@@ -116,6 +148,6 @@ export function checkAutoEndSession() {
 
   showGoalToast(
     '⏹️ Sessão encerrada sozinha',
-    `${nome} ficou ${Math.round(IDLE_TO_CLOSE_MS / 60000)}min sem drop, então encerrei no horário do último — o tempo parado não entrou na conta. Total: ${formatAlzGamer(total)}.`
+    `${nome} ficou ${Math.round(idleCloseMs() / 60000)}min sem drop, então encerrei no horário do último — o tempo parado não entrou na conta. Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
   );
 }
