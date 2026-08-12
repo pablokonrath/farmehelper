@@ -90,7 +90,15 @@ export function renderPricingPage() {
   // Sugestão combina os itens que o próprio usuário já dropou com o catálogo de nomes já
   // precificados antes (known-item-names.php) — autocompleta o nome certo de um item que já
   // foi cadastrado alguma vez, mesmo sem ter dropado de novo agora.
-  const suggestionNames = [...new Set([...allItems.map(i => i.name), ...AppState.knownItemNames])].slice(0, 60);
+  // Ordem importa: o que VOCÊ dropou vem primeiro, porque é o nome canônico vindo do log — quanto
+  // mais fácil escolher da lista, menos gente digita na mão e erra. Depois o catálogo global de
+  // nomes já precificados por alguém. Sem corte de 60: cortar escondia justamente os itens menos
+  // comuns, que são os que a pessoa mais precisa autocompletar.
+  const suggestionNames = [...new Set([
+    ...allItems.map(i => i.name),
+    ...Object.keys(AppState.referenceItemPrices),
+    ...AppState.knownItemNames,
+  ])];
 
   // Catálogo = os SEUS preços + os da comunidade que você ainda não sobrescreveu. Sem isso, a
   // referência funcionaria por baixo dos panos (os totais já usariam ela) mas a página continuaria

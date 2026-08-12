@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { saveItemPrices } from '../state/persistence.js';
-import { updateBalanceSidebar } from './drops.js';
+import { updateBalanceSidebar, findDroppedNameMatch, suggestDroppedName } from './drops.js';
 import { recordPriceChange, checkPricePlausibility } from './sales.js';
 import { parseAlzInput, formatAlzGamer } from '../utils/formatting.js';
 import { actWithUndo } from './undo.js';
@@ -21,6 +21,23 @@ function confirmPriceIfImplausible(name, price) {
   );
 }
 
+// Confere o NOME contra o log antes de cadastrar. Nome digitado à mão é a única fonte de lixo no
+// catálogo compartilhado (ver api/reference-prices.php): "Nucleo de Aprimoramnto" viraria uma
+// entrada separada, visível pra todo mundo, que só quem criou consegue apagar.
+//
+// Avisa, não bloqueia. Item comprado, insumo de craft ou o item variável do crédito de macro
+// podem legitimamente nunca ter dropado pra você — bloquear quebraria esses casos. Quem confirma
+// segue com o preço na própria conta; o filtro do que é compartilhado é feito no servidor.
+function confirmNameIfNeverDropped(name) {
+  if (findDroppedNameMatch(name)) return true;
+  const sugestao = suggestDroppedName(name);
+  return confirm(
+    `Você nunca dropou "${name}".\n\n` +
+    (sugestao ? `Quis dizer "${sugestao}"?\n\n` : '') +
+    'Pode ser só um erro de digitação. Cadastrar assim mesmo? (o preço fica na sua conta, mas item que ninguém dropou não entra no catálogo compartilhado)'
+  );
+}
+
 export function addItemPrice() {
   const name = document.getElementById('cN').value.trim();
   const rawPrice = document.getElementById('cP')?.value.trim();
@@ -30,6 +47,8 @@ export function addItemPrice() {
     alert('Preencha o nome do item e o valor antes de salvar — os dois são obrigatórios.');
     return;
   }
+  // Só na CRIAÇÃO: editar um item que já está na lista não precisa reconferir o nome.
+  if (AppState.itemPrices[name] === undefined && !confirmNameIfNeverDropped(name)) return;
   const price = parseAlzInput(rawPrice);
   if (!confirmPriceIfImplausible(name, price)) return;
 

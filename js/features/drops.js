@@ -46,6 +46,46 @@ export function hasRegisteredPrice(itemName) {
 // A camada global é do admin mestre e serve de base comum ("Núcleos", "Joias"). A pessoal existe
 // porque categorizar é preferência de organização de cada um: quem quer separar "meus insumos de
 // craft" ou "guardar pro set" não deveria depender de outra pessoa pra organizar o próprio farme.
+// Esse nome corresponde a algo que você realmente dropou? Cruza com o log carregado, os drops
+// manuais antigos e o histórico arquivado (que guarda nome de item mais velho que a janela de ~30
+// dias do log). Compara sem acento/maiúscula e sem o sufixo +N.
+//
+// Serve pra pegar erro de digitação no cadastro de preço — nome digitado à mão é a única fonte de
+// lixo no catálogo compartilhado (ver api/reference-prices.php), e o log, escrito pelo próprio
+// jogo, é a referência canônica do que existe de verdade.
+export function findDroppedNameMatch(itemName) {
+  const alvo = normalizeForSearch(stripEnhancementSuffix(itemName || '').trim());
+  if (!alvo) return null;
+  for (const nome of getDroppedItemNames()) {
+    if (normalizeForSearch(nome) === alvo) return nome;
+  }
+  return null;
+}
+
+// Nome mais parecido entre os que você dropou — pra sugerir "quis dizer X?" em vez de só barrar.
+// Heurística simples de substring (um contém o outro): pega o caso comum de letra faltando/sobrando
+// e de nome parcial, sem o custo e a imprevisibilidade de distância de edição.
+export function suggestDroppedName(itemName) {
+  const alvo = normalizeForSearch(stripEnhancementSuffix(itemName || '').trim());
+  if (alvo.length < 4) return null;
+  let melhor = null;
+  for (const nome of getDroppedItemNames()) {
+    const n = normalizeForSearch(nome);
+    if (n.includes(alvo) || alvo.includes(n)) {
+      if (!melhor || Math.abs(n.length - alvo.length) < Math.abs(normalizeForSearch(melhor).length - alvo.length)) melhor = nome;
+    }
+  }
+  return melhor;
+}
+
+// Todo nome de item que já passou pelo seu histórico — log atual + manuais + arquivo permanente.
+export function getDroppedItemNames() {
+  const nomes = new Set();
+  for (const d of getAllDrops()) nomes.add(stripEnhancementSuffix(d.name));
+  for (const r of AppState.dropSnapshot) nomes.add(stripEnhancementSuffix(r.name));
+  return nomes;
+}
+
 export function getItemCategory(itemName) {
   const base = stripEnhancementSuffix(itemName);
   const pessoal = AppState.personalCategoryAssignments;

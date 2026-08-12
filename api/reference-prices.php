@@ -32,19 +32,59 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') json_response(['error' => 'method_not_
 // marcou como 0 ("isso é lixo") continua aparecendo no catálogo de todo mundo — só não puxa o
 // preço de referência pra baixo. Filtrar no SELECT sumia com o item da lista dos outros, que é
 // justamente o trabalho manual que isto existe pra evitar.
-$rows = get_db()
-  ->query('SELECT item_name, price FROM item_prices ORDER BY item_name, price')
-  ->fetchAll();
+$db = get_db();
+
+// ---------------------------------------------------------------------------------------------
+// Só entra no catálogo compartilhado item que ALGUÉM REALMENTE DROPOU (existe em drop_snapshots,
+// o histórico gravado a partir do log do jogo).
+//
+// O nome de item digitado à mão é a única porta de lixo neste catálogo: basta uma pessoa cadastrar
+// "Nucleo de Aprimoramnto" (sem o "e") pra essa entrada aparecer pra todo mundo pra sempre, e só
+// quem criou consegue apagar. Já o log é escrito pelo próprio jogo — nome que veio de lá é
+// canônico por construção, typo não existe.
+//
+// O catálogo também passa a ser chaveado pelo nome DO LOG, não pelo que cada um digitou: quem
+// cadastrou "nucleo de aprimoramento" em minúscula entra agregado sob o nome certo, em vez de
+// virar uma segunda linha na lista de todo mundo.
+//
+// Isso NÃO restringe o cadastro pessoal: cada um continua podendo precificar o que quiser na
+// própria conta (item comprado, insumo de craft, item de crédito de macro que nunca dropa). O
+// filtro é só sobre o que é COMPARTILHADO.
+$normalizar = function (string $nome): string {
+  // Tira o sufixo de aprimoramento (+3) — o snapshot já grava o nome base (ver
+  // buildSnapshotRowsFromLog) — e neutraliza maiúscula/acento pra comparar.
+  $nome = preg_replace('/\s*\+\s*\d+$/u', '', trim($nome));
+  $nome = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $nome) ?: $nome;
+  return mb_strtolower($nome);
+};
+
+$canonico = [];
+foreach ($db->query('SELECT DISTINCT item_name FROM drop_snapshots')->fetchAll() as $r) {
+  $canonico[$normalizar($r['item_name'])] = $r['item_name'];
+}
+
+$rows = $db->query('SELECT item_name, price FROM item_prices ORDER BY item_name, price')->fetchAll();
 
 $porItem = [];
 foreach ($rows as $row) {
-  $porItem[$row['item_name']][] = (int) $row['price'];
+  $nome = $canonico[$normalizar($row['item_name'])] ?? null;
+  // Instalação nova, sem nenhum drop sincronizado ainda: sem base pra validar, aceita tudo em vez
+  // de devolver um catálogo vazio pra todo mundo.
+  if ($nome === null) {
+    if ($canonico) continue;
+    $nome = $row['item_name'];
+  }
+  $porItem[$nome][] = (int) $row['price'];
 }
 
 $result = [];
 foreach ($porItem as $name => $todos) {
-  // Já vêm ordenados pelo ORDER BY acima, então o subconjunto > 0 também sai ordenado.
   $precos = array_values(array_filter($todos, fn($p) => $p > 0));
+  // Ordena aqui, não confia no ORDER BY: variações do mesmo item ("Anel Fatal", "anel fatal +3")
+  // são agregadas sob o mesmo nome canônico acima, então a ordem por item_name da query não
+  // garante mais que os preços de um grupo cheguem em ordem — e mediana sobre lista desordenada
+  // devolve um valor qualquer do meio do array, não a mediana.
+  sort($precos, SORT_NUMERIC);
   $n = count($precos);
   if ($n === 0) {
     // Todo mundo que cadastrou marcou 0 — o item entra no catálogo valendo 0 mesmo.
