@@ -180,7 +180,12 @@ function buildDaySummaryCard() {
     ${d.topDg ? `<span>🏆 Melhor DG: <strong style="color:var(--txt)">${esc(d.topDg.name)}</strong> (${formatAlzGamer(d.topDg.alz)})</span>` : ''}
     ${d.bestItem ? `<span>💎 Melhor drop: <strong style="color:var(--txt)">${esc(d.bestItem.name)}</strong> (${formatAlzGamer(d.bestItem.price)})</span>` : ''}
   </div>` : ''}
-  <button class="btn btn-d btn-xs" style="margin-top:12px" onclick="copyDaySummary()"><i class="ti ti-copy"></i>Copiar pra mandar na guild</button>`,
+  <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;align-items:center">
+    <button class="btn btn-p btn-xs" onclick="copyDaySummaryImage()"><i class="ti ti-photo"></i>Copiar imagem</button>
+    <button class="btn btn-d btn-xs" onclick="downloadDaySummaryImage()" title="Salvar o card como PNG"><i class="ti ti-download"></i>Baixar</button>
+    <button class="btn btn-d btn-xs" onclick="copyDaySummary()" title="Versão em texto, pra colar onde imagem não serve"><i class="ti ti-align-left"></i>Copiar texto</button>
+    <span style="font-size:11px;color:var(--muted)">A imagem cola direto no Discord com Ctrl+V.</span>
+  </div>`,
   });
 }
 
