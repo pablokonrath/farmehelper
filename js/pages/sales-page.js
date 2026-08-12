@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getAllDrops, summarizeDropsByItem, isFixedPriceItem } from '../features/drops.js';
+import { getAllDrops, summarizeDropsByItem, isFixedPriceItem, getItemPrice } from '../features/drops.js';
 import { computeSalesSummary, computeSalesSummaryByItem, computeLikelyUnsoldInventory, getSalePriceHistory, getSoldItemNames, daysSincePriceUpdate, STALE_PRICE_DAYS } from '../features/sales.js';
 import { computeSalesGoalsProgress, totalAllocatedPercentage, computeTodayGoalsAllocation } from '../features/sales-goals.js';
 import { infoToggle } from '../features/ui-toggles.js';
@@ -31,7 +31,14 @@ export function renderSalesPage() {
   const isFiltered = !!(from || to);
 
   // Sugestões de item: o que você já precificou + o que já dropou.
-  const itemNames = [...new Set([...Object.keys(AppState.itemPrices), ...summarizeDropsByItem(getAllDrops()).map(i => i.name)])].sort();
+  // Inclui os nomes da referência da comunidade — numa conta nova, itemPrices está vazio e a
+  // sugestão do campo de item ficaria só com o que já dropou, sem o catálogo que os outros já
+  // conhecem.
+  const itemNames = [...new Set([
+    ...Object.keys(AppState.itemPrices),
+    ...Object.keys(AppState.referenceItemPrices),
+    ...summarizeDropsByItem(getAllDrops()).map(i => i.name),
+  ])].sort();
   const histItems = getSoldItemNames();
 
   const editingSale = AppState.editingSaleId ? AppState.salesLog.find(s => s.id === AppState.editingSaleId) : null;
@@ -151,7 +158,10 @@ export function renderSalesPage() {
     : `<table><thead><tr><th>Data</th><th>Item</th><th>Qtd</th><th>Valor unit.</th><th>Total real</th><th>Estimado</th><th>Diferença</th><th style="width:64px"></th></tr></thead><tbody>
       ${sales.map(s => {
         const real = s.unitPrice * s.qty;
-        const est = (AppState.itemPrices[s.itemName] ?? 0) * s.qty;
+        // getItemPrice, não AppState.itemPrices direto: o acesso direto pula a camada de
+        // referência da comunidade, e a coluna "Estimado" apareceria vazia justamente pra quem
+        // ainda não cadastrou preço nenhum — que é quem mais precisa dela.
+        const est = getItemPrice(s.itemName) * s.qty;
         const d = real - est;
         const isEditing = s.id === AppState.editingSaleId;
         return `<tr${isEditing ? ' style="background:var(--acc-bg)"' : ''}>

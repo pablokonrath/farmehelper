@@ -40,8 +40,11 @@ export function getCreditItemPrice(categoryId) {
     // quê. Cai pra um match tolerante antes de desistir e ir pro preço manual.
     if (!(price > 0)) {
       const normalized = normalizeForSearch(itemName);
-      const matchKey = Object.keys(AppState.itemPrices).find(k => normalizeForSearch(k) === normalized);
-      if (matchKey) price = AppState.itemPrices[matchKey];
+      // Procura nos seus preços E no catálogo da comunidade — senão o match tolerante só
+      // funcionaria pra quem já cadastrou o item na mão, justamente o caso que ele não precisa.
+      const candidatos = [...new Set([...Object.keys(AppState.itemPrices), ...Object.keys(AppState.referenceItemPrices)])];
+      const matchKey = candidatos.find(k => normalizeForSearch(k) === normalized);
+      if (matchKey) price = getItemPrice(matchKey);
     }
     if (price > 0) return { price, linked: true, itemName };
   }
