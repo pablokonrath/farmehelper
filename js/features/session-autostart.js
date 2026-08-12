@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { startDgSession, endDgSession, resumeDgSession, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
+import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
@@ -17,9 +17,19 @@ import { renderPage } from '../router.js';
 // conforme combinado, é melhor uma sessão com a DG errada (corrigível em 1 clique no histórico)
 // do que farme nenhum registrado.
 
-// Quantos drops precisam cair sem sessão antes de abrir uma. Baixo demais dispararia com o
-// resto de um farme anterior chegando; alto demais perde os primeiros minutos.
-const MIN_DROPS_TO_DETECT = 5;
+// Quantos drops precisam cair sem sessão antes de abrir uma. Agora é 1: o primeiro drop já abre.
+//
+// Era 5 porque a sessão nascia obrigada a ter uma DG, e 1 drop é pouco pra chutar qual. Só que o
+// preço disso era perder os primeiros minutos de todo farme — e em DG que dropa devagar, "5
+// drops" podia levar vários minutos, deixando um pedaço inteiro fora da sessão pra você juntar
+// na mão depois. Como agora a sessão pode nascer SEM DG (ver startDgSession), não há mais nada
+// pra esperar: abre no primeiro drop e a DG se resolve sozinha logo em seguida.
+const MIN_DROPS_TO_DETECT = 1;
+
+// Abaixo disso, uma sessão sem DG que chega ao fim não vale uma linha no histórico — provavelmente
+// foi um drop perdido, não um farme. Ela é descartada no encerramento e os drops voltam pro painel
+// de "farme sem DG", onde você resolve se quiser. Sessão que ganhou DG é sempre guardada.
+const MIN_DROPS_TO_KEEP_UNASSIGNED = 3;
 // Só considera drops recentes — um lote antigo relido do arquivo não deve abrir sessão.
 const RECENT_WINDOW_MS = 10 * 60 * 1000;
 
@@ -107,9 +117,27 @@ function recentlyClosedSession() {
 
 // Chamada a cada lote de drops novos do log (ver file-source.js). Barata: sai logo de cara no
 // caso comum (sessão já aberta).
+// Sessão aberta sem DG: continua olhando os itens que caem e crava a DG assim que o cadastro
+// "Onde dropa" permitir. É a metade adiada do auto-start — abrir é urgente, identificar não é, e
+// esperar aqui custa zero porque o tempo já está sendo contado.
+function resolveUnassignedDungeon() {
+  const s = AppState.activeDgSession;
+  if (!s || s.dungeonId) return;
+  const summary = getActiveSessionSummary();
+  if (!summary?.items?.length) return;
+  const guess = guessDungeonFromDrops(summary.items);
+  if (!guess) return;
+
+  setActiveSessionDungeon(guess.dg.id, { auto: true });
+  showGoalToast(
+    '🎯 DG identificada',
+    `Os itens que caíram são de ${guess.dg.name} — marquei a sessão. Se não for, é só trocar no seletor do card.`
+  );
+}
+
 export function checkAutoStartSession() {
   if (!AppState.autoSessionEnabled) return;
-  if (AppState.activeDgSession) return;
+  if (AppState.activeDgSession) { resolveUnassignedDungeon(); return; }
   if (!AppState.dungeonList.length) return;
 
   const recent = unclaimedDropsSince(RECENT_WINDOW_MS);
@@ -133,26 +161,28 @@ export function checkAutoStartSession() {
 
   if (recent.length < MIN_DROPS_TO_DETECT) return;
 
-  const dungeon = guess?.dg || lastFarmedDungeon() || AppState.dungeonList[0];
-  if (!dungeon) return;
+  // Só assume uma DG quando os itens apontam pra ela. Sem isso a sessão nasce SEM DG em vez de
+  // herdar a última farmada: um palpite errado aqui contamina a média e o "Onde dropa" daquela
+  // outra DG, e o custo de arrumar é maior que o de escolher depois.
+  const dungeon = guess?.dg || null;
 
   // Retroage pro início do bloco de farme atual (mesmo critério do início manual) — não pro drop
   // mais antigo da janela, que pode ser de antes de uma pausa.
   const startAt = burstStartAt(recent);
   // Tempo por run vem do histórico da própria DG — é o que faz a contagem de runs funcionar sem
-  // o jogador precisar informar nada. Sem histórico ainda, abre com 0 (contagem manual) em vez de
-  // chutar um número.
-  const sugestao = suggestRunMinutes(dungeon.id);
-  startDgSession(dungeon.id, sugestao?.minutes || 0, { startAt, auto: true });
+  // o jogador precisar informar nada. Sem DG ainda não há o que sugerir; quando ela for definida,
+  // setActiveSessionDungeon reaplica a sugestão.
+  const sugestao = dungeon ? suggestRunMinutes(dungeon.id) : null;
+  startDgSession(dungeon?.id || null, sugestao?.minutes || 0, { startAt, auto: true });
 
   const sobreRuns = sugestao
     ? ` Contando as runs sozinho a ~${sugestao.minutes.toString().replace('.', ',')}min por run (sua média nessa DG).`
     : '';
   showGoalToast(
     '▶️ Sessão iniciada sozinha',
-    (guess
+    (dungeon
       ? `Detectei farme em ${dungeon.name} (pelos itens que caíram). Se não for essa DG, troque no seletor do card.`
-      : `Detectei farme sem sessão aberta e abri uma em ${dungeon.name} — confira a DG no seletor do card.`) + sobreRuns
+      : 'O tempo já está contando. Ainda não dá pra saber qual DG é — escolha no card, ou espere: se cair um item que só existe numa DG, eu marco sozinho.') + sobreRuns
   );
 }
 
@@ -176,10 +206,19 @@ export function checkAutoEndSession() {
 
   const nome = AppState.activeDgSession.dungeonName;
   const total = summary?.totalAlz || 0;
+
+  // Nunca ganhou DG e mal dropou: era drop perdido, não farme. Descarta em vez de sujar o
+  // histórico com uma linha "sem DG" de 1 drop. Nada se perde — os drops seguem no log e
+  // reaparecem no painel de farme sem DG, em Sessões.
+  if (!AppState.activeDgSession.dungeonId && (summary?.dropCount || 0) < MIN_DROPS_TO_KEEP_UNASSIGNED) {
+    discardActiveDgSession({ silent: true });
+    return;
+  }
+
   endDgSession({ endAt: referencia });
 
   showGoalToast(
     '⏹️ Sessão encerrada sozinha',
-    `${nome} ficou ${Math.round(idleCloseMs() / 60000)}min sem drop, então encerrei no horário do último — o tempo parado não entrou na conta. Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
+    `${nome || 'Sessão sem DG'} ficou ${Math.round(idleCloseMs() / 60000)}min sem drop, então encerrei no horário do último — o tempo parado não entrou na conta.${nome ? '' : ' Ela está no histórico esperando você dizer qual DG era.'} Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
   );
 }

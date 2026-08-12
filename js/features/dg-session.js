@@ -88,10 +88,19 @@ export function burstStartAt(drops) {
 // de apertar "Iniciar" alguns minutos depois perdia todo o farme desses minutos, silenciosamente —
 // os drops estavam no log, mas ficavam fora de qualquer sessão e portanto fora de "Qual DG rende
 // mais", de tempo/run e de Onde dropa.
+// Sessão SEM DG é permitida — mas só pra detecção automática, nunca pro início manual.
+//
+// A regra é: capturar o tempo é urgente, atribuir a DG não é. A detecção precisa abrir a sessão
+// no primeiro drop pra não perder farme, e nesse instante ela quase nunca sabe qual DG é. Antes
+// ela resolvia isso chutando a última DG farmada — o que enfia drops da DG errada na média de
+// outra e suja o "Onde dropa". Uma sessão sem DG não entra em conta nenhuma até alguém dizer
+// qual é: ela só segura o tempo e os drops, que é exatamente o que não dá pra recuperar depois.
+//
+// Quem clica "Iniciar" na mão, por outro lado, sabe onde está — aí exigir a DG é de graça.
 export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } = {}) {
-  if (!dungeonId) return;
-  const dg = AppState.dungeonList.find(d => d.id === dungeonId);
-  if (!dg) return;
+  if (!dungeonId && !auto) return;
+  const dg = dungeonId ? AppState.dungeonList.find(d => d.id === dungeonId) : null;
+  if (dungeonId && !dg) return;
 
   let retroagidos = 0;
   if (!startAt) {
@@ -113,8 +122,8 @@ export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } 
   // lembrar de preencher na mão. runsManuallySet vira true assim que o jogador editar o campo
   // direto (setActiveSessionRuns) — a partir daí o auto-cálculo para de sobrescrever a correção dele.
   AppState.activeDgSession = {
-    dungeonId: dg.id,
-    dungeonName: dg.name,
+    dungeonId: dg?.id || null,
+    dungeonName: dg?.name || null,
     routeId: routeMatch?.id || null,
     routeName: routeMatch?.name || null,
     startAt: startAt || Date.now(),
@@ -189,7 +198,10 @@ export function setActiveSessionRunMinutes(value) {
 // É o que torna a detecção automática confortável de verdade: você nunca aperta "Iniciar", ela
 // abre sozinha com um palpite, e corrigir o rótulo é um seletor ali na hora — em vez de esperar
 // encerrar e ir consertar no histórico depois.
-export function setActiveSessionDungeon(dungeonId) {
+// auto = quem está marcando a DG é a detecção pelos itens, não o jogador. Muda duas coisas: não
+// pergunta nada (um confirm() aparecendo sozinho no meio do farme seria péssimo) e não limpa o
+// aviso de "confira a DG" — quem conferiu foi o app, e ele pode ter errado.
+export function setActiveSessionDungeon(dungeonId, { auto = false } = {}) {
   const s = AppState.activeDgSession;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!s || !dg || dg.id === s.dungeonId) return;
@@ -202,7 +214,9 @@ export function setActiveSessionDungeon(dungeonId) {
   // desta DG e o palpite inicial errou (renomeia tudo), ou a DG mudou de verdade no meio (corta
   // em duas). E o corte tem um ponto exato pra acontecer: resumedAt, quando a sessão original
   // tinha encerrado.
-  if (s.resumedAt && sessionDrops(s.startAt, s.resumedAt).length) {
+  // A pergunta só faz sentido quando havia uma DG anterior pra separar. Sessão que estava sem DG
+  // não tem farme atribuído a ninguém pra proteger — rotular tudo é a única leitura possível.
+  if (!auto && s.dungeonId && s.resumedAt && sessionDrops(s.startAt, s.resumedAt).length) {
     const antes = sessionDrops(s.startAt, s.resumedAt).length;
     const cortar = confirm(
       `Esta sessão foi retomada de um farme anterior em "${s.dungeonName}", e tem ${antes} drop(s) de antes da pausa.\n\n` +
@@ -223,7 +237,7 @@ export function setActiveSessionDungeon(dungeonId) {
   if (!s.runsManuallySet) s.runMinutes = suggestRunMinutes(dg.id)?.minutes || 0;
   // Confirmar a DG na mão tira o aviso de "aberta automaticamente, confira": você acabou de
   // conferir. A rota também é reavaliada — a nova DG pode pertencer a outra rota aplicada hoje.
-  s.autoStarted = false;
+  if (!auto) s.autoStarted = false;
   const rota = findAppliedRouteForDungeon(dg.id);
   s.routeId = rota?.id || null;
   s.routeName = rota?.name || null;
@@ -570,6 +584,21 @@ export function getActiveSessionSummary() {
 // endAt opcional: o encerramento automático por inatividade (session-autostart.js) fecha a sessão
 // no horário do ÚLTIMO DROP, não no momento em que percebeu — senão o tempo parado entraria na
 // duração e afundaria a média de tempo/run daquela DG pra sempre.
+// Fecha a sessão ativa SEM gravar nada no histórico. É pro caso da sessão que não deveria ter
+// existido — a detecção automática abriu no primeiro drop e ele acabou não virando farme nenhum.
+// Os drops continuam no log e voltam a aparecer no painel de farme sem DG, então descartar aqui
+// não perde informação, só evita uma linha inútil no histórico.
+export function discardActiveDgSession({ silent = false } = {}) {
+  const s = AppState.activeDgSession;
+  if (!s) return;
+  const wasAutoWatchdog = s.autoWatchdog;
+  AppState.activeDgSession = null;
+  saveActiveDgSession();
+  if (wasAutoWatchdog && AppState.alertSettings.watchdogEnabled) setWatchdogEnabled(false);
+  renderPage();
+  if (!silent) showInfoToast('Sessão descartada — os drops continuam no log.');
+}
+
 export function endDgSession({ endAt } = {}) {
   const s = AppState.activeDgSession;
   if (!s) return;
@@ -832,6 +861,9 @@ export function computeDgComparison({ sinceDate } = {}) {
   const byDg = {};
   AppState.dgSessions.forEach(s => {
     if (sinceDate && s.date < sinceDate) return;
+    // Sessão ainda sem DG não vira uma "DG" fantasma na comparação — ela fica fora de todas as
+    // médias até você dizer qual era, que é o ponto de existir sem DG.
+    if (!s.dungeonId) return;
     const agg = byDg[s.dungeonId] || (byDg[s.dungeonId] = {
       dungeonId: s.dungeonId, dungeonName: s.dungeonName, sessions: 0, activeMs: 0, runs: 0, dropCount: 0, totalAlz: 0, sessionsList: [],
     });
@@ -953,7 +985,7 @@ export function computePersonalBests() {
   const [bestDate, bestDateTotal] = Object.entries(byDate).sort(([, a], [, b]) => b - a)[0];
   return {
     bestDay: { date: bestDate, totalAlz: bestDateTotal },
-    bestSession: { date: bestSession.date, dungeonName: bestSession.dungeonName, totalAlz: bestSession.valor },
+    bestSession: { date: bestSession.date, dungeonName: bestSession.dungeonName || 'Sem DG', totalAlz: bestSession.valor },
   };
 }
 

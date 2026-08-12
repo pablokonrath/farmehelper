@@ -16,6 +16,9 @@ export function getRareDropHistory(limit = 20) {
 
   for (const session of AppState.dgSessions) {
     if (!session.items) continue;
+    // Sessão sem DG definida ainda: não dá pra saber se o item era raro ALI, e agrupar todas as
+    // sem-DG juntas inventaria uma raridade que não existe.
+    if (!session.dungeonId) continue;
     let raras = raridadesPorDg.get(session.dungeonId);
     if (!raras) {
       raras = getExpectedItemNamesForDungeon(session.dungeonId);

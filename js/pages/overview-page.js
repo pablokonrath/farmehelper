@@ -40,7 +40,7 @@ function buildNextStepCard() {
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <i class="ti ti-player-play" style="color:var(--ok);font-size:20px"></i>
     <div style="flex:1;min-width:200px">
-      <div style="font-weight:700">Farmando em ${esc(ativa.dungeonName)}</div>
+      <div style="font-weight:700">${ativa.dungeonName ? `Farmando em ${esc(ativa.dungeonName)}` : 'Farmando — falta dizer a DG'}</div>
       <div style="font-size:var(--fs-sm);color:var(--muted)">${ativa.dropCount} drops · ${formatAlzGamer(ativa.totalAlz)}${ativa.alzPerHour != null ? ` · ${formatAlzGamer(ativa.alzPerHour)}/h` : ''}</div>
     </div>
     <button class="btn btn-d btn-xs" onclick="navigateTo('sessoes')"><i class="ti ti-arrow-right"></i>Ver sessão</button>

@@ -97,6 +97,9 @@ function timeHM(ms) {
 // DG — ver DEPLOY.md). Sem arquivo pra essa DG, cai num ícone genérico de espada via onerror,
 // sem precisar checar existência no servidor antes.
 function dgIcon(dungeonId, size = 26) {
+  // Sessão sem DG não tem ícone pra buscar — vai direto no fallback em vez de pedir um 404 a cada
+  // renderização (esta página re-renderiza a cada drop novo).
+  if (!dungeonId) return `<i class="ti ti-help-circle" style="font-size:${Math.round(size * 0.75)}px;color:var(--warn);width:${size}px;text-align:center;flex-shrink:0"></i>`;
   return `<img src="icons/dungeons/${dungeonId}.png" alt="" style="width:${size}px;height:${size}px;object-fit:contain;border-radius:6px;flex-shrink:0" onerror="this.outerHTML='<i class=&quot;ti ti-sword&quot; style=&quot;font-size:${Math.round(size * 0.75)}px;color:var(--muted);width:${size}px;text-align:center;flex-shrink:0&quot;></i>'">`;
 }
 
@@ -187,8 +190,9 @@ function sessionHistoryRow(s) {
   const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
   return `<tr>
         <td data-label="Dia">${formatDateBR(s.date)}</td>
-        <td data-label="DG"><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
-          ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
+        <td data-label="DG"><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px${s.dungeonId ? '' : ';border-color:var(--warn);color:var(--warn)'}" onchange="setSessionDungeon(${s.startAt}, this.value)" title="${s.dungeonId ? 'Trocar a DG desta sessão (ex: marcou a errada por engano)' : 'Esta sessão foi aberta sozinha e ainda não tem DG — ela fica fora de todas as médias até você escolher'}">
+          ${!s.dungeonId ? '<option value="" selected>— qual DG? —</option>' : ''}
+          ${s.dungeonId && !dgExists ? `<option value="${esc(s.dungeonId)}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
           ${renderDungeonOptionsGrouped(AppState.dungeonList, d => d.name, s.dungeonId)}
         </select></div></td>
         <td data-label="Horário" style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
@@ -254,7 +258,7 @@ function renderDeletedSessionsBin() {
     </div>
     <div style="display:flex;flex-direction:column;gap:6px">
       ${lixeira.map(s => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-size:12px">
-        <span style="font-weight:600">${esc(s.dungeonName)}</span>
+        <span style="font-weight:600">${esc(s.dungeonName || "Sem DG")}</span>
         <span style="color:var(--muted)">${formatDateBR(s.date)} · ${timeHM(s.startAt)}–${timeHM(s.endAt)} · ${s.dropCount} drops · ${formatAlzGamer(sessionTotalAlz(s))}</span>
         <span style="margin-left:auto;display:flex;gap:6px">
           <button class="btn btn-d btn-xs" onclick="restoreDeletedSession(${s.startAt})"><i class="ti ti-arrow-back-up"></i>Restaurar</button>
@@ -284,7 +288,7 @@ function unclaimedWindowsPanel(dateISO) {
     .sort((a, b) => a.startAt - b.startAt);
   const grupoJuntar = !sessoesDoDia.length ? [] : [{
     label: 'Juntar a uma sessão já registrada',
-    dungeons: sessoesDoDia.map(s => ({ id: `s:${s.startAt}`, name: `${s.dungeonName} · ${timeHM(s.startAt)}–${timeHM(s.endAt)}` })),
+    dungeons: sessoesDoDia.map(s => ({ id: `s:${s.startAt}`, name: `${s.dungeonName || "Sem DG"} · ${timeHM(s.startAt)}–${timeHM(s.endAt)}` })),
   }];
   return `<div style="margin-top:12px">
     <div style="font-size:12px;color:var(--txt);margin-bottom:8px"><i class="ti ti-alert-triangle" style="color:var(--gold)"></i> <strong>${janelas.length} bloco(s) de farme ${ehHoje ? 'de hoje' : `de ${formatDateBR(dateISO)}`} sem DG.</strong> Estão no log mas fora de qualquer sessão — escolha a DG pra cada um e eles entram nas médias.</div>
@@ -366,6 +370,9 @@ export function renderSessionsPage() {
   // poucas runs E resetar de fato compensa pelo histórico — não é um lembrete genérico.
   const resetNudge = (() => {
     if (!active) return '';
+    // Sessão ainda sem DG não tem limite diário pra comparar — e computeRunsDoneToday casaria
+    // com as outras sessões sem DG, somando runs de farmes que não têm nada a ver.
+    if (!AppState.activeDgSession.dungeonId) return '';
     const runsLeft = DAILY_RUN_LIMIT - computeRunsDoneToday(active.dungeonName);
     if (!(runsLeft > 0 && runsLeft <= 5)) return '';
     const row = reset.gemValueSet && reset.rows.find(r => r.dungeonName === active.dungeonName);
@@ -385,13 +392,18 @@ export function renderSessionsPage() {
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
             ${/* Seletor no lugar do nome fixo: com a sessão abrindo sozinha, corrigir a DG é a
                  ação mais provável aqui — antes exigia encerrar e ir consertar no histórico. */''}
-            <select class="inp" style="width:200px;font-weight:700" onchange="setActiveSessionDungeon(this.value)" title="Trocar a DG desta sessão — os drops continuam os mesmos, só muda a que DG eles são atribuídos">
+            ${/* Sem DG definida, o seletor precisa de um item vazio SELECIONADO: senão o navegador
+                 mostra a primeira DG da lista e o card mente, dizendo que a sessão é dela. */''}
+            <select class="inp" style="width:200px;font-weight:700${AppState.activeDgSession.dungeonId ? '' : ';border-color:var(--warn);color:var(--warn)'}" onchange="setActiveSessionDungeon(this.value)" title="Trocar a DG desta sessão — os drops continuam os mesmos, só muda a que DG eles são atribuídos">
+              ${AppState.activeDgSession.dungeonId ? '' : '<option value="" selected>— qual DG? —</option>'}
               ${renderDungeonOptionsGrouped(AppState.dungeonList, undefined, AppState.activeDgSession.dungeonId)}
             </select>
             ${AppState.activeDgSession.routeName ? `<span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(AppState.activeDgSession.routeName)}</span>` : ''}
           </div>
           <div id="dgLivePageBox" style="font-size:13px;color:var(--muted);margin-top:4px"></div>
-          ${AppState.activeDgSession.autoStarted ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-alert-triangle"></i> Aberta automaticamente — confira a DG no seletor acima. Trocar ali já corrige, sem precisar encerrar.</div>` : ''}
+          ${!AppState.activeDgSession.dungeonId
+            ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-clock-play"></i> <strong>O tempo já está contando</strong> — abri no primeiro drop pra não perder farme. Falta só dizer a DG no seletor acima. Se cair um item que só existe numa DG, eu marco sozinho.</div>`
+            : AppState.activeDgSession.autoStarted ? `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-alert-triangle"></i> Aberta automaticamente — confira a DG no seletor acima. Trocar ali já corrige, sem precisar encerrar.</div>` : ''}
           ${(() => {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
             return expected.length ? `<div style="font-size:11px;color:var(--epic);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';

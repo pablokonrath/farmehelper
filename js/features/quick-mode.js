@@ -83,7 +83,7 @@ export function quickNext() {
     if (qm.step === 1) {
       const active = getActiveSessionSummary();
       if (active) {
-        qm.data.endedName = active.dungeonName;
+        qm.data.endedName = active.dungeonName || 'Sem DG';
         qm.data.endedAlz = active.totalAlz;
         endDgSession();
         qm.step = 'done-end';
