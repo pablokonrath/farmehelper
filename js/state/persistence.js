@@ -132,6 +132,7 @@ export async function loadPersistedState() {
   AppState.rushCreditItemNames = { ...AppState.rushCreditItemNames, ...(appSettings.rushCreditItemNames || {}) };
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
+  AppState.rushMonthlyBudgetAlz = appSettings.rushMonthlyBudgetAlz ?? 0;
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
   AppState.weeklyGoalAlz = appSettings.weeklyGoalAlz ?? 0;
   AppState.monthlyGoalAlz = appSettings.monthlyGoalAlz ?? 0;
@@ -223,6 +224,10 @@ export function saveRushParams() {
     rushTicketPrice: AppState.rushTicketPrice,
     rushCardCashPrice: AppState.rushCardCashPrice,
   });
+}
+
+export function saveRushMonthlyBudget() {
+  return put('app-settings.php', { rushMonthlyBudgetAlz: AppState.rushMonthlyBudgetAlz });
 }
 
 export function saveDailyGoal() {

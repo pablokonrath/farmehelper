@@ -185,6 +185,37 @@ tbody tr:hover{background:var(--surf2)}
   /* Conteúdo largo (tabelas) rola dentro do próprio card, sem estourar a página. */
   .main .card{overflow-x:auto}
   .pg-title{font-size:var(--fs-3xl)}
+
+  /* ===== Tabela em modo cartão =====
+     As tabelas de análise (Qual DG rende mais, histórico de sessões, rotas, carrinho) têm de 6 a
+     10 colunas. Em 375px de largura isso virava rolagem horizontal: justamente a informação mais
+     valiosa do app ficando ilegível no aparelho em que ele é instalado como app. Aqui cada linha
+     vira um cartão, com o rótulo da coluna à esquerda e o valor à direita — o rótulo sai do
+     data-label de cada <td> (por isso toda célula dessas tabelas precisa ter o atributo).
+     Célula SEM data-label (botões de ação, posição do ranking) ocupa a linha inteira, sem rótulo.
+
+     Combinadores de filho direto de propósito: o histórico de sessões abre uma linha de detalhe
+     com OUTRA tabela dentro, que não deve virar cartão junto. */
+  table.t-cards > thead{display:none}
+  table.t-cards,
+  table.t-cards > tbody,
+  table.t-cards > tbody > tr,
+  table.t-cards > tbody > tr > td{display:block;width:auto}
+  table.t-cards > tbody > tr{background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+  table.t-cards > tbody > tr:hover{background:var(--surf2)}
+  table.t-cards > tbody > tr > td{border-bottom:1px dashed var(--border);padding:6px 0;display:flex;align-items:baseline;justify-content:space-between;gap:14px;text-align:right}
+  table.t-cards > tbody > tr > td:last-child{border-bottom:none}
+  table.t-cards > tbody > tr > td::before{content:attr(data-label);flex:0 0 auto;text-align:left;font-size:var(--fs-2xs);font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  table.t-cards > tbody > tr > td:not([data-label]){display:block;text-align:left}
+  table.t-cards > tbody > tr > td:not([data-label])::before{content:none}
+  /* Linha de detalhe (itens da sessão) é conteúdo do cartão acima, não um cartão novo. */
+  table.t-cards > tbody > tr.t-detail{background:transparent;border:none;padding:0;margin:-6px 0 8px}
+  table.t-cards > tbody > tr.t-detail > td{padding:0;display:block;text-align:left;border-bottom:none}
+  table.t-cards > tbody > tr.t-detail > td::before{content:none}
+  /* Cabeçalho de grupo (rota) continua uma faixa, não um cartão. */
+  table.t-cards > tbody > tr.t-group{background:transparent;border:none;padding:0;margin:12px 0 6px}
+  table.t-cards > tbody > tr.t-group > td{display:block;text-align:left;border-bottom:none}
+  table.t-cards > tbody > tr.t-group > td::before{content:none}
 }
 @media (max-width:480px){
   /* g2/g3 carregam os números grandes (Total de farme, líquido) — 1 por linha pra caber o valor

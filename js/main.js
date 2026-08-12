@@ -6,7 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, setSessionNote, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
 import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
@@ -36,6 +36,7 @@ import {
   setRushCartDate,
   setRushTicketPrice,
   setRushCardCashPrice,
+  setRushMonthlyBudget,
   toggleDungeonManager,
   startEditingDungeon,
   cancelEditingDungeon,
@@ -154,6 +155,7 @@ Object.assign(window, {
   setRushCartDate,
   setRushTicketPrice,
   setRushCardCashPrice,
+  setRushMonthlyBudget,
   toggleDungeonManager,
   startEditingDungeon,
   cancelEditingDungeon,
@@ -218,6 +220,7 @@ Object.assign(window, {
   setActiveSessionRuns,
   setSessionRuns,
   setSessionDungeon,
+  setSessionNote,
   deleteSession,
   toggleSessionItems,
   setResetConfig,

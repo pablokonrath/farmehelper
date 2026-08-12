@@ -137,6 +137,21 @@ export function deleteSession(startAt) {
   renderPage();
 }
 
+// Anotação livre de uma sessão ("lag", "testando build nova", "evento 2×"). Existe porque uma
+// sessão atípica distorce a média daquela DG pra sempre (o agregado soma o histórico inteiro) e o
+// único remédio que o app oferecia era EXCLUIR — o que apaga farme que aconteceu de verdade.
+// Anotar preserva o dado e explica o ponto fora da curva pra quando você reler o histórico meses
+// depois. Só texto: não entra em conta nenhuma, de propósito.
+export function setSessionNote(startAt, value) {
+  const s = AppState.dgSessions.find(x => x.startAt === startAt);
+  if (!s) return;
+  const note = (value || '').trim().slice(0, 120);
+  if (note) s.note = note;
+  else delete s.note;
+  saveDgSessions();
+  renderPage();
+}
+
 // Mostra/esconde a lista completa de itens de uma sessão no histórico (estado só de UI, não
 // persiste). Guardado por startAt.
 export function toggleSessionItems(startAt) {
@@ -388,10 +403,31 @@ export function computeDgComparison({ sinceDate } = {}) {
         .filter(s => (s.runs || 0) > 0);
       let recentAlzPerRun = null;
       let cooling = false;
+      // Por QUE esfriou. Só existem duas causas possíveis aqui, e elas pedem reações opostas:
+      // caiu o VOLUME (a DG está dropando menos coisa por run → o problema é a DG, troque de DG)
+      // ou piorou a COMPOSIÇÃO (dropa a mesma quantidade, mas de itens mais baratos → o problema
+      // é o que ela dropa, e trocar de DG pode não resolver).
+      //
+      // Preço de mercado NÃO entra na lista: sessionTotalAlz reavalia todo histórico pelo preço de
+      // HOJE (ver o comentário lá), então uma queda de preço derruba as duas janelas por igual e
+      // nunca aparece como "esfriando". Sem isso documentado, é fácil concluir a causa errada.
+      let coolingCause = null;
       if (recentSessions.length >= MIN_SESSIONS_FOR_TREND) {
         const recentRuns = recentSessions.reduce((sum, s) => sum + (s.runs || 0), 0);
         recentAlzPerRun = recentRuns > 0 ? recentSessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0) / recentRuns : null;
         cooling = recentAlzPerRun != null && alzPerRun != null && recentAlzPerRun < alzPerRun * (1 - COOLING_DROP_THRESHOLD);
+        if (cooling) {
+          const countItems = list => list.reduce((sum, s) => sum + Object.entries(s.items || {})
+            .filter(([name]) => !isExcludedGearItem(name))
+            .reduce((n, [, qty]) => n + qty, 0), 0);
+          const recentPerRun = recentRuns > 0 ? countItems(recentSessions) / recentRuns : null;
+          const overallPerRun = a.runs > 0 ? countItems(a.sessionsList) / a.runs : null;
+          if (recentPerRun != null && overallPerRun > 0) {
+            coolingCause = recentPerRun < overallPerRun * (1 - COOLING_DROP_THRESHOLD)
+              ? { tipo: 'volume', recentPerRun, overallPerRun }
+              : { tipo: 'composicao', recentPerRun, overallPerRun };
+          }
+        }
       }
 
       return {
@@ -413,6 +449,7 @@ export function computeDgComparison({ sinceDate } = {}) {
         netAlzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? netTotalAlz / (a.activeMs / 3600000) : null,
         recentAlzPerRun,
         cooling,
+        coolingCause,
       };
     })
     // Ordena por Alz/RUN, não por Alz/hora: DG tem limite diário de runs, então o que decide

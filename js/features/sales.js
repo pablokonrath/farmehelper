@@ -190,7 +190,18 @@ export function addSale() {
   const dup = findDuplicateSale(name, qty, unitPrice, date, AppState.editingSaleId);
   if (dup && !confirm(`Já existe uma venda igual a essa (${qty}× ${name} por ${formatAlzGamer(unitPrice * qty)}) registrada em ${formatDateBR(date)}. Confirma que não é duplicada?`)) return;
 
-  const drop = checkSalePriceDrop(name, unitPrice);
+  // Toda venda reescreve o preço cadastrado do item (ver applyAutoItemPrice), então um erro de
+  // ordem de grandeza aqui contamina o app inteiro igual a um preço digitado errado em Cálculo de
+  // farme — mesma checagem, mesmo motivo.
+  const sanity = checkPricePlausibility(name, unitPrice);
+  if (sanity && !confirm(
+    `${formatAlzGamer(unitPrice)} por unidade está ${sanity.factor}× ${sanity.tooHigh ? 'ACIMA' : 'ABAIXO'} da referência (${formatAlzGamer(sanity.reference)}, ${sanity.source}).\n\n` +
+    `Confira se a quantidade e o valor total estão certos — essa venda também vira o preço cadastrado de "${name}". Confirma?`
+  )) return;
+
+  // Só avisa da venda barata se a checagem de ordem de grandeza acima não disparou — 10× abaixo
+  // também está 20% abaixo, e dois confirms seguidos sobre o mesmo número viram ruído.
+  const drop = sanity ? null : checkSalePriceDrop(name, unitPrice);
   if (drop && !confirm(`Você tá vendendo "${name}" ${drop.dropPct}% abaixo da sua média recente (~${formatAlzGamer(drop.avg)}). Confirma mesmo assim?`)) return;
 
   if (AppState.editingSaleId) {
@@ -268,6 +279,42 @@ export function getSalePriceHistory(itemName) {
 // tudo que já teve preço cadastrado.
 export function getSoldItemNames() {
   return [...new Set(AppState.salesLog.map(s => stripEnhancementSuffix(s.itemName)))].sort();
+}
+
+// Um preço fora de ordem de grandeza é quase sempre erro de digitação (um zero a mais/a menos),
+// e é a única falha isolada capaz de falsificar o app inteiro em silêncio: o preço multiplica tudo
+// — meta do dia, Alz/run, qual DG rende mais, ranking de rota, vale-resetar, vale comprar crédito.
+// Nada disso questiona o número, todos confiam nele.
+//
+// Compara com a referência mais confiável disponível, nessa ordem: média das vendas REAIS recentes
+// do item (dado de mercado de verdade) e, na falta dela, o último preço já cadastrado. Sem nenhuma
+// das duas (item inédito), não há base pra julgar — devolve null em vez de chutar.
+const PRICE_SANITY_FACTOR = 10;
+export function checkPricePlausibility(itemName, newPrice) {
+  if (!itemName || !(newPrice > 0)) return null;
+
+  const key = stripEnhancementSuffix(itemName);
+  const recentSales = AppState.salesLog.filter(s => stripEnhancementSuffix(s.itemName) === key).slice(-5);
+  let reference = null;
+  let source = '';
+  if (recentSales.length) {
+    reference = recentSales.reduce((sum, s) => sum + s.unitPrice, 0) / recentSales.length;
+    source = `média das suas ${recentSales.length} última(s) venda(s)`;
+  } else {
+    // Ignora um ponto gravado hoje: recordPriceChange sobrescreve o ponto do dia, então numa
+    // segunda correção no mesmo dia a "referência" seria o próprio valor errado que acabou de
+    // entrar — comparar contra ele mesmo nunca acusaria nada.
+    const hist = (AppState.priceHistory[key] || []).filter(p => p.date !== todayISODate());
+    if (hist.length) {
+      reference = hist[hist.length - 1].price;
+      source = 'último preço que você tinha cadastrado';
+    }
+  }
+  if (!(reference > 0)) return null;
+
+  const factor = newPrice > reference ? newPrice / reference : reference / newPrice;
+  if (factor < PRICE_SANITY_FACTOR) return null;
+  return { reference, source, factor: Math.round(factor), tooHigh: newPrice > reference };
 }
 
 // Há quantos dias o preço cadastrado de um item foi mexido pela última vez (null = nunca teve

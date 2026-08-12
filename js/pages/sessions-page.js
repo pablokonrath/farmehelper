@@ -111,7 +111,7 @@ function sessionItemsRow(s) {
     .sort((a, b) => b.value - a.value);
   const alzPerRun = s.runs > 0 ? sessionTotalAlz(s) / s.runs : null;
   const activeMs = s.activeDurationMs ?? s.durationMs;
-  return `<tr><td colspan="10" style="background:var(--surf2);padding:14px 16px">
+  return `<tr class="t-detail"><td colspan="10" style="background:var(--surf2);padding:14px 16px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px">
       <span>Melhor drop: <strong style="color:var(--txt)">${s.bestItem ? `${esc(s.bestItem.name)} (${formatAlzGamer(s.bestItem.price)})` : '—'}</strong></span>
       <span>Alz por run: <strong style="color:var(--gold)">${alzPerRun != null ? formatAlzGamer(alzPerRun) : '—'}</strong></span>
@@ -130,30 +130,60 @@ function sessionItemsRow(s) {
   </td></tr>`;
 }
 
+// Selo de "esfriando" com a CAUSA, não só o aviso (ver coolingCause em computeDgComparison). As
+// duas causas possíveis pedem reações opostas, então mostrar qual é transforma o alerta em
+// decisão: caiu o volume → a DG está pior, considere trocar; piorou a composição → ela dropa o
+// mesmo tanto, só que de coisa mais barata, e trocar de DG pode não resolver nada.
+function coolingBadge(c) {
+  const base = `${formatAlzGamer(c.recentAlzPerRun)}/run nas últimas sessões, contra ${formatAlzGamer(c.alzPerRun)}/run na média`;
+  if (!c.coolingCause) {
+    return ` <i class="ti ti-trending-down" style="color:var(--warn)" title="Esfriando: ${base}."></i>`;
+  }
+  const { tipo, recentPerRun, overallPerRun } = c.coolingCause;
+  const n = v => v.toFixed(1).replace('.', ',');
+  const detalhe = tipo === 'volume'
+    ? `Caiu o VOLUME: ${n(recentPerRun)} itens/run agora, contra ${n(overallPerRun)} na média. A DG está dropando menos — considere trocar.`
+    : `Piorou a COMPOSIÇÃO: o volume se manteve (${n(recentPerRun)} itens/run, média ${n(overallPerRun)}), mas o que cai agora vale menos. Trocar de DG pode não resolver.`;
+  return ` <i class="ti ti-trending-down" style="color:var(--warn)" title="Esfriando: ${base}.&#10;&#10;${detalhe}"></i>`;
+}
+
+// Campo de anotação da sessão (ver setSessionNote em dg-session.js). Discreto quando vazio — é
+// exceção, não rotina: a maioria das sessões não precisa de explicação nenhuma.
+function sessionNoteCell(s) {
+  const has = !!s.note;
+  return `<input class="inp inp-sm" style="width:130px;${has ? '' : 'opacity:.45;'}border-style:dashed"
+    value="${esc(s.note || '')}" maxlength="120" placeholder="anotar…"
+    title="${has ? esc(s.note) : 'Anote o que fez essa sessão sair fora do padrão (lag, teste, evento) — não entra em nenhuma conta'}"
+    onchange="setSessionNote(${s.startAt}, this.value)">`;
+}
+
 // Uma linha do histórico (extraído pra reaproveitar dentro dos grupos por rota abaixo).
 function sessionHistoryRow(s) {
   const expanded = !!AppState.expandedDgSessions[s.startAt];
   const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
   return `<tr>
-        <td>${formatDateBR(s.date)}</td>
-        <td><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
+        <td data-label="Dia">${formatDateBR(s.date)}</td>
+        <td data-label="DG"><div style="display:flex;align-items:center;gap:8px">${dgIcon(s.dungeonId, 22)}<select class="inp inp-sm" style="width:150px" onchange="setSessionDungeon(${s.startAt}, this.value)" title="Trocar a DG desta sessão (ex: marcou a errada por engano)">
           ${!dgExists ? `<option value="${esc(s.dungeonId || '')}" selected>${esc(s.dungeonName)} (removida)</option>` : ''}
           ${renderDungeonOptionsGrouped(AppState.dungeonList, d => d.name, s.dungeonId)}
         </select></div></td>
-        <td style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
-        <td title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
-        <td><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
-        <td>${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
-        <td style="color:${getAlzTierColor(sessionTotalAlz(s))};font-weight:600" title="${formatNumber(sessionTotalAlz(s))} Alz">${formatAlzGamer(sessionTotalAlz(s))}</td>
-        <td style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(sessionTotalAlz(s) / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
-        <td><button aria-label="${expanded ? 'Esconder' : 'Ver'} itens desta sessão" title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i></button></td>
-        <td><button aria-label="Remover esta sessão" title="Remover esta sessão (ex: ficou aberta por engano e distorce a média de tempo)" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSession(${s.startAt})"><i class="ti ti-trash"></i></button></td>
+        <td data-label="Horário" style="font-variant-numeric:tabular-nums">${timeHM(s.startAt)}–${timeHM(s.endAt)}</td>
+        <td data-label="Duração" title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
+        <td data-label="Runs"><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
+        <td data-label="Drops">${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
+        <td data-label="Alz" style="color:${getAlzTierColor(sessionTotalAlz(s))};font-weight:600" title="${formatNumber(sessionTotalAlz(s))} Alz">${formatAlzGamer(sessionTotalAlz(s))}</td>
+        <td data-label="Alz / run" style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(sessionTotalAlz(s) / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
+        <td data-label="Anotação">${sessionNoteCell(s)}</td>
+        <td><div style="display:flex;gap:10px;align-items:center">
+          <button aria-label="${expanded ? 'Esconder' : 'Ver'} itens desta sessão" title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i> <span style="font-size:11px">itens</span></button>
+          <button aria-label="Remover esta sessão" title="Remover esta sessão (ex: ficou aberta por engano e distorce a média de tempo)" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSession(${s.startAt})"><i class="ti ti-trash"></i></button>
+        </div></td>
       </tr>${expanded ? sessionItemsRow(s) : ''}`;
 }
 
 function sessionHistoryGroupHeader(label, sessions, isRoute) {
   const totalAlz = sessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0);
-  return `<tr><td colspan="10" style="background:${isRoute ? 'var(--gold-bg)' : 'var(--surf2)'};padding:7px 16px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:${isRoute ? 'var(--gold)' : 'var(--muted)'}">
+  return `<tr class="t-group"><td colspan="10" style="background:${isRoute ? 'var(--gold-bg)' : 'var(--surf2)'};padding:7px 16px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:${isRoute ? 'var(--gold)' : 'var(--muted)'}">
     ${isRoute ? '<i class="ti ti-route"></i> ' : ''}${esc(label)} <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.85">— ${sessions.length} sessão${sessions.length > 1 ? 'ões' : ''}${totalAlz ? ', ' + formatAlzGamer(totalAlz) : ''}</span>
   </td></tr>`;
 }
@@ -345,18 +375,18 @@ export function renderSessionsPage() {
   ${liquidoDg && !gemValueSet && temDgComGema ? `<div style="font-size:11px;color:var(--warn);margin-bottom:10px"><i class="ti ti-alert-triangle"></i> Preço do Card Cash não configurado em <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Parâmetros do dia</a> — o custo de entrada em gemas de algumas DGs ainda não entra nesta conta.</div>` : ''}
   ${!comparison.length
     ? '<div class="empty">Marque um DG em “Farmando agora” e encerre a sessão para começar a comparar.</div>'
-    : `<table><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th>${liquidoDg ? '<th>Custo entrada / run</th>' : ''}<th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
+    : `<table class="t-cards"><thead><tr><th style="width:36px">#</th><th>DG</th><th>Sessões</th><th>Runs</th><th>Tempo / run</th><th>Tempo total</th>${liquidoDg ? '<th>Custo entrada / run</th>' : ''}<th>Alz total</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
       ${comparisonSorted.map((c, i) => `<tr>
         <td class="rank">${i + 1}</td>
-        <td style="font-weight:500">${esc(c.dungeonName)}${c.cooling ? ` <i class="ti ti-trending-down" style="color:var(--warn)" title="As últimas sessões desta DG renderam bem menos que a média mostrada (${formatAlzGamer(c.recentAlzPerRun)}/run recente vs ${formatAlzGamer(c.alzPerRun)}/run na média) — pode estar esfriando"></i>` : ''}</td>
-        <td>${c.sessions}</td>
-        <td>${c.runs || '—'}</td>
-        <td style="color:var(--txt2)">${c.msPerRun != null ? formatDuration(c.msPerRun) : '<span style="color:var(--muted)">—</span>'}</td>
-        <td>${formatDuration(c.durationMs)}</td>
-        ${liquidoDg ? `<td style="color:var(--muted)">${formatAlzGamer(c.entryCostPerRun)}</td>` : ''}
-        <td style="color:${getAlzTierColor(liquidoDg ? c.netTotalAlz : c.totalAlz)}" title="${formatNumber(liquidoDg ? c.netTotalAlz : c.totalAlz)} Alz">${formatAlzGamer(liquidoDg ? c.netTotalAlz : c.totalAlz)}</td>
-        <td style="color:var(--gold);font-weight:700">${(liquidoDg ? c.netAlzPerRun : c.alzPerRun) != null ? formatAlzGamer(liquidoDg ? c.netAlzPerRun : c.alzPerRun) : '<span style="color:var(--muted);font-weight:400">informe as runs</span>'}</td>
-        <td style="color:var(--muted)">${(liquidoDg ? c.netAlzPerHour : c.alzPerHour) != null ? formatAlzGamer(liquidoDg ? c.netAlzPerHour : c.alzPerHour) + '/h' : '—'}</td>
+        <td data-label="DG" style="font-weight:500">${esc(c.dungeonName)}${c.cooling ? coolingBadge(c) : ''}</td>
+        <td data-label="Sessões">${c.sessions}</td>
+        <td data-label="Runs">${c.runs || '—'}</td>
+        <td data-label="Tempo / run" style="color:var(--txt2)">${c.msPerRun != null ? formatDuration(c.msPerRun) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td data-label="Tempo total">${formatDuration(c.durationMs)}</td>
+        ${liquidoDg ? `<td data-label="Custo entrada / run" style="color:var(--muted)">${formatAlzGamer(c.entryCostPerRun)}</td>` : ''}
+        <td data-label="Alz total" style="color:${getAlzTierColor(liquidoDg ? c.netTotalAlz : c.totalAlz)}" title="${formatNumber(liquidoDg ? c.netTotalAlz : c.totalAlz)} Alz">${formatAlzGamer(liquidoDg ? c.netTotalAlz : c.totalAlz)}</td>
+        <td data-label="Alz / run" style="color:var(--gold);font-weight:700">${(liquidoDg ? c.netAlzPerRun : c.alzPerRun) != null ? formatAlzGamer(liquidoDg ? c.netAlzPerRun : c.alzPerRun) : '<span style="color:var(--muted);font-weight:400">informe as runs</span>'}</td>
+        <td data-label="Alz / hora" style="color:var(--muted)">${(liquidoDg ? c.netAlzPerHour : c.alzPerHour) != null ? formatAlzGamer(liquidoDg ? c.netAlzPerHour : c.alzPerHour) + '/h' : '—'}</td>
       </tr>`).join('')}
       </tbody></table>`}
 </div>`;
@@ -385,20 +415,20 @@ export function renderSessionsPage() {
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-route"></i>Qual rota rende mais</div></div>
   ${infoToggle('sessions-route-comparison', `Ordenado por <strong style="color:var(--gold)">Lucro/hora</strong> — uma rota mais longa pode ter lucro total maior sem ser a melhor forma de gastar seu tempo, então a comparação é por eficiência, não pelo lucro bruto. Lucro esperado = Alz/run histórico de cada DG (a coluna acima) × repetições da rota, menos o custo de rodar nos preços de hoje (já incluindo reset por gemas quando alguma DG passa de ${DAILY_RUN_LIMIT} runs e vale a pena resetar). Rota sem tempo estimado completo fica no fim, sem eficiência calculável ainda. Crie e edite rotas em Planejamento de Rush.`)}
-  <table><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th><th>Lucro/hora</th></tr></thead><tbody>
+  <table class="t-cards"><thead><tr><th style="width:36px">#</th><th>Rota</th><th>DGs</th><th>Tempo estimado</th><th>Retorno esperado</th><th>Custo</th><th>Lucro</th><th>Lucro/hora</th></tr></thead><tbody>
   ${routeComparison.map((r, i) => `<tr>
     <td class="rank">${i + 1}</td>
-    <td style="font-weight:500">${esc(r.name)}${r.missingDataCount ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${r.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no retorno esperado"></i>` : ''}${r.needsReset ? ` <i class="ti ti-sparkles" style="color:var(--warn)" title="Custo inclui reset por gemas — alguma DG desta rota passa de ${DAILY_RUN_LIMIT} runs"></i>` : ''}</td>
-    <td>${r.dgCount}</td>
-    <td>${r.estimatedTimeMs
+    <td data-label="Rota" style="font-weight:500">${esc(r.name)}${r.missingDataCount ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${r.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no retorno esperado"></i>` : ''}${r.needsReset ? ` <i class="ti ti-sparkles" style="color:var(--warn)" title="Custo inclui reset por gemas — alguma DG desta rota passa de ${DAILY_RUN_LIMIT} runs"></i>` : ''}</td>
+    <td data-label="DGs">${r.dgCount}</td>
+    <td data-label="Tempo estimado">${r.estimatedTimeMs
       ? (r.hasTimeData
         ? `<span title="${esc(timeBreakdownTooltip(r.timeBreakdown))}">${formatDuration(r.estimatedTimeMs)}</span>`
         : `<span title="${esc(timeBreakdownTooltip(r.timeBreakdown) + (r.timeBreakdown.length ? '\n\n' : '') + 'Falta tempo/run farmado de: ' + r.missingTimeDataDgNames.join(', ') + ' — soma só das DGs com dado')}">≈${formatDuration(r.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)">—</span>'}</td>
-    <td style="color:${getAlzTierColor(r.expectedAlz)}" title="${formatNumber(r.expectedAlz)} Alz">${formatAlzGamer(r.expectedAlz)}</td>
-    <td style="color:var(--muted)" title="${formatNumber(r.cost)} Alz">${formatAlzGamer(r.cost)}</td>
-    <td style="color:${r.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700" title="${formatNumber(r.profit)} Alz">${r.profit >= 0 ? '+' : ''}${formatAlzGamer(r.profit)}</td>
-    <td style="color:var(--gold);font-weight:700">${r.profitPerHour != null ? formatAlzGamer(r.profitPerHour) + '/h' : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+    <td data-label="Retorno esperado" style="color:${getAlzTierColor(r.expectedAlz)}" title="${formatNumber(r.expectedAlz)} Alz">${formatAlzGamer(r.expectedAlz)}</td>
+    <td data-label="Custo" style="color:var(--muted)" title="${formatNumber(r.cost)} Alz">${formatAlzGamer(r.cost)}</td>
+    <td data-label="Lucro" style="color:${r.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:700" title="${formatNumber(r.profit)} Alz">${r.profit >= 0 ? '+' : ''}${formatAlzGamer(r.profit)}</td>
+    <td data-label="Lucro/hora" style="color:var(--gold);font-weight:700">${r.profitPerHour != null ? formatAlzGamer(r.profitPerHour) + '/h' : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
   </tr>`).join('')}
   </tbody></table>
 </div>`;
@@ -448,7 +478,7 @@ export function renderSessionsPage() {
   ${infoToggle('sessions-history', 'Mostra só o dia selecionado, agrupado por rota quando você iniciou a sessão com uma aplicada no carrinho (farme avulso fica junto em "Avulsas"). A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens. Sessão errada (ex: ficou aberta por horas sem farmar) distorce a média de tempo daquele DG pra sempre — exclua pela lixeira.')}
   ${!history.length
     ? `<div class="empty">Nenhuma sessão de DG encerrada em ${formatDateBR(historyDate)}.</div>`
-    : `<table><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th style="width:36px"></th><th style="width:36px"></th></tr></thead><tbody>
+    : `<table class="t-cards"><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th>Anotação</th><th style="width:80px"></th></tr></thead><tbody>
       ${renderSessionHistoryGroups(history)}
       </tbody></table>`}
 </div>`;
@@ -470,14 +500,14 @@ export function renderSessionsPage() {
     : `<div style="font-size:13px;margin-bottom:12px">Cada run extra via reset custa <strong style="color:var(--err)">${formatAlzGamer(reset.resetCostPerRun)}</strong>. Um DG só vale resetar se o líquido por run passar disso.</div>
     ${!reset.rows.length
       ? '<div class="empty">Nenhum DG com runs informadas ainda — preencha as runs no histórico acima.</div>'
-      : `<table><thead><tr><th>DG</th><th>Alz / run</th><th>Custo de entrada / run</th><th>Líquido / run</th><th>Após reset</th><th>Veredito</th></tr></thead><tbody>
+      : `<table class="t-cards"><thead><tr><th>DG</th><th>Alz / run</th><th>Custo de entrada / run</th><th>Líquido / run</th><th>Após reset</th><th>Veredito</th></tr></thead><tbody>
         ${reset.rows.map(r => `<tr>
-          <td style="font-weight:500">${esc(r.dungeonName)}</td>
-          <td>${formatAlzGamer(r.alzPerRun)}</td>
-          <td style="color:var(--muted)">${formatAlzGamer(r.entryCostPerRun)}</td>
-          <td style="color:${r.netAlzPerRun >= 0 ? 'var(--txt)' : 'var(--err)'}">${formatAlzGamer(r.netAlzPerRun)}</td>
-          <td style="color:${r.profitAfterReset >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600">${r.profitAfterReset >= 0 ? '+' : ''}${formatAlzGamer(r.profitAfterReset)}</td>
-          <td>${r.worth ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Vale resetar</span>' : '<span class="badge" style="background:var(--err-bg);color:var(--err)"><i class="ti ti-x"></i> Não compensa</span>'}</td>
+          <td data-label="DG" style="font-weight:500">${esc(r.dungeonName)}</td>
+          <td data-label="Alz / run">${formatAlzGamer(r.alzPerRun)}</td>
+          <td data-label="Custo entrada / run" style="color:var(--muted)">${formatAlzGamer(r.entryCostPerRun)}</td>
+          <td data-label="Líquido / run" style="color:${r.netAlzPerRun >= 0 ? 'var(--txt)' : 'var(--err)'}">${formatAlzGamer(r.netAlzPerRun)}</td>
+          <td data-label="Após reset" style="color:${r.profitAfterReset >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600">${r.profitAfterReset >= 0 ? '+' : ''}${formatAlzGamer(r.profitAfterReset)}</td>
+          <td data-label="Veredito">${r.worth ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Vale resetar</span>' : '<span class="badge" style="background:var(--err-bg);color:var(--err)"><i class="ti ti-x"></i> Não compensa</span>'}</td>
         </tr>`).join('')}
         </tbody></table>`}`}
 </div>`;

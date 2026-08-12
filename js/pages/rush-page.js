@@ -1,12 +1,12 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
-import { computeResetWorth, computeDgComparison, DAILY_RUN_LIMIT } from '../features/dg-session.js';
+import { computeResetWorth, computeDgComparison, sessionTotalAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, parseAlzInput, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
-import { saveRushParams } from '../state/persistence.js';
+import { saveRushParams, saveRushMonthlyBudget } from '../state/persistence.js';
 import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
@@ -39,6 +39,12 @@ export function setRushCardCashPrice(value) {
   saveRushParams().catch(err => console.error('Falha ao salvar Card Cash:', err));
 }
 
+export function setRushMonthlyBudget(value) {
+  AppState.rushMonthlyBudgetAlz = parseAlzInput(value);
+  saveRushMonthlyBudget().catch(err => console.error('Falha ao salvar teto mensal de rush:', err));
+  renderPage();
+}
+
 export function toggleDungeonManager() {
   AppState.isDungeonManagerOpen = !AppState.isDungeonManagerOpen;
   renderPage();
@@ -61,6 +67,23 @@ export function toggleRushRouteItems(routeId) {
   if (AppState.expandedRushRoutes[routeId]) delete AppState.expandedRushRoutes[routeId];
   else AppState.expandedRushRoutes[routeId] = true;
   renderPage();
+}
+
+// Resultado real de cada dia que tem rush salvo: o Alz farmado naquele dia (todas as sessões,
+// valorizado pelos preços de hoje — mesma base de "Qual DG rende mais", pra dias diferentes serem
+// comparáveis entre si) menos o custo do rush. Só entra dia que tem sessão registrada: rush salvo
+// sem nenhuma sessão não permite dizer que rendeu zero, só que não dá pra saber.
+function computeRushOutcomes() {
+  const alzByDate = {};
+  AppState.dgSessions.forEach(s => {
+    alzByDate[s.date] = (alzByDate[s.date] || 0) + sessionTotalAlz(s);
+  });
+  const out = {};
+  Object.entries(AppState.rushHistory).forEach(([date, rush]) => {
+    if (alzByDate[date] === undefined) return;
+    out[date] = { realized: alzByDate[date], result: alzByDate[date] - (rush.total || 0) };
+  });
+  return out;
 }
 
 export function renderRushPage() {
@@ -103,6 +126,20 @@ export function renderRushPage() {
   });
   const expectedProfit = expectedReturn - cost.total;
 
+  // Gasto acumulado do MÊS CIVIL corrente contra o teto que o jogador definiu (0 = sem teto).
+  const agora = new Date();
+  const prefixoMes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
+  const gastoNoMes = Object.entries(AppState.rushHistory)
+    .filter(([date]) => date.startsWith(prefixoMes))
+    .reduce((sum, [, r]) => sum + (r.total || 0), 0);
+  const tetoMes = +AppState.rushMonthlyBudgetAlz || 0;
+  const budget = {
+    spent: gastoNoMes,
+    limit: tetoMes,
+    pct: tetoMes > 0 ? Math.round((gastoNoMes / tetoMes) * 100) : 0,
+    monthLabel: agora.toLocaleDateString('pt-BR', { month: 'long' }),
+  };
+
   const paramsCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-calendar"></i>Parâmetros do dia</div>
@@ -117,6 +154,24 @@ export function renderRushPage() {
         oninput="maskAlzInputLive(this)" onblur="setRushCardCashPrice(this.value)">
       <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
   </div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap">
+      <div style="width:190px"><label class="lbl">Teto de rush no mês (Alz)</label>
+        <input class="inp" type="text" inputmode="numeric" placeholder="opcional" value="${AppState.rushMonthlyBudgetAlz ? formatNumber(AppState.rushMonthlyBudgetAlz) : ''}" oninput="maskAlzInputLive(this)" onblur="setRushMonthlyBudget(this.value)"></div>
+      <div style="flex:1;min-width:220px;font-size:12px;color:var(--muted);padding-bottom:6px">
+        ${budget.spent > 0 || budget.limit > 0
+          ? `Já investido em ${budget.monthLabel}: <strong style="color:var(--txt)" title="${formatNumber(budget.spent)} Alz">${formatAlzGamer(budget.spent)}</strong>${budget.limit > 0 ? ` de ${formatAlzGamer(budget.limit)} <span style="color:${budget.pct >= 100 ? 'var(--err)' : budget.pct >= 80 ? 'var(--warn)' : 'var(--muted)'}">(${budget.pct}%)</span>` : ''}`
+          : 'Sem gasto de rush registrado neste mês ainda.'}
+      </div>
+    </div>
+    ${budget.limit > 0 ? `<div style="height:6px;background:var(--surf2);border-radius:4px;overflow:hidden;margin-top:8px">
+      <div style="height:100%;width:${Math.min(100, budget.pct)}%;background:${budget.pct >= 100 ? 'var(--err)' : budget.pct >= 80 ? 'var(--warn)' : 'var(--acc)'}"></div>
+    </div>` : ''}
+    ${budget.limit > 0 && budget.pct >= 80 ? `<div style="font-size:11px;color:${budget.pct >= 100 ? 'var(--err)' : 'var(--warn)'};margin-top:8px"><i class="ti ti-alert-triangle"></i> ${budget.pct >= 100
+      ? `Você passou do teto que definiu pra este mês em ${formatAlzGamer(budget.spent - budget.limit)}.`
+      : `Faltam ${formatAlzGamer(budget.limit - budget.spent)} pro teto do mês.`}</div>` : ''}
+    <div class="hint" style="margin-top:6px">Só um freio pra você mesmo — não bloqueia nada. Existe porque é justamente em mês ruim que o gasto sobe, tentando compensar rushando mais.</div>
+  </div>
 </div>`;
 
   // Rotas ficam logo após os parâmetros do dia — é o caminho rápido do dia a dia (aplicar e
@@ -128,7 +183,7 @@ export function renderRushPage() {
   <div class="ctitle"><i class="ti ti-route"></i>Minhas rotas</div>
   ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. <strong>Lucro esperado</strong> e <strong>Lucro/hora</strong> são a mesma conta de "Qual rota rende mais" em Sessões de farme (Alz/run histórico de cada DG × repetições, menos o custo de rodar nos preços de hoje) — trazida pra cá pra decidir sem precisar trocar de página. <i class="ti ti-trophy" style="color:var(--gold)"></i> marca a rota de melhor Lucro/hora entre as suas. Clique no número de DGs pra ver quais são.')}
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
-  <table><thead><tr><th>Rota</th><th style="width:130px">DGs</th><th>Tempo estimado</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
+  <table class="t-cards"><thead><tr><th>Rota</th><th style="width:130px">DGs</th><th>Tempo estimado</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
     const stats = routeTimeById[route.id];
     const isBest = melhorRota && route.id === melhorRota.id;
@@ -137,8 +192,8 @@ export function renderRushPage() {
       ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="${stats.missingDataCount} DG(s) desta rota ainda sem sessão farmada com runs registradas — não entram no lucro esperado"></i>`
       : '';
     return `<tr>
-    <td style="font-weight:500">${isBest ? '<i class="ti ti-trophy" style="color:var(--gold)" title="Melhor Lucro/hora entre suas rotas"></i> ' : ''}${esc(route.name)}${missingWarning}</td>
-    <td>
+    <td data-label="Rota" style="font-weight:500">${isBest ? '<i class="ti ti-trophy" style="color:var(--gold)" title="Melhor Lucro/hora entre suas rotas"></i> ' : ''}${esc(route.name)}${missingWarning}</td>
+    <td data-label="DGs">
       <button onclick="toggleRushRouteItems('${route.id}')" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;padding:0">
         ${route.items.length} DG${route.items.length > 1 ? 's' : ''} <i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i>
       </button>
@@ -149,13 +204,13 @@ export function renderRushPage() {
         }).join('')}
       </div>` : ''}
     </td>
-    <td>${stats?.estimatedTimeMs
+    <td data-label="Tempo estimado">${stats?.estimatedTimeMs
       ? (stats.hasTimeData
         ? `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown))}">${formatDuration(stats.estimatedTimeMs)}</span>`
         : `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown) + (stats.timeBreakdown.length ? '\n\n' : '') + 'Falta tempo/run farmado de: ' + stats.missingTimeDataDgNames.join(', ') + ' — soma só das DGs com dado')}">≈${formatDuration(stats.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)" title="Nenhuma DG desta rota tem tempo/run farmado ainda">—</span>'}</td>
-    <td>${stats && stats.expectedAlz > 0 ? `<span style="color:${stats.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600" title="${formatNumber(stats.profit)} Alz">${stats.profit >= 0 ? '+' : ''}${formatAlzGamer(stats.profit)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
-    <td>${stats?.profitPerHour != null ? `<strong style="color:var(--gold)">${formatAlzGamer(stats.profitPerHour)}/h</strong>` : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+    <td data-label="Lucro esperado">${stats && stats.expectedAlz > 0 ? `<span style="color:${stats.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600" title="${formatNumber(stats.profit)} Alz">${stats.profit >= 0 ? '+' : ''}${formatAlzGamer(stats.profit)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+    <td data-label="Lucro/hora">${stats?.profitPerHour != null ? `<strong style="color:var(--gold)">${formatAlzGamer(stats.profitPerHour)}/h</strong>` : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-d btn-xs" aria-label="Aplicar rota ${esc(route.name)}" onclick="applyRushRoute('${route.id}')" title="Soma as DGs desta rota ao carrinho de hoje"><i class="ti ti-player-play"></i></button>
       <button class="btn btn-d btn-xs" aria-label="Editar rota ${esc(route.name)}" onclick="startEditingRushRoute('${route.id}')" title="Editar (adicionar/remover DGs, mudar repetições)"><i class="ti ti-pencil"></i></button>
@@ -224,7 +279,7 @@ export function renderRushPage() {
   </div>` : ''}
   ${AppState.rushHistory[AppState.rushCartDate] ? `<div style="font-size:12px;color:var(--acc);background:var(--acc-bg,rgba(34,211,238,.08));border:1px solid var(--acc-border,rgba(34,211,238,.3));border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-info-circle"></i> Este dia (${formatDateBR(AppState.rushCartDate)}) já tem um rush salvo. Ao salvar, ele é <strong>atualizado</strong> com o carrinho atual — não cria outro nem duplica.</div>` : ''}
   ${!AppState.rushCart.length ? '<div class="empty">Nenhuma DG adicionada. Escolha uma DG acima e clique em Adicionar, ou aplique uma rota salva.</div>' : `
-  <table><thead><tr><th>DG</th><th>Tipo</th><th>Reps</th><th>Reset</th><th>Custo (breakdown)</th><th style="width:40px"></th></tr></thead><tbody>
+  <table class="t-cards"><thead><tr><th>DG</th><th>Tipo</th><th>Reps</th><th>Reset</th><th>Custo (breakdown)</th><th style="width:40px"></th></tr></thead><tbody>
   ${AppState.rushCart.map((item, i) => {
     // Breakdown por item já vem pronto de calculateRushCartCost (cost.items, mesma posição do
     // carrinho) — não recalcula a fórmula aqui, só monta o texto/badges em cima do número pronto.
@@ -250,11 +305,11 @@ export function renderRushPage() {
       ? ` <i class="ti ti-alert-triangle" style="color:var(--warn)" title="Pelo seu histórico, o líquido desta DG (já descontando custo de entrada) é ${formatAlzGamer(dgStat.netAlzPerRun)}/run — negativo mesmo sem reset. Veja 'Qual DG rende mais' em Sessões de farme."></i>`
       : '';
     return `<tr>
-      <td style="font-weight:500">${esc(item.name)}${negativeWarning}</td>
-      <td>${typeBadges.join(' ')}</td>
-      <td>${item.repetitions}×</td>
-      <td>${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}${resetWarning}</td>
-      <td>${renderAlzValue(b.total, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
+      <td data-label="DG" style="font-weight:500">${esc(item.name)}${negativeWarning}</td>
+      <td data-label="Tipo">${typeBadges.join(' ')}</td>
+      <td data-label="Reps">${item.repetitions}×</td>
+      <td data-label="Reset">${item.usedReset ? '<span class="badge badge-warn">Sim</span>' : '<span class="badge badge-muted">Não</span>'}${resetWarning}</td>
+      <td data-label="Custo">${renderAlzValue(b.total, true)}<div style="font-size:var(--fs-2xs);color:var(--muted);margin-top:2px">${breakdown.join(' + ')}</div></td>
       <td><button aria-label="Remover ${esc(item.name)} do carrinho" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeDungeonFromCart(${i})"><i class="ti ti-trash"></i></button></td>
     </tr>`;
   }).join('')}
@@ -358,21 +413,35 @@ export function renderRushPage() {
   </div>` : ''}
 </div>`;
 
+  // Planejado × realizado. A página inteira é previsão — estima custo, retorno e lucro todo dia —
+  // e nunca conferia a própria aposta: o histórico mostrava só o que você GASTOU. Sem o resultado
+  // ao lado, "lucro esperado" nunca é validado e o jogador não descobre se a estimativa do app é
+  // otimista ou pessimista pro caso dele. O dado sempre esteve em dgSessions, só não era cruzado.
+  const rushOutcomes = computeRushOutcomes();
   const savedRushesCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Rushes salvos</div>
-  <span style="font-size:12px;color:var(--muted)">Acumulado: ${renderAlzValue(Object.values(AppState.rushHistory).reduce((s, r) => s + r.total, 0), true)}</span></div>
+  <span style="font-size:12px;color:var(--muted)">Investido no total: ${renderAlzValue(Object.values(AppState.rushHistory).reduce((s, r) => s + r.total, 0), true)}</span></div>
+  ${infoToggle('rush-saved', 'O <strong>realizado</strong> é o Alz de todas as sessões daquele dia, valorizado pelos preços de HOJE (mesma base de "Qual DG rende mais", pra comparar dias diferentes na mesma régua). O <strong>resultado</strong> é realizado menos o custo do rush daquele dia — é o número que diz se o plano valeu. Dia sem sessão registrada aparece como "sem sessão": o rush foi salvo, mas não há como saber o que rendeu.')}
   ${!Object.keys(AppState.rushHistory).length ? '<div class="empty">Nenhum rush salvo.</div>' : `
-  <table><thead><tr><th>Data</th><th>DGs</th><th>Custo total</th><th style="width:70px">Ações</th></tr></thead><tbody>
-  ${Object.entries(AppState.rushHistory).sort(([a], [b]) => b.localeCompare(a)).map(([date, rush]) => `<tr>
-    <td>${formatDateBR(date)}</td><td>${rush.items?.length || 0} DGs</td>
-    <td>${renderAlzValue(rush.total, true)}</td>
+  <table class="t-cards"><thead><tr><th>Data</th><th>DGs</th><th>Custo</th><th>Realizado</th><th>Resultado</th><th style="width:70px">Ações</th></tr></thead><tbody>
+  ${Object.entries(AppState.rushHistory).sort(([a], [b]) => b.localeCompare(a)).map(([date, rush]) => {
+    const out = rushOutcomes[date];
+    return `<tr>
+    <td data-label="Data">${formatDateBR(date)}</td>
+    <td data-label="DGs">${rush.items?.length || 0} DGs</td>
+    <td data-label="Custo">${renderAlzValue(rush.total, true)}</td>
+    <td data-label="Realizado">${out ? renderAlzValue(out.realized) : '<span style="color:var(--muted)">sem sessão</span>'}</td>
+    <td data-label="Resultado">${out
+      ? `<strong style="color:${out.result >= 0 ? 'var(--ok)' : 'var(--err)'}" title="${formatNumber(out.result)} Alz">${out.result >= 0 ? '+' : ''}${formatAlzGamer(out.result)}</strong>`
+      : '<span style="color:var(--muted)">—</span>'}</td>
     <td><div style="display:flex;gap:4px">
       <button class="btn btn-d btn-xs" aria-label="Editar rush de ${formatDateBR(date)}" onclick="editSavedRush('${date}')" title="Editar (adicionar/remover DGs)"><i class="ti ti-edit"></i></button>
       <button class="btn btn-d btn-xs" aria-label="Duplicar rush de ${formatDateBR(date)} pra hoje" onclick="duplicateSavedRush('${date}')" title="Duplicar pra hoje"><i class="ti ti-copy"></i></button>
       <button aria-label="Remover rush de ${formatDateBR(date)}" title="Remover" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteRushForDay('${date}')"><i class="ti ti-trash"></i></button>
     </div></td>
-  </tr>`).join('')}
+  </tr>`;
+  }).join('')}
   </tbody></table>`}
 </div>`;
 

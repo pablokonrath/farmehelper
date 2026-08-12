@@ -146,6 +146,10 @@ export const AppState = {
   // item depois, só o excedente NOVO volta a aparecer. Guardado por nome (mesma chave sem +N que
   // o resto do módulo de vendas), em app_settings.
   unsoldInventoryDismissals: {},
+  // Teto mensal de gasto em rush. Existe líquido do dia e retorno por bloco, mas nada acumulado —
+  // e é justamente num mês ruim que o gasto tende a subir (tentar compensar rushando mais). 0 =
+  // sem teto. Ver rushSpentThisMonth em rush-page.js.
+  rushMonthlyBudgetAlz: 0,
   rushHistory: {},
   // Rotas de DGs reutilizáveis (molde de rush, sem data fixa) — [{id, name, items: [{dungeonId,
   // repetitions}]}]. Ver rush-routes.js.
