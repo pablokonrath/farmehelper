@@ -2,16 +2,42 @@ import { AppState } from '../state/app-state.js';
 import { stripEnhancementSuffix, normalizeForSearch, todayISODate } from '../utils/parsing.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor } from '../utils/formatting.js';
 
+// Preço de um item, em duas camadas — o SEU vale por cima do da comunidade.
+//
+// A camada de referência (mediana do que todas as contas cadastraram, ver api/reference-prices.php)
+// existe porque conta nova começava do zero: o app contava os drops mas não sabia quanto valiam,
+// então tudo aparecia como 0 até a pessoa cadastrar item por item. Agora ela já entra com valor
+// utilizável no que a comunidade conhece e só ajusta o que discordar.
+//
+// Editar um preço grava sempre em itemPrices (seu) — a referência é imutável pelo app. Ninguém
+// muda o número que os outros veem.
 export function getItemPrice(itemName) {
-  return AppState.itemPrices[itemName] ?? AppState.itemPrices[stripEnhancementSuffix(itemName)] ?? 0;
+  const base = stripEnhancementSuffix(itemName);
+  return AppState.itemPrices[itemName]
+    ?? AppState.itemPrices[base]
+    ?? getReferencePrice(itemName)
+    ?? 0;
 }
 
+export function getReferencePrice(itemName) {
+  const ref = AppState.referenceItemPrices;
+  return (ref[itemName] ?? ref[stripEnhancementSuffix(itemName)])?.price ?? null;
+}
+
+// Você já definiu esse preço, ou está usando o da comunidade?
+export function hasPersonalPrice(itemName) {
+  return AppState.itemPrices[itemName] !== undefined || AppState.itemPrices[stripEnhancementSuffix(itemName)] !== undefined;
+}
+
+// Existe um valor utilizável pra esse item — seu ou da comunidade. É o que decide se ele entra no
+// aviso de "itens sem preço": item coberto pela referência não é uma pendência sua.
+//
 // Diferente de getItemPrice > 0: um item cadastrado como 0 de propósito (lixo que ainda cai, mas
 // não vale nada) TEM preço registrado — só vale 0. getItemPrice sozinho não distingue "decidi que
 // é 0" de "nunca decidi nada" (os dois retornam 0), o que fazia o aviso de "itens sem preço" (ver
 // pricing-page.js) cobrar pra sempre um item que o jogador já resolveu.
 export function hasRegisteredPrice(itemName) {
-  return AppState.itemPrices[itemName] !== undefined || AppState.itemPrices[stripEnhancementSuffix(itemName)] !== undefined;
+  return hasPersonalPrice(itemName) || getReferencePrice(itemName) != null;
 }
 
 // Categoria de um item. Duas camadas, e a PESSOAL ganha da global — mesma lógica de curadoria já

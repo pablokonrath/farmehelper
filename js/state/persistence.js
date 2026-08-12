@@ -66,13 +66,18 @@ function applyStateFromPayload(payload) {
 }
 
 async function loadGlobalOnlyState() {
-  const [itemCategories, itemCategoryAssignments, itemDungeonSources, eventSchedule, alertSounds, knownItemNames] = await Promise.all([
+  const [itemCategories, itemCategoryAssignments, itemDungeonSources, eventSchedule, alertSounds, knownItemNames, referenceItemPrices] = await Promise.all([
     get('item-categories.php'),
     get('item-category-assignments.php'),
     get('item-dungeon-sources.php'),
     get('event-schedule.php'),
     get('alert-sounds.php'),
     get('known-item-names.php'),
+    // Tolera falha de propósito: é o único endpoint OPCIONAL do carregamento — sem ele o app
+    // funciona exatamente como antes (cada um com os próprios preços). Sem o catch, uma instalação
+    // que ainda não subiu api/reference-prices.php quebraria o carregamento inteiro, derrubando o
+    // app por causa de um recurso que só melhora o começo de conta nova.
+    get('reference-prices.php').catch(() => ({})),
   ]);
   AppState.itemCategories = itemCategories;
   AppState.itemCategoryAssignments = itemCategoryAssignments;
@@ -80,6 +85,7 @@ async function loadGlobalOnlyState() {
   AppState.eventSchedule = eventSchedule;
   AppState.alertSounds = alertSounds;
   AppState.knownItemNames = knownItemNames;
+  AppState.referenceItemPrices = referenceItemPrices || {};
 }
 
 export async function loadPersistedState() {

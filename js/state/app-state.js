@@ -289,6 +289,11 @@ export const AppState = {
   eventSchedule: { tg: [], worldboss: [] },
   alertSounds: {},
   knownItemNames: [],
+  // Preço de referência da comunidade por item: { nome: { price, accounts } } — mediana do que
+  // todas as contas cadastraram (ver api/reference-prices.php). Só leitura: serve de PADRÃO pra
+  // quem ainda não cadastrou o item. Editar o preço grava em itemPrices (seu), nunca aqui —
+  // ninguém muda o número que os outros veem. Ver getItemPrice em drops.js.
+  referenceItemPrices: {},
   telegramLinkCode: null,
   telegramBotLink: null,
   // Meta de farme do dia (Alz), guardada em app_settings. 0 = sem meta definida. Ver farm-goal.js.

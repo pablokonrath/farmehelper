@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { saveFilterKeywordsFlag } from '../state/persistence.js';
-import { summarizeDropsByItem, getAllDrops, isFixedPriceItem, hasRegisteredPrice, getItemCategory } from '../features/drops.js';
+import { summarizeDropsByItem, getAllDrops, isFixedPriceItem, hasRegisteredPrice, hasPersonalPrice, getItemPrice, getItemCategory } from '../features/drops.js';
 import { daysSincePriceUpdate, STALE_PRICE_DAYS, getSalePriceHistory, getPriceOrigin } from '../features/sales.js';
 import { renderAlzValue, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { normalizeForSearch } from '../utils/parsing.js';
@@ -46,6 +46,10 @@ export function togglePricingShowAllMissing() {
 // nunca é urgente (fica sempre por último quando ordenado do mais urgente pro menos).
 function pricingUrgency(name) {
   if (isFixedPriceItem(name)) return -1;
+  // Item usando o preço da comunidade também não é pendência sua — sem isso ele iria pro topo da
+  // fila de revisão (nunca teve histórico pessoal, logo Infinity), empurrando pra baixo justamente
+  // os preços SEUS que estão velhos.
+  if (!hasPersonalPrice(name)) return -1;
   const days = daysSincePriceUpdate(name);
   return days == null ? Infinity : days;
 }
@@ -57,10 +61,13 @@ function pricingUrgency(name) {
 // Itens de preço fixo (ex: Joia Enfraquecida, tabelada pelo próprio jogo) nunca acionam esse
 // aviso — não é o jogador que revisa esse preço contra o mercado, então "sem revisar há muito
 // tempo" não significa nada de errado, significa só que o preço nunca precisou mudar.
-function priceAgeCell(name) {
+function priceAgeCell(name, meu = true) {
   if (isFixedPriceItem(name)) {
     return `<td style="font-size:12px;color:var(--muted)"><i class="ti ti-lock"></i> Fixo (jogo)</td>`;
   }
+  // Preço da comunidade não é você que revisa — cobrar "desatualizado" nele seria cobrar uma
+  // ação que não é sua.
+  if (!meu) return `<td style="font-size:12px;color:var(--gold)"><i class="ti ti-users"></i> Comunidade</td>`;
   const days = daysSincePriceUpdate(name);
   const stale = days != null && days > STALE_PRICE_DAYS;
   const label = days == null ? '—' : days === 0 ? 'hoje' : days === 1 ? 'ontem' : `há ${days} dias`;
@@ -85,16 +92,28 @@ export function renderPricingPage() {
   // foi cadastrado alguma vez, mesmo sem ter dropado de novo agora.
   const suggestionNames = [...new Set([...allItems.map(i => i.name), ...AppState.knownItemNames])].slice(0, 60);
 
-  const priceEntries = Object.entries(AppState.itemPrices);
+  // Catálogo = os SEUS preços + os da comunidade que você ainda não sobrescreveu. Sem isso, a
+  // referência funcionaria por baixo dos panos (os totais já usariam ela) mas a página continuaria
+  // mostrando uma lista vazia numa conta nova — o jogador não teria como saber que já tem valor.
+  const nomesReferencia = Object.keys(AppState.referenceItemPrices);
+  const todosNomes = [...new Set([...Object.keys(AppState.itemPrices), ...nomesReferencia])];
+  const priceEntries = todosNomes.map(name => [name, getItemPrice(name), hasPersonalPrice(name)]);
   const totalItems = priceEntries.length;
-  const staleCount = priceEntries.filter(([name]) => !isFixedPriceItem(name) && (daysSincePriceUpdate(name) ?? 0) > STALE_PRICE_DAYS).length;
+  const meusItens = priceEntries.filter(([, , meu]) => meu).length;
+  const daComunidade = totalItems - meusItens;
+  // "Desatualizado" só faz sentido pro que é SEU: o preço da comunidade não é você que revisa.
+  const staleCount = priceEntries.filter(([name, , meu]) => meu && !isFixedPriceItem(name) && (daysSincePriceUpdate(name) ?? 0) > STALE_PRICE_DAYS).length;
 
   const kpis = `
-<div class="g3" style="margin-bottom:12px">
-  <div class="kpi"><div class="kpi-lbl">Itens cadastrados</div><div class="kpi-val" style="font-size:22px">${totalItems}</div><div class="kpi-sub">com valor unitário definido</div></div>
-  <div class="kpi"><div class="kpi-lbl">Sem preço</div><div class="kpi-val" style="font-size:22px;color:${itemsWithoutPrice.length ? 'var(--warn)' : 'var(--ok)'}">${itemsWithoutPrice.length}</div><div class="kpi-sub">${itemsWithoutPrice.length ? 'precisam de valor' : 'tudo coberto'}</div></div>
-  <div class="kpi"><div class="kpi-lbl">Desatualizados</div><div class="kpi-val" style="font-size:22px;color:${staleCount ? 'var(--warn)' : 'var(--ok)'}">${staleCount}</div><div class="kpi-sub">sem revisar há +${STALE_PRICE_DAYS}d</div></div>
-</div>`;
+<div class="g4" style="margin-bottom:12px">
+  <div class="kpi"><div class="kpi-lbl">Preços seus</div><div class="kpi-val" style="font-size:22px">${meusItens}</div><div class="kpi-sub">valor que você definiu</div></div>
+  <div class="kpi"><div class="kpi-lbl">Da comunidade</div><div class="kpi-val" style="font-size:22px;color:var(--gold)">${daComunidade}</div><div class="kpi-sub">usando a referência</div></div>
+  <div class="kpi"><div class="kpi-lbl">Sem preço</div><div class="kpi-val" style="font-size:22px;color:${itemsWithoutPrice.length ? 'var(--warn)' : 'var(--ok)'}">${itemsWithoutPrice.length}</div><div class="kpi-sub">${itemsWithoutPrice.length ? 'ninguém cadastrou ainda' : 'tudo coberto'}</div></div>
+  <div class="kpi"><div class="kpi-lbl">Desatualizados</div><div class="kpi-val" style="font-size:22px;color:${staleCount ? 'var(--warn)' : 'var(--ok)'}">${staleCount}</div><div class="kpi-sub">seus, sem revisar há +${STALE_PRICE_DAYS}d</div></div>
+</div>
+${daComunidade ? `<div style="font-size:12px;color:var(--muted);background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:12px">
+  <i class="ti ti-users"></i> <strong style="color:var(--gold)">${daComunidade} item(ns)</strong> estão usando o preço de referência da comunidade — a mediana do que os outros jogadores cadastraram. Já contam no seu farme normalmente. Editar qualquer um cria o <strong>seu</strong> preço e não muda o de mais ninguém.
+</div>` : ''}`;
 
   const missingShown = AppState.pricingShowAllMissing ? itemsWithoutPrice : itemsWithoutPrice.slice(0, 6);
   const missingNotice = !itemsWithoutPrice.length ? '' : `<div class="notice"><i class="ti ti-alert-circle" style="flex-shrink:0;margin-top:1px"></i><div><strong>${itemsWithoutPrice.length} itens sem preço</strong> no FarmHub.<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">${missingShown.map(i => `<span style="cursor:pointer;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:20px;padding:2px 9px;font-size:11px;color:var(--warn)" onclick="document.getElementById('cN').value='${escAttr(i.name)}';document.getElementById('cP')?.focus()">${esc(i.name)} (${i.qty}×)</span>`).join('')}${itemsWithoutPrice.length > 6 ? `<button onclick="togglePricingShowAllMissing()" style="background:transparent;border:none;color:var(--warn);text-decoration:underline;font-size:11px;cursor:pointer;padding:2px 4px">${AppState.pricingShowAllMissing ? 'Ver menos' : `Ver todos (${itemsWithoutPrice.length})`}</button>` : ''}</div></div></div>`;
@@ -134,15 +153,22 @@ ${missingNotice}
   </div>
 ${!totalItems ? '<div class="empty">Nenhum item cadastrado ainda.</div>' : !filteredEntries.length ? '<div class="empty">Nenhum item cadastrado bate com essa busca.</div>' : `
 <table><thead><tr>${sortableHeader('name', 'Item')}${sortableHeader('price', 'Valor')}${sortableHeader('updated', 'Atualizado')}<th style="width:90px">Ações</th></tr></thead><tbody>
-${filteredEntries.map(([name, price]) => {
+${filteredEntries.map(([name, price, meu]) => {
   const category = getItemCategory(name);
   const categoryBadge = category ? ` <span class="badge badge-muted" style="font-size:10px;font-weight:400">${esc(category)}</span>` : '';
-  // Preço confirmado por venda real vale mais que estimativa digitada — sem o selo, os dois
-  // números pareciam ter o mesmo peso na hora de decidir em qual confiar.
-  const origem = getPriceOrigin(name);
-  const originBadge = origem.origem === 'venda'
-    ? ` <i class="ti ti-circle-check" style="color:var(--ok);font-size:12px" title="${esc(origem.rotulo)}"></i>`
-    : ` <i class="ti ti-pencil" style="color:var(--muted);font-size:11px" title="${esc(origem.rotulo)}"></i>`;
+  const ref = AppState.referenceItemPrices[name] || AppState.referenceItemPrices[name.replace(/\s*\+\s*\d+$/, '').trim()];
+  // Selo de origem. Preço da comunidade é um selo próprio: não é seu, então nem "confirmado por
+  // venda" nem "estimado por você" descreveriam ele. Preço confirmado por venda real vale mais que
+  // estimativa digitada — sem o selo, os dois números pareciam ter o mesmo peso.
+  let originBadge;
+  if (!meu) {
+    originBadge = ` <i class="ti ti-users" style="color:var(--gold);font-size:12px" title="Preço de referência da comunidade — mediana de ${ref?.accounts || 0} conta(s). Não é seu: editar cria o seu."></i>`;
+  } else {
+    const origem = getPriceOrigin(name);
+    originBadge = origem.origem === 'venda'
+      ? ` <i class="ti ti-circle-check" style="color:var(--ok);font-size:12px" title="${esc(origem.rotulo)}"></i>`
+      : ` <i class="ti ti-pencil" style="color:var(--muted);font-size:11px" title="${esc(origem.rotulo)}"></i>`;
+  }
   if (AppState.editingItemPriceName === name) {
     const lastSale = getSalePriceHistory(name).slice(-1)[0];
     return `<tr style="background:var(--acc-bg)">
@@ -153,10 +179,16 @@ ${filteredEntries.map(([name, price]) => {
   <td><div style="display:flex;gap:4px"><button class="btn btn-p btn-xs" onclick="saveItemPriceEdit('${escAttr(name)}')">Salvar</button><button class="btn btn-d btn-xs" onclick="cancelEditingItemPrice()">✕</button></div></td>
 </tr>`;
   }
-  return `<tr>
-  <td>${esc(name)}${originBadge}${categoryBadge}</td><td>${renderAlzValue(price)}</td>
-  ${priceAgeCell(name)}
-  <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" aria-label="Editar preço de ${esc(name)}" title="Editar" onclick="startEditingItemPrice('${escAttr(name)}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" aria-label="Remover preço de ${esc(name)}" title="Remover" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${escAttr(name)}')"><i class="ti ti-trash"></i></button></div></td>
+  return `<tr${meu ? '' : ' style="opacity:.82"'}>
+  <td>${esc(name)}${originBadge}${categoryBadge}</td>
+  <td>${renderAlzValue(price)}${!meu && ref?.accounts > 1 ? `<div style="font-size:10px;color:var(--muted)">mediana de ${ref.accounts} contas</div>` : ''}</td>
+  ${priceAgeCell(name, meu)}
+  <td><div style="display:flex;gap:4px">
+    <button class="btn btn-d btn-xs" aria-label="${meu ? 'Editar' : 'Definir o seu'} preço de ${esc(name)}" title="${meu ? 'Editar' : 'Definir o SEU preço (a referência da comunidade não muda)'}" onclick="startEditingItemPrice('${escAttr(name)}')"><i class="ti ti-edit"></i></button>
+    ${/* Remover só faz sentido no que é seu. Com referência disponível, remover não apaga o item
+         da lista — ele volta a usar o valor da comunidade, e o botão diz isso. */''}
+    ${meu ? `<button class="btn btn-xs" aria-label="Remover seu preço de ${esc(name)}" title="${ref ? 'Voltar a usar o preço da comunidade' : 'Remover preço'}" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${escAttr(name)}')"><i class="ti ti-${ref ? 'arrow-back-up' : 'trash'}"></i></button>` : ''}
+  </div></td>
 </tr>`;
 }).join('')}
 </tbody></table>`}

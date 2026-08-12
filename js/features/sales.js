@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { saveSalesLog, savePriceHistory, saveItemPrices, saveUnsoldInventoryDismissals } from '../state/persistence.js';
-import { getItemPrice, getAllDrops, summarizeDropsByItem } from './drops.js';
+import { getItemPrice, getReferencePrice, getAllDrops, summarizeDropsByItem } from './drops.js';
 import { parseAlzInput, parseDateInputBR, formatAlzGamer, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
 import { actWithUndo } from './undo.js';
@@ -362,6 +362,15 @@ export function checkPricePlausibility(itemName, newPrice) {
     if (hist.length) {
       reference = hist[hist.length - 1].price;
       source = 'último preço que você tinha cadastrado';
+    } else {
+      // Última base: a referência da comunidade. Vale principalmente pra conta nova, que não tem
+      // venda nem histórico próprio ainda — sem isso, o primeiro preço que ela digita passa sem
+      // nenhuma conferência, que é justamente quando o erro de digitação é mais provável.
+      const ref = getReferencePrice(itemName);
+      if (ref) {
+        reference = ref;
+        source = 'preço de referência da comunidade';
+      }
     }
   }
   if (!(reference > 0)) return null;

@@ -63,7 +63,9 @@ ${sectionTitle('Farme, rush e sessões')}
 ${topic('ti-coins', 'Cálculo de farme (preços & itens rastreados)', `
   Aqui você diz <strong>quanto vale cada item</strong> (o preço é individual seu — cada um cadastra o seu). É isso que transforma "10 joias" em Alz na Visão geral.
   ${li([
-    'KPIs no topo mostram de cara quantos itens tem cadastrado, quantos ainda faltam preço e quantos estão desatualizados.',
+    '<strong>Você não começa do zero.</strong> Itens que outros jogadores já precificaram aparecem com um <strong>preço de referência da comunidade</strong> — a <em>mediana</em> do que todo mundo cadastrou (mediana e não média porque um erro de digitação com um zero a mais não pode contaminar o número que todos veem). Eles já contam no seu farme normalmente. Se você discordar, é só editar: isso cria o <strong>seu</strong> preço e <strong>não muda o de mais ninguém</strong>. O ícone <i class="ti ti-users" style="color:var(--gold)"></i> marca os que ainda estão na referência.',
+    'Editou e quer voltar atrás? O botão de desfazer na linha remove o seu preço e o item volta a usar o da comunidade.',
+    'KPIs no topo separam o que é seu, o que veio da comunidade, o que ninguém cadastrou ainda e o que está desatualizado (só conta os seus — preço da comunidade não é você que revisa).',
     '<strong>Tabela ordenável e com busca:</strong> clique no cabeçalho pra ordenar por nome, valor ou "Atualizado" (que já ordena do mais desatualizado pro mais recente — vira uma fila de revisão de verdade). Busca aparece a partir de 6 itens cadastrados.',
     '<strong>Coluna "Atualizado":</strong> mostra há quanto tempo cada preço não é revisto e destaca os que passaram de 2 semanas — preço velho vira estimativa errada em silêncio, e todo Alz do app depende dele. Item de preço <strong>fixo do próprio jogo</strong> (ex: Joia Enfraquecida) não entra nesse aviso — não é você quem revisa esse preço.',
     'Editando um item que você já vendeu, aparece a última venda real (valor e data) como referência — decide o novo preço com dado de verdade, não achismo.',
