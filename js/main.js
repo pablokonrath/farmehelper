@@ -6,7 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession, recoverDropWindow } from './features/dg-session.js';
 import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod, fillSuggestedRunMinutes } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
@@ -250,6 +250,7 @@ Object.assign(window, {
   setResetConfig,
   toggleForgottenSessionRecovery,
   recoverForgottenSession,
+  recoverDropWindow,
   setSessionsHistoryDate,
   fillSuggestedRunMinutes,
   setDgComparisonMode,

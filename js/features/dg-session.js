@@ -612,6 +612,83 @@ export function suggestForgottenSessionWindow() {
 
 // Mostra/esconde o painel de recuperação de sessão esquecida em Sessões de farme (estado só de
 // UI, não persiste).
+// Todos os blocos de farme de um dia que NÃO pertencem a nenhuma sessão registrada.
+//
+// suggestForgottenSessionWindow (acima) só enxerga o rabo da linha do tempo: ancora no fim da
+// última sessão e olha pra frente. Isso cobre "esqueci de marcar e acabei de farmar", mas não
+// cobre buraco no MEIO — que é o que sobra quando você exclui uma sessão antiga e já registrou
+// outras depois dela. Aquele farme fica órfão e invisível, sem jeito de recuperar.
+//
+// Aqui a conta é ao contrário: pega os drops do dia e tira os que já estão dentro da janela de
+// alguma sessão. O que sobra é agrupado em blocos contínuos (mesmo critério de burstStartAt), e
+// cada bloco vira um candidato a virar sessão.
+export function findUnclaimedDropWindows(dateISO) {
+  const inicioDia = new Date(dateISO + 'T00:00:00').getTime();
+  const fimDia = inicioDia + 86400000;
+  const janelasOcupadas = AppState.dgSessions
+    .filter(s => (s.endAt || 0) >= inicioDia && s.startAt <= fimDia)
+    .map(s => [s.startAt, s.endAt || s.startAt]);
+  // A sessão em andamento também ocupa janela, senão o farme de agora apareceria como "sem DG"
+  // e o painel ficaria cutucando você no meio do próprio farme.
+  if (AppState.activeDgSession) janelasOcupadas.push([AppState.activeDgSession.startAt, Infinity]);
+
+  const livres = AppState.drops
+    .filter(d => {
+      if (!d.timestamp || isExcludedGearItem(d.name)) return false;
+      const t = d.timestamp.getTime();
+      if (t < inicioDia || t >= fimDia) return false;
+      return !janelasOcupadas.some(([a, b]) => t >= a && t <= b);
+    })
+    .sort((a, b) => a.timestamp - b.timestamp);
+  if (!livres.length) return [];
+
+  const gapMs = Math.max(1, +AppState.sessionIdleCloseMinutes || 5) * 60000;
+  const blocos = [];
+  let atual = [livres[0]];
+  for (let i = 1; i < livres.length; i++) {
+    if (livres[i].timestamp - livres[i - 1].timestamp >= gapMs) {
+      blocos.push(atual);
+      atual = [];
+    }
+    atual.push(livres[i]);
+  }
+  blocos.push(atual);
+
+  return blocos.map(b => {
+    const porItem = summarizeDropsByItem(b);
+    return {
+      startAt: b[0].timestamp.getTime(),
+      endAt: b[b.length - 1].timestamp.getTime(),
+      dropCount: b.length,
+      totalAlz: porItem.reduce((soma, i) => soma + i.total, 0),
+      // Os itens mais valiosos do bloco: é por eles que você reconhece de qual DG era aquele farme.
+      items: porItem.slice(0, 4).map(i => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ''}`),
+    };
+  });
+}
+
+// Registra um desses blocos como sessão da DG escolhida. Diferente de recoverForgottenSession, a
+// janela é EXATA (início e fim do bloco), não "daqui até agora" — recuperar farme do meio do dia
+// não pode engolir tudo que veio depois.
+export function recoverDropWindow(dungeonId, startAt, endAt) {
+  const dg = AppState.dungeonList.find(d => d.id === dungeonId);
+  if (!dg || !(startAt < endAt)) return;
+  const routeMatch = findAppliedRouteForDungeon(dungeonId);
+  AppState.dgSessions.push(buildSessionRecord({
+    dungeonId: dg.id,
+    dungeonName: dg.name,
+    routeId: routeMatch?.id,
+    routeName: routeMatch?.name,
+    startAt,
+    endAt,
+    runs: 0,
+  }));
+  AppState.dgSessions.sort((a, b) => a.startAt - b.startAt);
+  saveDgSessions();
+  renderPage();
+  showInfoToast(`Farme das ${new Date(startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} registrado em ${dg.name}`);
+}
+
 export function toggleForgottenSessionRecovery() {
   AppState.forgottenSessionRecoveryOpen = !AppState.forgottenSessionRecoveryOpen;
   renderPage();

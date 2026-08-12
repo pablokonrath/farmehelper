@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, sessionTotalAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
@@ -266,6 +266,29 @@ function renderDeletedSessionsBin() {
 }
 
 // Painel de "esqueci de marcar" — some se não sobrou nenhum drop fora de sessão pra recuperar.
+// Blocos de farme do dia que não estão em nenhuma sessão. É a "sigla faltando": todo drop dentro
+// da janela de uma sessão pertence àquela DG, e o que sobra não pertence a ninguém — inclusive o
+// farme de uma sessão que você excluiu, que volta pra cá em vez de sumir.
+function unclaimedWindowsPanel(dateISO) {
+  const janelas = findUnclaimedDropWindows(dateISO);
+  if (!janelas.length) return '';
+  const ehHoje = dateISO === todayISODate();
+  return `<div style="margin-top:12px">
+    <div style="font-size:12px;color:var(--txt);margin-bottom:8px"><i class="ti ti-alert-triangle" style="color:var(--gold)"></i> <strong>${janelas.length} bloco(s) de farme ${ehHoje ? 'de hoje' : `de ${formatDateBR(dateISO)}`} sem DG.</strong> Estão no log mas fora de qualquer sessão — escolha a DG pra cada um e eles entram nas médias.</div>
+    ${janelas.map(j => `<div style="padding:10px;background:var(--surf2);border:1px dashed var(--border);border-radius:8px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12px;margin-bottom:8px">
+        <span><strong>${timeHM(j.startAt)} – ${timeHM(j.endAt)}</strong> · ${j.dropCount} drop(s)</span>
+        <span style="color:var(--gold);font-weight:600">${formatAlzGamer(j.totalAlz)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(j.items.join(' · '))}</div>
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:1"><select class="inp inp-sm" id="unclaimedDg${j.startAt}">${renderDungeonOptionsGrouped(AppState.dungeonList)}</select></div>
+        <div><button class="btn btn-p btn-sm" onclick="recoverDropWindow(document.getElementById('unclaimedDg${j.startAt}').value, ${j.startAt}, ${j.endAt})"><i class="ti ti-history"></i>Registrar</button></div>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
 function forgottenSessionRecoveryPanel() {
   const suggestion = suggestForgottenSessionWindow();
   const suggestionIsToday = suggestion && todayISODate(new Date(suggestion.suggestedStart)) === todayISODate();
@@ -557,6 +580,7 @@ export function renderSessionsPage() {
     : `<table class="t-cards"><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th>Anotação</th><th style="width:80px"></th></tr></thead><tbody>
       ${renderSessionHistoryGroups(history)}
       </tbody></table>`}
+  ${unclaimedWindowsPanel(historyDate)}
   ${renderDeletedSessionsBin()}
 </div>`;
 
