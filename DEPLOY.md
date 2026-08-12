@@ -56,8 +56,9 @@ ou com um clique de "Deploy" no hPanel, dependendo de como o painel dela funcion
 
 1. No hPanel, abra o **Gerenciador de Arquivos** (ou use FTP) e vá até a pasta pública do
    seu domínio (geralmente `public_html`).
-2. Envie **todo o conteúdo** deste projeto pra lá: `index.html`, as pastas `css/`, `js/`,
-   `api/` — mas **não** envie a pasta `sql/` (não precisa ficar público) nem `.claude/`.
+2. Envie **todo o conteúdo** deste projeto pra lá: `index.html`, `sobre.html` (a página de
+   apresentação linkada da tela de login), as pastas `css/`, `js/`, `api/` — mas **não** envie
+   a pasta `sql/` (não precisa ficar público) nem `.claude/`.
 
 ## 3. Configurar o banco no `api/config.php`
 

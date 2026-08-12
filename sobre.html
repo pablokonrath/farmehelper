@@ -1,0 +1,821 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FarmHub — o que é e pra quem serve</title>
+    <meta
+      name="description"
+      content="O que o FarmHub responde sobre o seu farme no Cabal, o que ele precisa pra funcionar e o que ele não é."
+    />
+    <link rel="icon" href="icons/icon-192.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css"
+    />
+
+    <style>
+      /*
+        Página de apresentação, mostrada ANTES do login (linkada da tela de entrada). Estilo
+        próprio e autossuficiente, mas com os mesmos tokens e fontes do app (ver css/styles.css) —
+        quem clica aqui tem que reconhecer que é o mesmo produto, não cair num site diferente.
+        Tema único escuro, como o app: nada de media query de tema aqui.
+      */
+      :root {
+        --bg: #14100b;
+        --surf: #1f1811;
+        --surf2: #2a2016;
+        --border: #4a3823;
+        --txt: #f0e4c8;
+        --txt2: #c2ac82;
+        --muted: #ab9873;
+        --acc: #b3312c;
+        --gold: #d9a441;
+        --ok: #6b9c4a;
+        --err: #d9480f;
+
+        --font-ui: "Chakra Petch", "Rajdhani", system-ui, sans-serif;
+        --font-display: "Cinzel", "Rajdhani", serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 0 20px 90px;
+        background: var(--bg);
+        background-image:
+          radial-gradient(900px 440px at 10% -6%, rgba(179, 49, 44, 0.18), transparent 62%),
+          radial-gradient(760px 400px at 92% 3%, rgba(217, 164, 65, 0.11), transparent 58%);
+        background-repeat: no-repeat;
+        color: var(--txt);
+        font-family: var(--font-ui);
+        font-size: 16px;
+        line-height: 1.68;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .wrap {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+      p {
+        text-wrap: pretty;
+      }
+      a {
+        color: var(--gold);
+      }
+      :focus-visible {
+        outline: 2px solid var(--gold);
+        outline-offset: 3px;
+      }
+
+      /* ---- barra de topo ---- */
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 22px 0;
+        flex-wrap: wrap;
+      }
+      .brand {
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--gold);
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        text-shadow: 0 0 16px rgba(217, 164, 65, 0.45);
+      }
+      .btn {
+        border-radius: 8px;
+        padding: 9px 18px;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-family: var(--font-ui);
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        transition: filter 0.15s;
+      }
+      .btn:hover {
+        filter: brightness(1.14);
+      }
+      .btn-p {
+        background: linear-gradient(135deg, var(--acc), #7c211d);
+        color: var(--txt);
+        box-shadow: 0 0 14px rgba(179, 49, 44, 0.3);
+      }
+      .btn-d {
+        background: var(--surf2);
+        color: var(--txt);
+        border: 1px solid var(--border);
+      }
+
+      /* ---- abertura ---- */
+      .hero {
+        padding: 54px 0 40px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin: 0 0 18px;
+        font-weight: 600;
+      }
+      .hero h1 {
+        font-family: var(--font-display);
+        font-size: clamp(32px, 6vw, 56px);
+        font-weight: 700;
+        line-height: 1.08;
+        letter-spacing: -0.01em;
+        margin: 0 0 20px;
+        text-wrap: balance;
+      }
+      .hero h1 em {
+        font-style: normal;
+        color: var(--gold);
+      }
+      .hero .sub {
+        font-size: 18.5px;
+        color: var(--txt2);
+        max-width: 60ch;
+        margin: 0;
+      }
+
+      /* ---- transformação ---- */
+      .transform {
+        margin-top: 44px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surf);
+        overflow: hidden;
+      }
+      .t-row {
+        padding: 18px 22px;
+      }
+      .t-row + .t-row {
+        border-top: 1px solid var(--border);
+      }
+      .t-lbl {
+        font-size: 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin: 0 0 10px;
+        font-weight: 600;
+      }
+      .t-raw {
+        font-family: ui-monospace, Consolas, monospace;
+        font-size: 13px;
+        color: var(--muted);
+        margin: 0;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .t-out {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 28px;
+        margin: 0;
+      }
+      .stat {
+        min-width: 110px;
+      }
+      .stat .k {
+        font-size: 10px;
+        letter-spacing: 0.13em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: block;
+        font-weight: 600;
+      }
+      .stat .v {
+        font-family: var(--font-display);
+        font-size: 22px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        color: var(--gold);
+        display: block;
+        line-height: 1.4;
+      }
+      .stat .v.neg {
+        color: var(--err);
+      }
+      .stat .v.pos {
+        color: var(--ok);
+      }
+      .t-note {
+        font-size: 12.5px;
+        color: var(--muted);
+        margin: 14px 0 0;
+      }
+
+      /* ---- seções ---- */
+      section {
+        margin-top: 72px;
+      }
+      .sec-head {
+        margin-bottom: 26px;
+      }
+      .sec-head h2 {
+        font-family: var(--font-display);
+        font-size: clamp(24px, 3.5vw, 32px);
+        font-weight: 700;
+        margin: 8px 0 10px;
+        text-wrap: balance;
+      }
+      .sec-head p {
+        color: var(--txt2);
+        margin: 0;
+        max-width: 66ch;
+        font-size: 16.5px;
+      }
+
+      /* ---- perguntas ---- */
+      .q {
+        padding: 20px 22px;
+        background: var(--surf);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 10px;
+      }
+      .q h3 {
+        font-family: var(--font-display);
+        font-size: 18px;
+        font-weight: 700;
+        margin: 0 0 6px;
+        text-wrap: balance;
+      }
+      .q h3::before {
+        content: "“";
+        color: var(--gold);
+      }
+      .q h3::after {
+        content: "”";
+        color: var(--gold);
+      }
+      .q p {
+        margin: 0;
+        font-size: 14.5px;
+        color: var(--txt2);
+        max-width: 70ch;
+      }
+      .q .how {
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 8px;
+        font-weight: 600;
+      }
+
+      /* ---- diferenciais ---- */
+      .edges {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+      }
+      .edge {
+        background: var(--surf);
+        border: 1px solid var(--border);
+        border-top: 2px solid var(--gold);
+        border-radius: 10px;
+        padding: 20px 22px;
+      }
+      .edge h3 {
+        font-family: var(--font-display);
+        font-size: 17px;
+        margin: 0 0 9px;
+        text-wrap: balance;
+      }
+      .edge p {
+        margin: 0;
+        font-size: 14px;
+        color: var(--txt2);
+      }
+
+      /* ---- fluxo ---- */
+      .step {
+        display: grid;
+        grid-template-columns: 44px 1fr;
+        gap: 18px;
+        padding: 20px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      .step:last-child {
+        border-bottom: none;
+      }
+      .step .n {
+        font-family: var(--font-display);
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--gold);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surf);
+      }
+      .step h3 {
+        font-family: var(--font-display);
+        font-size: 17px;
+        margin: 4px 0 6px;
+      }
+      .step p {
+        margin: 0;
+        font-size: 14.5px;
+        color: var(--txt2);
+        max-width: 66ch;
+      }
+
+      /* ---- painéis ---- */
+      .cols {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      }
+      .panel {
+        background: var(--surf2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 22px 24px;
+      }
+      .panel.warn {
+        border-left: 3px solid var(--err);
+      }
+      .panel.ok {
+        border-left: 3px solid var(--ok);
+      }
+      .panel h3 {
+        font-family: var(--font-display);
+        font-size: 18px;
+        margin: 0 0 12px;
+      }
+      .panel ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+      .panel li {
+        margin-bottom: 9px;
+        font-size: 14.5px;
+        color: var(--txt2);
+        line-height: 1.58;
+      }
+      .panel li:last-child {
+        margin-bottom: 0;
+      }
+      .panel li b {
+        color: var(--txt);
+        font-weight: 700;
+      }
+
+      /* ---- fecho ---- */
+      .close {
+        margin-top: 72px;
+        padding: 34px 32px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background:
+          linear-gradient(160deg, rgba(217, 164, 65, 0.08), transparent 58%),
+          var(--surf);
+      }
+      .close h2 {
+        font-family: var(--font-display);
+        font-size: clamp(23px, 3.3vw, 30px);
+        margin: 0 0 16px;
+        text-wrap: balance;
+      }
+      .close p {
+        color: var(--txt2);
+        margin: 0 0 14px;
+        font-size: 16px;
+        max-width: 66ch;
+      }
+      .close strong {
+        color: var(--txt);
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 24px;
+      }
+
+      footer {
+        margin-top: 44px;
+        padding-top: 20px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+
+      @media (max-width: 560px) {
+        .step {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+        .step .n {
+          width: 44px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand"><i class="ti ti-sword"></i>FarmHub</div>
+        <a class="btn btn-d" href="index.html"
+          ><i class="ti ti-arrow-left"></i>Voltar ao login</a
+        >
+      </div>
+
+      <header class="hero">
+        <p class="eyebrow">Central de Farme · Cabal</p>
+        <h1>Você farma o dia inteiro. <em>Sabe quanto sobrou?</em></h1>
+        <p class="sub">
+          O jogo te diz o que caiu. Não te diz o que aquilo vale, quanto custou
+          a entrada, qual DG paga melhor a sua run, nem se o rush de hoje fechou
+          no positivo. O FarmHub existe pra responder isso — com os seus
+          números, não com achismo.
+        </p>
+      </header>
+
+      <div class="transform">
+        <div class="t-row">
+          <p class="t-lbl">O que o jogo escreve</p>
+          <p class="t-raw">
+            [2026-08-12 14:23:11]: Dropou: $3#Joia Enfraquecida$
+          </p>
+        </div>
+        <div class="t-row">
+          <p class="t-lbl">O que o FarmHub responde</p>
+          <div class="t-out">
+            <div class="stat">
+              <span class="k">Farmado hoje</span><span class="v">1,4B</span>
+            </div>
+            <div class="stat">
+              <span class="k">Custo do rush</span
+              ><span class="v neg">380kk</span>
+            </div>
+            <div class="stat">
+              <span class="k">Líquido</span><span class="v pos">+1,02B</span>
+            </div>
+            <div class="stat">
+              <span class="k">Melhor DG / run</span><span class="v">74kk</span>
+            </div>
+            <div class="stat">
+              <span class="k">Vale resetar?</span
+              ><span class="v pos">Sim</span>
+            </div>
+          </div>
+          <p class="t-note">
+            Números ilustrativos. Na prática saem do seu log, dos seus preços e
+            do seu histórico de sessões — o app não conhece o mercado do seu
+            servidor, quem ensina é você.
+          </p>
+        </div>
+      </div>
+
+      <section>
+        <div class="sec-head">
+          <p class="eyebrow">Para que serve</p>
+          <h2>As perguntas que ele responde</h2>
+          <p>
+            Não é um contador de drops. É um sistema de gestão: entra dado
+            bruto, sai decisão. Cada resposta abaixo vem do seu próprio
+            histórico.
+          </p>
+        </div>
+
+        <article class="q">
+          <h3>Qual DG vale mais a minha entrada hoje?</h3>
+          <p>
+            Ranking por <strong>Alz por run</strong>, não por hora — como o jogo
+            limita as entradas diárias, o que decide onde gastá-las é o
+            rendimento por entrada. Tem também a versão líquida, já descontando
+            ticket, gema e Alz de entrada. E se uma DG começa a render menos que
+            a média dela, ele avisa <em>e diz a causa</em>: caiu o volume de
+            drop, ou o que ela dropa passou a valer menos.
+          </p>
+          <p class="how">Sessões de farme</p>
+        </article>
+
+        <article class="q">
+          <h3>Esse rush que eu montei vai dar lucro?</h3>
+          <p>
+            Monte o carrinho de DGs e ele mostra o custo total e o
+            <strong>retorno esperado</strong> pelo seu Alz/run histórico. No fim
+            do dia, o rush salvo mostra o que de fato rendeu — a estimativa é
+            conferida contra o resultado, não fica no ar. Dá pra definir um teto
+            de gasto no mês também.
+          </p>
+          <p class="how">Planejamento de Rush</p>
+        </article>
+
+        <article class="q">
+          <h3>Vale a pena resetar essa DG com gema?</h3>
+          <p>
+            Compara o líquido por run daquela DG com o custo do reset rateado.
+            Responde sim ou não, com o número na frente — e avisa no próprio
+            carrinho, antes de você gastar.
+          </p>
+          <p class="how">Sessões de farme · Planejamento de Rush</p>
+        </article>
+
+        <article class="q">
+          <h3>Onde esse item cai mais rápido?</h3>
+          <p>
+            Busca por item e mostra em quais DGs ele já caiu, com a taxa por run
+            e a faixa provável — avisando quando a amostra ainda é pequena
+            demais pra confiar. Funciona ao contrário também: escolha uma DG e
+            veja tudo que ela dá, ordenado pelo que rende mais. E dá pra
+            comparar duas DGs lado a lado, quando a dúvida é só entre elas.
+          </p>
+          <p class="how">Onde dropa</p>
+        </article>
+
+        <article class="q">
+          <h3>Quanto tempo até eu ter os 300 núcleos?</h3>
+          <p>
+            Defina a meta em <strong>item</strong>, não em Alz. Ele calcula
+            quantos runs faltam, em qual DG sai mais rápido e a data estimada —
+            usando o seu ritmo real das últimas duas semanas, não um teórico de
+            quem joga no limite todo dia.
+          </p>
+          <p class="how">Onde dropa</p>
+        </article>
+
+        <article class="q">
+          <h3>Eu tô rendendo mais ou menos que antes?</h3>
+          <p>
+            Compara períodos pela média por <strong>dia farmado</strong> —
+            porque comparar o total diria mais sobre quantos dias você jogou do
+            que sobre o quanto o farme rende. Mostra também sua consistência e
+            em que horário do dia você historicamente rende mais.
+          </p>
+          <p class="how">Visão geral</p>
+        </article>
+
+        <article class="q">
+          <h3>Tem coisa parada que eu esqueci de vender?</h3>
+          <p>
+            Cruza tudo que já caiu com tudo que você registrou como vendido e
+            aponta o que sobrou, com há quantos dias está parado. Dá pra dar
+            baixa no que virou craft, coleção ou venda não registrada — some do
+            radar e não incomoda mais.
+          </p>
+          <p class="how">Vendas</p>
+        </article>
+
+        <article class="q">
+          <h3>Caiu algo bom enquanto eu estava fora?</h3>
+          <p>
+            Alerta com som, pop-up e notificação do sistema quando um item que
+            você rastreia cai — mesmo com o navegador minimizado. Se o helper
+            travar ou parar de dropar, ele avisa também, inclusive no Telegram.
+            E sugere sozinho quais itens valem a pena rastrear, olhando o que
+            você já dropou.
+          </p>
+          <p class="how">Alertas</p>
+        </article>
+
+        <article class="q">
+          <h3>Como foi meu dia? Quero mostrar pra guild.</h3>
+          <p>
+            Um card do dia — farmado, gasto, líquido, melhor DG, melhor drop —
+            que você copia como <strong>imagem</strong> e cola direto no Discord
+            com Ctrl+V. Sem print de tela cortado.
+          </p>
+          <p class="how">Visão geral</p>
+        </article>
+      </section>
+
+      <section>
+        <div class="sec-head">
+          <p class="eyebrow">Como funciona</p>
+          <h2>Quatro passos, e o resto é automático</h2>
+        </div>
+
+        <div class="flow">
+          <div class="step">
+            <span class="n">01</span>
+            <div>
+              <h3>Conecte o arquivo de log</h3>
+              <p>
+                O jogo já grava tudo que cai num arquivo de texto. Você aponta o
+                FarmHub pra ele uma vez e pronto — ele passa a ler sozinho, a
+                cada poucos segundos, enquanto você joga.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="n">02</span>
+            <div>
+              <h3>Diga quanto vale cada item</h3>
+              <p>
+                É o que transforma "10 joias" em Alz. O preço é seu, do seu
+                servidor. Cada venda que você registrar depois atualiza o preço
+                sozinha — e se você digitar um valor fora de ordem de grandeza,
+                ele confere antes de aceitar.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="n">03</span>
+            <div>
+              <h3>Farme normal</h3>
+              <p>
+                Não precisa marcar nada. Quando os drops começam a cair, ele
+                abre a sessão sozinho, retroage o início pro primeiro drop e
+                tenta adivinhar a DG — se errar, você troca num seletor ali
+                mesmo. Parou 5 minutos? Ele fecha no horário do último drop, e
+                se os drops voltarem logo ele <em>retoma a mesma sessão</em> em
+                vez de picar seu farme em várias.
+              </p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="n">04</span>
+            <div>
+              <h3>Olhe o painel</h3>
+              <p>
+                Um cartão no topo diz sempre a próxima coisa a fazer: terminar o
+                rush, aproveitar entrada que sobrou, vender o que está parado,
+                cadastrar preço faltando. Quando quiser mais fundo, o modo
+                completo abre todas as análises.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-head">
+          <p class="eyebrow">O que o diferencia</p>
+          <h2>Três decisões que mudam tudo</h2>
+        </div>
+
+        <div class="edges">
+          <div class="edge">
+            <h3>Ele admite quando não sabe</h3>
+            <p>
+              Taxa com amostra pequena vem com aviso e faixa de confiança.
+              Período sem dado é declarado, não escondido. DG sem histórico fica
+              fora da conta e ele diz que ficou. Número que ele não sustenta,
+              ele não mostra como se fosse fato.
+            </p>
+          </div>
+          <div class="edge">
+            <h3>Bruto é vaidade, líquido é verdade</h3>
+            <p>
+              Em toda parte existe a versão com o custo de entrada descontado —
+              por DG, por rota, por dia, por período. Dá pra bater a meta bruta
+              e estar no vermelho de verdade, e ele não deixa isso passar
+              despercebido.
+            </p>
+          </div>
+          <div class="edge">
+            <h3>Ele cuida do que você esquece</h3>
+            <p>
+              Sessão que abre, retoma e fecha sozinha. Vigilância que liga
+              junto. Preço que se atualiza pela venda. Runs contadas pelo tempo,
+              com a duração de cada run vinda do seu próprio histórico — você
+              nunca precisa saber de cabeça quanto demora cada DG.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="sec-head">
+          <p class="eyebrow">Antes de decidir</p>
+          <h2>O que ele pede, e o que ele não é</h2>
+          <p>
+            Vale saber disso antes de investir tempo — nenhuma ferramenta serve
+            pra todo mundo.
+          </p>
+        </div>
+
+        <div class="cols">
+          <div class="panel ok">
+            <h3>O que você precisa</h3>
+            <ul>
+              <li>
+                <b>Jogar no PC.</b> O log é um arquivo local na sua máquina — é
+                de lá que sai todo o dado.
+              </li>
+              <li>
+                <b>Chrome ou Edge</b>, com o navegador aberto durante o farme.
+                Pode ficar minimizado.
+              </li>
+              <li>
+                <b>Cadastrar os preços.</b> O app não conhece o mercado do seu
+                servidor. Sem preço, ele conta drops mas não sabe quanto valem.
+              </li>
+              <li>
+                <b>Conta própria.</b> Preços, metas, sessões e vendas ficam
+                salvos e acompanham você em qualquer aparelho.
+              </li>
+            </ul>
+          </div>
+
+          <div class="panel warn">
+            <h3>O que ele não faz</h3>
+            <ul>
+              <li>
+                <b>Não é bot.</b> Não injeta nada, não automatiza gameplay, não
+                lê memória do jogo. Ele só lê um arquivo de texto que o próprio
+                jogo escreve.
+              </li>
+              <li>
+                <b>Não adivinha preço.</b> Toda conta em Alz depende do que você
+                cadastrou — preço errado, tudo errado (e por isso ele confere
+                quando o valor sai da ordem de grandeza esperada).
+              </li>
+              <li>
+                <b>Não conhece seu inventário.</b> Ele sabe o que caiu e o que
+                você registrou como vendido; o que você craftou ou usou, só se
+                você contar.
+              </li>
+              <li>
+                <b>Não decide por você.</b> Ele mostra o número e o porquê. A
+                escolha continua sua.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="close">
+        <h2>Para quem isso faz sentido</h2>
+        <p>
+          Se você entra, rusha e sai sem pensar muito, o jogo já te serve bem —
+          o FarmHub seria peso sem retorno.
+        </p>
+        <p>
+          Agora, se você <strong>já se pegou fazendo conta de cabeça</strong>
+          pra decidir se compensa resetar, se já ficou na dúvida sobre qual DG
+          usar as entradas do dia, se já perdeu a noção de quanto gastou de
+          ticket no mês ou já achou um item encalhado no inventário sem lembrar
+          de onde veio — é exatamente essa conta que ele faz por você, com o seu
+          histórico, e melhor a cada dia que passa.
+        </p>
+        <p>
+          Não é um app pra jogar. É um app pra
+          <strong>saber se o dia valeu a pena</strong>.
+        </p>
+        <div class="cta">
+          <a class="btn btn-p" href="index.html"
+            ><i class="ti ti-user-plus"></i>Criar conta e começar</a
+          >
+          <a
+            class="btn btn-d"
+            href="https://github.com/pablokonrath/farmehelper"
+            target="_blank"
+            rel="noopener"
+            ><i class="ti ti-brand-github"></i>Ver o código</a
+          >
+        </div>
+      </div>
+
+      <footer>
+        <span
+          >Ferramenta não oficial, feita por um jogador · sem vínculo com a Neo
+          / Cabal Neo</span
+        >
+        <span>Dúvidas? Fale com <strong>AnnIKILADOR</strong> no jogo 🎮</span>
+      </footer>
+    </div>
+  </body>
+</html>
