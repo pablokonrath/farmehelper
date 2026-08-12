@@ -162,6 +162,7 @@ export async function loadPersistedState() {
   AppState.appliedRouteIds = appSettings.appliedRouteIds ?? [];
   AppState.autoSessionEnabled = appSettings.autoSessionEnabled ?? true;
   AppState.sessionIdleCloseMinutes = appSettings.sessionIdleCloseMinutes ?? 5;
+  AppState.deletedSessions = appSettings.deletedSessions ?? [];
   // O limiar de raridade já foi guardado como "1 a cada N runs"; virou % (mesma unidade da taxa
   // exibida em Onde dropa). Converte o valor antigo em vez de descartar a configuração.
   AppState.rarityMaxPercent = appSettings.rarityMaxPercent
@@ -226,6 +227,10 @@ export function saveRarityThreshold() {
 
 export function saveAutoSessionEnabled() {
   return put('app-settings.php', { autoSessionEnabled: AppState.autoSessionEnabled });
+}
+
+export function saveDeletedSessions() {
+  return put('app-settings.php', { deletedSessions: AppState.deletedSessions });
 }
 
 export function saveSessionIdleCloseMinutes() {

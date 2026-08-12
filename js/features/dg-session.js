@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
 import { getCostPerGem } from './rush-cart.js';
-import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
+import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
@@ -354,18 +354,52 @@ export function setSessionDungeon(startAt, dungeonId) {
 // TODO o histórico, sem cap de quantidade, então uma sessão ruim distorce a média até ser
 // removida). Sem confirmação extra: já tem o ícone de lixeira + é uma ação isolada por linha,
 // mesmo padrão de deleteRushForDay/deleteRushRoute.
+// Quantas sessões excluídas ficam guardadas. É rede de segurança pra arrependimento recente, não
+// um segundo histórico — por isso um número pequeno, e não "tudo pra sempre".
+const DELETED_SESSIONS_LIMIT = 10;
+
 export function deleteSession(startAt) {
   const index = AppState.dgSessions.findIndex(s => s.startAt === startAt);
   if (index < 0) return;
   const [sessao] = AppState.dgSessions.splice(index, 1);
+  // Vai pra lixeira, não pro vácuo. O toast de desfazer é o caminho rápido (segundos); a lixeira
+  // é pra quando você só percebe o erro depois — e sessão é farme de verdade, não configuração.
+  AppState.deletedSessions.unshift({ ...sessao, deletedAt: Date.now() });
+  if (AppState.deletedSessions.length > DELETED_SESSIONS_LIMIT) {
+    AppState.deletedSessions.length = DELETED_SESSIONS_LIMIT;
+  }
   saveDgSessions();
+  saveDeletedSessions().catch(err => console.error('Falha ao salvar lixeira de sessões:', err));
   renderPage();
 
   actWithUndo(`Sessão removida: ${sessao.dungeonName} (${formatAlzGamer(sessionTotalAlz(sessao))})`, () => {
-    AppState.dgSessions.splice(index, 0, sessao);
-    saveDgSessions();
-    renderPage();
+    restoreDeletedSession(sessao.startAt);
   });
+}
+
+// Devolve uma sessão da lixeira pro histórico. Reordena por startAt em vez de reinserir no índice
+// antigo — a posição de antes não vale mais nada se outras sessões entraram desde então.
+export function restoreDeletedSession(startAt) {
+  const index = AppState.deletedSessions.findIndex(s => s.startAt === startAt);
+  if (index < 0) return;
+  const [sessao] = AppState.deletedSessions.splice(index, 1);
+  delete sessao.deletedAt;
+  AppState.dgSessions.push(sessao);
+  AppState.dgSessions.sort((a, b) => a.startAt - b.startAt);
+  saveDgSessions();
+  saveDeletedSessions().catch(err => console.error('Falha ao salvar lixeira de sessões:', err));
+  renderPage();
+}
+
+// Apaga de vez. Aqui a confirmação faz sentido (diferente do excluir, que tem a lixeira atrás):
+// depois disto não há mais de onde voltar.
+export function purgeDeletedSession(startAt) {
+  const sessao = AppState.deletedSessions.find(s => s.startAt === startAt);
+  if (!sessao) return;
+  if (!confirm(`Apagar definitivamente a sessão de ${sessao.dungeonName}? Depois disso não tem como recuperar.`)) return;
+  AppState.deletedSessions = AppState.deletedSessions.filter(s => s.startAt !== startAt);
+  saveDeletedSessions().catch(err => console.error('Falha ao salvar lixeira de sessões:', err));
+  renderPage();
 }
 
 // Recapitulação do dia, no espírito do placar de fim de partida que todo jogo tem. O jogador já

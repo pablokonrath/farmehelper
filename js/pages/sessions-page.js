@@ -241,6 +241,30 @@ function renderSessionHistoryGroups(history) {
   return html;
 }
 
+// Lixeira de sessões. O toast de desfazer dura segundos — bom pro erro percebido na hora, inútil
+// pro percebido depois. Sessão é farme de verdade, então some daqui só quando você mandar (ou
+// quando o limite de 10 empurrar a mais antiga pra fora). Some da tela quando está vazia.
+function renderDeletedSessionsBin() {
+  const lixeira = AppState.deletedSessions || [];
+  if (!lixeira.length) return '';
+  return `
+  <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:8px">
+      <i class="ti ti-trash"></i> Excluídas recentemente <span style="font-weight:400;text-transform:none;letter-spacing:0">— dá pra restaurar</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${lixeira.map(s => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-size:12px">
+        <span style="font-weight:600">${esc(s.dungeonName)}</span>
+        <span style="color:var(--muted)">${formatDateBR(s.date)} · ${timeHM(s.startAt)}–${timeHM(s.endAt)} · ${s.dropCount} drops · ${formatAlzGamer(sessionTotalAlz(s))}</span>
+        <span style="margin-left:auto;display:flex;gap:6px">
+          <button class="btn btn-d btn-xs" onclick="restoreDeletedSession(${s.startAt})"><i class="ti ti-arrow-back-up"></i>Restaurar</button>
+          <button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" title="Apagar definitivamente" onclick="purgeDeletedSession(${s.startAt})"><i class="ti ti-trash"></i></button>
+        </span>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
 // Painel de "esqueci de marcar" — some se não sobrou nenhum drop fora de sessão pra recuperar.
 function forgottenSessionRecoveryPanel() {
   const suggestion = suggestForgottenSessionWindow();
@@ -533,6 +557,7 @@ export function renderSessionsPage() {
     : `<table class="t-cards"><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th>Anotação</th><th style="width:80px"></th></tr></thead><tbody>
       ${renderSessionHistoryGroups(history)}
       </tbody></table>`}
+  ${renderDeletedSessionsBin()}
 </div>`;
 
   const rc = AppState.resetConfig; // reset (computeResetWorth) já foi calculado lá em cima, reusado aqui

@@ -204,6 +204,11 @@ export const AppState = {
   // Abrir sessão sozinho quando drops começam a cair sem nenhuma marcada. Ligado por padrão:
   // esquecer de marcar é a maior fonte de buraco no histórico. Ver session-autostart.js.
   autoSessionEnabled: true,
+  // Lixeira de sessões excluídas. O desfazer do toast dura segundos — pouco pra um registro que é
+  // farme de verdade, e que some pra sempre se você piscar. Aqui as últimas ficam guardadas até
+  // você decidir. Cap em DELETED_SESSIONS_LIMIT (ver dg-session.js) porque é rede de segurança
+  // pra arrependimento recente, não um segundo histórico.
+  deletedSessions: [],
   // Fim da sessão mais recente que você EXCLUIU. Serve de piso pra "drops sem sessão" (ver
   // unclaimedDropsSince): apagar uma sessão devolvia os drops dela pro limbo, e a próxima sessão
   // iniciada os varria de volta — não havia como descartar um trecho ruim de farme de verdade.
