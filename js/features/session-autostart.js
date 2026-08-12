@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { startDgSession, endDgSession, resumeDgSession, getActiveSessionSummary, unclaimedDropsSince } from './dg-session.js';
+import { startDgSession, endDgSession, resumeDgSession, getActiveSessionSummary, unclaimedDropsSince, suggestRunMinutes } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
@@ -114,13 +114,20 @@ export function checkAutoStartSession() {
 
   // Retroage pro primeiro drop não reivindicado: o farme dos minutos antes da detecção conta.
   const startAt = Math.min(...recent.map(d => d.timestamp.getTime()));
-  startDgSession(dungeon.id, 0, { startAt, auto: true });
+  // Tempo por run vem do histórico da própria DG — é o que faz a contagem de runs funcionar sem
+  // o jogador precisar informar nada. Sem histórico ainda, abre com 0 (contagem manual) em vez de
+  // chutar um número.
+  const sugestao = suggestRunMinutes(dungeon.id);
+  startDgSession(dungeon.id, sugestao?.minutes || 0, { startAt, auto: true });
 
+  const sobreRuns = sugestao
+    ? ` Contando as runs sozinho a ~${sugestao.minutes.toString().replace('.', ',')}min por run (sua média nessa DG).`
+    : '';
   showGoalToast(
     '▶️ Sessão iniciada sozinha',
-    guess
+    (guess
       ? `Detectei farme em ${dungeon.name} (pelos itens que caíram). Se não for essa DG, troque no seletor do card.`
-      : `Detectei farme sem sessão aberta e abri uma em ${dungeon.name} — confira a DG no seletor do card.`
+      : `Detectei farme sem sessão aberta e abri uma em ${dungeon.name} — confira a DG no seletor do card.`) + sobreRuns
   );
 }
 

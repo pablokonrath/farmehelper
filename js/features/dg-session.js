@@ -114,6 +114,54 @@ export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } 
   }
 }
 
+// Tempo por run sugerido pelo SEU histórico naquela DG.
+//
+// A contagem automática de runs ("Runs feitas" derivado do tempo ativo ÷ tempo por run) existia,
+// mas na prática ninguém usava: exige que o jogador saiba de cabeça quanto demora cada DG, e
+// ninguém sabe — varia um ou dois minutos toda run. O app, porém, já mede isso a cada sessão
+// encerrada com runs preenchidas. Só faltava devolver o número.
+//
+// Usa a MEDIANA do tempo/run de cada sessão, não a média: com poucas sessões, uma única atípica
+// (lag, pausa longa que o tempo ativo não pegou, run de boss) puxaria a média e desregularia a
+// contagem de todas as sessões seguintes. Mediana ignora o extremo sem precisar descartar dado.
+//
+// null = sem base ainda (nenhuma sessão dessa DG com runs preenchidas). Nesse caso é melhor não
+// sugerir nada do que sugerir um número inventado — a contagem erraria em silêncio.
+export function suggestRunMinutes(dungeonId) {
+  const amostras = [];
+  let totalRuns = 0;
+  for (const s of AppState.dgSessions) {
+    if (s.dungeonId !== dungeonId || !(s.runs > 0)) continue;
+    const ativo = s.activeDurationMs ?? s.durationMs;
+    if (!(ativo > 0)) continue;
+    amostras.push(ativo / s.runs);
+    totalRuns += s.runs;
+  }
+  if (!amostras.length) return null;
+
+  amostras.sort((a, b) => a - b);
+  const meio = Math.floor(amostras.length / 2);
+  const medianaMs = amostras.length % 2 ? amostras[meio] : (amostras[meio - 1] + amostras[meio]) / 2;
+  // Arredonda pro meio minuto — mesma granularidade do campo (step 0.5). Precisão maior que isso
+  // é ilusória num dado que varia de run pra run.
+  const minutes = Math.max(0.5, Math.round((medianaMs / 60000) * 2) / 2);
+  return { minutes, sessions: amostras.length, runs: totalRuns };
+}
+
+// Ajusta o tempo por run da sessão em andamento. Existe porque a sugestão do histórico é um ponto
+// de partida, não uma verdade: se hoje a DG está saindo mais lenta, corrigir aqui faz a contagem
+// automática voltar a bater sem precisar encerrar a sessão.
+export function setActiveSessionRunMinutes(value) {
+  const s = AppState.activeDgSession;
+  if (!s) return;
+  s.runMinutes = Math.max(0, parseFloat(String(value).replace(',', '.')) || 0);
+  // Voltar a informar um tempo devolve o controle pro automático — senão, quem corrigiu as runs
+  // na mão uma vez ficaria presa no manual pro resto da sessão mesmo depois de ajustar o tempo.
+  if (s.runMinutes > 0) s.runsManuallySet = false;
+  saveActiveDgSession();
+  renderPage();
+}
+
 // Troca a DG da sessão ATIVA (a de setSessionDungeon troca de sessão já encerrada, no histórico).
 // É o que torna a detecção automática confortável de verdade: você nunca aperta "Iniciar", ela
 // abre sozinha com um palpite, e corrigir o rótulo é um seletor ali na hora — em vez de esperar
@@ -124,6 +172,9 @@ export function setActiveSessionDungeon(dungeonId) {
   if (!s || !dg) return;
   s.dungeonId = dg.id;
   s.dungeonName = dg.name;
+  // Tempo por run é POR DG — trocar a DG invalida o valor anterior. Reaplica a sugestão da DG
+  // nova, a menos que o jogador já tenha corrigido as runs na mão (aí a palavra é dele).
+  if (!s.runsManuallySet) s.runMinutes = suggestRunMinutes(dg.id)?.minutes || 0;
   // Confirmar a DG na mão tira o aviso de "aberta automaticamente, confira": você acabou de
   // conferir. A rota também é reavaliada — a nova DG pode pertencer a outra rota aplicada hoje.
   s.autoStarted = false;

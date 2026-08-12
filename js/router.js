@@ -8,7 +8,7 @@ import { renderDropChart, destroyDropChart, renderPriceChart, destroyPriceChart,
 import { renderSalesPage } from './pages/sales-page.js';
 import { updateSalePriceHint } from './features/sales.js';
 import { updateCartPreview } from './features/rush-cart.js';
-import { renderSessionsPage } from './pages/sessions-page.js';
+import { renderSessionsPage, fillSuggestedRunMinutes } from './pages/sessions-page.js';
 import { renderQuickPage } from './pages/quick-page.js';
 import { renderTutorialPage } from './pages/tutorial-page.js';
 import { renderDropSourcePage } from './pages/drop-source-page.js';
@@ -47,5 +47,6 @@ export function renderPage() {
 function afterPageRender() {
   if (AppState.currentPage === 'overview') renderDropChart();
   if (AppState.currentPage === 'rush') updateCartPreview();
+  if (AppState.currentPage === 'sessoes') fillSuggestedRunMinutes();
   if (AppState.currentPage === 'vendas') { renderPriceChart(); renderSalesChart(); updateSalePriceHint(); }
 }

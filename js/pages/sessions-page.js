@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, sessionTotalAlz, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, computeBestFarmingHours, sessionTotalAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { computeRouteComparison, suggestRouteForTime } from '../features/rush-routes.js';
@@ -128,6 +128,30 @@ function sessionItemsRow(s) {
     </tr>`).join('')}
     </tbody></table>`}
   </td></tr>`;
+}
+
+// Preenche o "Tempo por run" com a mediana do histórico da DG escolhida, e explica de onde veio.
+// Chamado ao trocar a DG no seletor e uma vez ao abrir a página (ver router.js) — sem isso, o
+// campo continuaria vazio e a contagem automática de runs seguiria sendo uma função que existe
+// mas ninguém usa, porque exige saber de cabeça quanto demora cada DG.
+export function fillSuggestedRunMinutes() {
+  const select = document.getElementById('dgSessionSelect');
+  const input = document.getElementById('dgSessionRunMinutes');
+  const hint = document.getElementById('runMinutesHint');
+  if (!select || !input) return;
+
+  const s = suggestRunMinutes(select.value);
+  // Não sobrescreve o que o jogador digitou: só preenche campo vazio ou o valor que nós mesmos
+  // sugerimos pra DG anterior (marcado em dataset.suggested).
+  const podeSobrescrever = !input.value || input.value === input.dataset.suggested;
+  if (s && podeSobrescrever) {
+    input.value = s.minutes;
+    input.dataset.suggested = String(s.minutes);
+  }
+  if (!hint) return;
+  hint.innerHTML = s
+    ? `<i class="ti ti-wand"></i> Sugerido pelo seu histórico: <strong>${String(s.minutes).replace('.', ',')}min</strong> por run — mediana de ${s.sessions} sessão(ões), ${s.runs.toLocaleString('pt-BR')} run(s). Ajuste se hoje estiver diferente.`
+    : `<span style="color:var(--muted)"><i class="ti ti-info-circle"></i> Sem histórico com runs preenchidas nessa DG ainda — preencha as runs ao encerrar e da próxima vez ele já sugere o tempo sozinho.</span>`;
 }
 
 // Selo de "esfriando" com a CAUSA, não só o aviso (ver coolingCause em computeDgComparison). As
@@ -317,6 +341,11 @@ export function renderSessionsPage() {
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div><label class="lbl" style="margin:0 0 2px">Runs feitas${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet ? ' <span style="color:var(--acc);font-weight:400">(auto)</span>' : ''}</label>
             <input class="inp" id="dgRunsInput" style="width:80px" type="number" min="0" value="${AppState.activeDgSession.runs || 0}" onchange="setActiveSessionRuns(this.value)"></div>
+          ${/* Tempo por run editável DURANTE a sessão: a sugestão do histórico é ponto de partida,
+               e se hoje a DG está saindo mais lenta, corrigir aqui recoloca a contagem no trilho
+               sem precisar encerrar. */''}
+          <div><label class="lbl" style="margin:0 0 2px">Min / run</label>
+            <input class="inp" style="width:78px" type="number" min="0" step="0.5" placeholder="—" value="${AppState.activeDgSession.runMinutes || ''}" onchange="setActiveSessionRunMinutes(this.value)" title="Tempo médio de cada run. Preenchido, as runs são contadas sozinhas pelo tempo ativo."></div>
           <div><label class="lbl" style="margin:0 0 2px">&nbsp;</label>
             <button class="btn" style="background:var(--err-bg);color:var(--err);border:none" onclick="endDgSession()"><i class="ti ti-player-stop"></i>Encerrar</button></div>
         </div>
@@ -328,14 +357,15 @@ export function renderSessionsPage() {
       ${resetNudge}`
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
-          <select class="inp" id="dgSessionSelect">
+          <select class="inp" id="dgSessionSelect" onchange="fillSuggestedRunMinutes()">
             ${renderDungeonOptionsGrouped(AppState.dungeonList, undefined, AppState.pendingSessionDungeonId || null, rushPriorityGroups)}
           </select></div>
         <div style="width:150px"><label class="lbl">Tempo por run (min)</label>
           <input class="inp" id="dgSessionRunMinutes" type="number" min="0" step="0.5" placeholder="opcional"></div>
         <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="startDgSession(document.getElementById('dgSessionSelect').value, document.getElementById('dgSessionRunMinutes').value);clearPendingSessionDungeon()"><i class="ti ti-player-play"></i>Iniciar</button></div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Informando o tempo por run, "Runs feitas" é contado sozinho pelo tempo ativo de farme. Sem isso, preencha na mão.${pendingRushDungeons.length ? ' As DGs que ainda faltam no rush de hoje aparecem no topo da lista e saem de lá conforme você completa as runs.' : ''}</div>
+      <div id="runMinutesHint" style="font-size:11px;color:var(--gold);margin-top:8px"></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px"><i class="ti ti-info-circle"></i> Com o tempo por run preenchido, "Runs feitas" é contado sozinho — e ele já vem sugerido pelo seu próprio histórico naquela DG, quando existe. Cada sessão que você encerra melhora a próxima sugestão.${pendingRushDungeons.length ? ' As DGs que ainda faltam no rush de hoje aparecem no topo da lista e saem de lá conforme você completa as runs.' : ''}</div>
       <label class="tgl-row" style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;color:var(--muted);cursor:pointer">
         <label class="tgl"><input type="checkbox" aria-label="Cuidar da sessão sozinho" ${AppState.autoSessionEnabled ? 'checked' : ''} onchange="toggleAutoSessionStart(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
         Cuidar da sessão sozinho (abre quando começo a farmar, encerra quando os drops param)
