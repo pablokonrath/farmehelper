@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
+import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes, DAILY_RUN_LIMIT } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
@@ -33,20 +33,42 @@ const MIN_DROPS_TO_KEEP_UNASSIGNED = 3;
 // Só considera drops recentes — um lote antigo relido do arquivo não deve abrir sessão.
 const RECENT_WINDOW_MS = 10 * 60 * 1000;
 
-// Palpite da DG pelos itens que caíram: pontua cada DG pelo nº de drops recentes que constam
-// como raridade dela no cadastro "Onde dropa". Sem cadastro nenhum, ninguém pontua e caímos no
-// fallback (última DG farmada).
+// Palpite da DG pelos itens que caíram — usando SÓ os itens que identificam uma DG.
+//
+// A versão anterior pontuava cada DG pelo nº de itens caídos que constavam como raridade dela, e
+// ficava com a de maior pontuação. O problema é que muito item cai em várias DGs: ele pontuava
+// pra todas, e no empate vencia a primeira da lista — ou seja, a ordem do cadastro decidia a DG.
+// Um palpite errado por desempate arbitrário é pior que palpite nenhum, porque vem com a mesma
+// cara de certeza.
+//
+// Agora só conta item EXCLUSIVO: aquele que aparece na lista de uma única DG. Item que cai em
+// tudo é ignorado em vez de virar voto. E se dois itens exclusivos apontarem pra DGs diferentes,
+// a evidência se contradiz e não há palpite — a sessão fica sem DG (o que hoje é uma resposta
+// perfeitamente boa) até você escolher ou até cair algo que decida.
 function guessDungeonFromDrops(drops) {
   const names = new Set(drops.map(d => stripEnhancementSuffix(d.name)));
-  let best = null;
+
+  // Pra cada item caído, quais DGs o reivindicam.
+  const dgsPorItem = new Map();
   for (const dg of AppState.dungeonList) {
     const expected = getExpectedItemNamesForDungeon(dg.id);
     if (!expected.size) continue;
-    let score = 0;
-    for (const name of names) if (expected.has(name)) score++;
-    if (score > 0 && (!best || score > best.score)) best = { dg, score };
+    for (const name of names) {
+      if (!expected.has(name)) continue;
+      if (!dgsPorItem.has(name)) dgsPorItem.set(name, []);
+      dgsPorItem.get(name).push(dg);
+    }
   }
-  return best;
+
+  const votos = new Map();
+  for (const [, dgs] of dgsPorItem) {
+    if (dgs.length !== 1) continue; // cai em mais de uma DG: não identifica nada
+    votos.set(dgs[0], (votos.get(dgs[0]) || 0) + 1);
+  }
+  if (votos.size !== 1) return null; // nenhum item exclusivo, ou exclusivos brigando entre si
+
+  const [dg, score] = [...votos][0];
+  return { dg, score };
 }
 
 // Última DG que você farmou (sessão mais recente do histórico) — as pessoas repetem DG, então
@@ -73,6 +95,30 @@ export function setSessionIdleCloseMinutes(value) {
 
 function idleCloseMs() {
   return Math.max(1, +AppState.sessionIdleCloseMinutes || 5) * 60000;
+}
+
+// Quanto tempo sem drop essa sessão específica aguenta antes de ser encerrada.
+//
+// Um número fixo pra todas as DGs é errado dos dois lados: numa DG de 2min por run, 5min parado é
+// uma eternidade (você já saiu faz tempo); numa de 20min, pode ser o meio de uma run normal. O
+// tempo por run já está na sessão (vem do seu próprio histórico) — dá pra derivar dele.
+//
+// Regra: METADE de uma run sem drop já é sinal de que travou ou acabou. E se a sessão já bateu o
+// limite diário de runs, a DG está esgotada (sem reset não dá pra continuar), então a paciência
+// cai pela metade de novo.
+//
+// O que você configurou vira TETO, não valor fixo: ele pode fechar antes, nunca depois. Isso é
+// deliberado. Fechar cedo demais hoje custa pouco, porque se os drops voltarem logo a retomada
+// religa a MESMA sessão. Fechar tarde é que é caro: o farme seguinte, possivelmente de outra DG,
+// entra somado nesta — e aí o Alz/run das duas mente.
+function idleCloseMsFor(session) {
+  const teto = idleCloseMs();
+  const porRunMs = (+session?.runMinutes || 0) * 60000;
+  if (!porRunMs) return teto; // sem tempo por run conhecido, não há o que derivar
+
+  let limite = porRunMs / 2;
+  if ((session.runs || 0) >= DAILY_RUN_LIMIT) limite /= 2;
+  return Math.min(teto, Math.max(60000, limite));
 }
 
 // Sessão encerrada há pouco que provavelmente é o MESMO farme: você parou 5 minutos (foi vender,
@@ -102,6 +148,12 @@ function pareceMesmoFarme(anterior, recentes, guess) {
   if (!itensAntes.length) return false;
   const conhecidos = new Set(itensAntes.map(n => stripEnhancementSuffix(n)));
   return recentes.every(d => conhecidos.has(stripEnhancementSuffix(d.name)));
+}
+
+// "3min" / "1,5min" — o limite derivado raramente cai em minuto redondo.
+function formatMinutos(ms) {
+  const min = ms / 60000;
+  return `${(Math.round(min * 10) / 10).toString().replace('.', ',')}min`;
 }
 
 function recentlyClosedSession() {
@@ -202,10 +254,12 @@ export function checkAutoEndSession() {
   // Sem nenhum drop ainda: mede a inatividade desde a abertura, senão uma sessão aberta por
   // engano (ou um auto-start que não vingou) ficaria aberta pra sempre.
   const referencia = summary?.lastDropAt || AppState.activeDgSession.startAt;
-  if (Date.now() - referencia < idleCloseMs()) return;
+  const limite = idleCloseMsFor(AppState.activeDgSession);
+  if (Date.now() - referencia < limite) return;
 
   const nome = AppState.activeDgSession.dungeonName;
   const total = summary?.totalAlz || 0;
+  const esgotou = (AppState.activeDgSession.runs || 0) >= DAILY_RUN_LIMIT;
 
   // Nunca ganhou DG e mal dropou: era drop perdido, não farme. Descarta em vez de sujar o
   // histórico com uma linha "sem DG" de 1 drop. Nada se perde — os drops seguem no log e
@@ -219,6 +273,6 @@ export function checkAutoEndSession() {
 
   showGoalToast(
     '⏹️ Sessão encerrada sozinha',
-    `${nome || 'Sessão sem DG'} ficou ${Math.round(idleCloseMs() / 60000)}min sem drop, então encerrei no horário do último — o tempo parado não entrou na conta.${nome ? '' : ' Ela está no histórico esperando você dizer qual DG era.'} Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
+    `${nome || 'Sessão sem DG'} ficou ${formatMinutos(limite)} sem drop${esgotou ? ` e já tinha feito as ${DAILY_RUN_LIMIT} runs do dia` : ''}, então encerrei no horário do último — o tempo parado não entrou na conta.${nome ? '' : ' Ela está no histórico esperando você dizer qual DG era.'} Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
   );
 }
