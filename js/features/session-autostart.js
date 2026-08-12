@@ -70,6 +70,30 @@ function idleCloseMs() {
 // permite o limite de inatividade ser curto sem custo — sem isso, um limite de 5min picaria um
 // farme de 3 horas em muitas sessões, inflando a contagem e fragmentando o recorde de melhor
 // sessão. A janela é 3× o limite: se ficou muito mais tempo que isso parado, aí é farme novo.
+// Os drops que voltaram são a continuação DAQUELA sessão, ou você trocou de DG na pausa?
+//
+// Exige evidência POSITIVA de que é o mesmo farme. A primeira versão retomava quando o palpite de
+// DG era nulo — e "não sei qual DG" foi tratado como "é a mesma", que é errado justamente no caso
+// que importa: quem parou o Solo Flamejante e foi pra Tumba Ancestral tinha a sessão do Solo
+// reaberta, e os drops da Tumba entravam somados aos do Solo, sob a DG errada.
+//
+// A assimetria dos erros manda aqui. Não retomar quando era o mesmo farme parte uma sessão em
+// duas: contagem de sessões inflada, chato e reversível. Retomar quando NÃO era mistura o farme de
+// duas DGs num registro só: corrompe o Alz/run das duas, o tempo/run, e o "o que essa DG dropa" em
+// Onde dropa — tudo que o app usa pra decidir. Na dúvida, não retoma.
+function pareceMesmoFarme(anterior, recentes, guess) {
+  // 1) Os itens raros que caíram apontam pra essa mesma DG. É o sinal mais forte.
+  if (guess) return guess.dg.id === anterior.dungeonId;
+
+  // 2) Sem palpite: aceita só se TUDO que está caindo agora já caía naquela sessão. Um nome
+  //    inédito é indício de que a DG mudou — e como o custo de errar é alto, um indício basta
+  //    pra desistir. Exige a sessão anterior ter registro de itens pra comparar contra.
+  const itensAntes = anterior.items ? Object.keys(anterior.items) : [];
+  if (!itensAntes.length) return false;
+  const conhecidos = new Set(itensAntes.map(n => stripEnhancementSuffix(n)));
+  return recentes.every(d => conhecidos.has(stripEnhancementSuffix(d.name)));
+}
+
 function recentlyClosedSession() {
   if (!AppState.dgSessions.length) return null;
   const janela = idleCloseMs() * 3;
@@ -98,11 +122,11 @@ export function checkAutoStartSession() {
   // caíram apontam com confiança pra uma DG DIFERENTE (você trocou de DG na pausa): aí é farme
   // novo mesmo, e retomar atribuiria drops da DG nova à antiga.
   const anterior = recentlyClosedSession();
-  if (anterior && (!guess || guess.dg.id === anterior.dungeonId)) {
+  if (anterior && pareceMesmoFarme(anterior, recent, guess)) {
     resumeDgSession(anterior);
     showGoalToast(
       '▶️ Sessão retomada',
-      `Os drops voltaram, então continuei a sessão de ${anterior.dungeonName} em vez de abrir outra — o intervalo parado não conta no tempo.`
+      `Os drops voltaram, então continuei a sessão de ${anterior.dungeonName} em vez de abrir outra — o intervalo parado não conta no tempo. Trocou de DG? Corrija no seletor que eu separo as duas.`
     );
     return;
   }

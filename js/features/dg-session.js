@@ -169,7 +169,30 @@ export function setActiveSessionRunMinutes(value) {
 export function setActiveSessionDungeon(dungeonId) {
   const s = AppState.activeDgSession;
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
-  if (!s || !dg) return;
+  if (!s || !dg || dg.id === s.dungeonId) return;
+
+  // Sessão que veio de uma RETOMADA (ver resumeDgSession) e está mudando de DG é o caso ambíguo:
+  // provavelmente a retomada errou — você parou numa DG e voltou em outra, e agora tem farme de
+  // duas DGs no mesmo registro. Trocar o rótulo inteiro atribuiria o farme antigo à DG nova.
+  //
+  // Pergunta em vez de adivinhar, porque as duas leituras são plausíveis: ou a sessão sempre foi
+  // desta DG e o palpite inicial errou (renomeia tudo), ou a DG mudou de verdade no meio (corta
+  // em duas). E o corte tem um ponto exato pra acontecer: resumedAt, quando a sessão original
+  // tinha encerrado.
+  if (s.resumedAt && sessionDrops(s.startAt, s.resumedAt).length) {
+    const antes = sessionDrops(s.startAt, s.resumedAt).length;
+    const cortar = confirm(
+      `Esta sessão foi retomada de um farme anterior em "${s.dungeonName}", e tem ${antes} drop(s) de antes da pausa.\n\n` +
+      `OK — você trocou de DG na pausa: eu fecho aquele farme em "${s.dungeonName}" e começo uma sessão nova em "${dg.name}".\n\n` +
+      `Cancelar — sempre foi "${dg.name}": renomeio a sessão inteira.`
+    );
+    if (cortar) {
+      splitActiveSessionAt(s.resumedAt, dg.id);
+      return;
+    }
+    delete s.resumedAt;
+  }
+
   s.dungeonId = dg.id;
   s.dungeonName = dg.name;
   // Tempo por run é POR DG — trocar a DG invalida o valor anterior. Reaplica a sugestão da DG
@@ -183,6 +206,17 @@ export function setActiveSessionDungeon(dungeonId) {
   s.routeName = rota?.name || null;
   saveActiveDgSession();
   renderPage();
+}
+
+// Fecha a sessão ativa em `cutAt` mantendo a DG atual, e abre outra a partir dali na DG nova —
+// desfazendo uma retomada que juntou dois farmes diferentes. Os itens de cada lado são
+// recalculados da janela de tempo respectiva no log, então nada precisa ser movido à mão.
+function splitActiveSessionAt(cutAt, newDungeonId) {
+  endDgSession({ endAt: cutAt });
+  // +1ms pra o drop que caiu exatamente em cutAt não entrar nas duas (sessionDrops é inclusivo
+  // nas duas pontas).
+  startDgSession(newDungeonId, suggestRunMinutes(newDungeonId)?.minutes || 0, { startAt: cutAt + 1 });
+  showInfoToast('Separei: o farme de antes da pausa ficou na DG anterior');
 }
 
 // Reabre uma sessão já encerrada como ativa, devolvendo o registro dela pro estado "em andamento".
@@ -205,6 +239,10 @@ export function resumeDgSession(session) {
     autoWatchdog,
     autoStarted: false,
     note: session.note,
+    // Momento em que a sessão original tinha encerrado. Guardado porque é a fronteira exata entre
+    // "farme de antes da pausa" e "farme de depois" — se a retomada errou a DG (você trocou de DG
+    // na pausa), é aqui que setActiveSessionDungeon corta pra separar as duas.
+    resumedAt: session.endAt,
   };
   saveDgSessions();
   saveActiveDgSession();
