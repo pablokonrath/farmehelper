@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { startDgSession, endDgSession, resumeDgSession, getActiveSessionSummary, unclaimedDropsSince, suggestRunMinutes } from './dg-session.js';
+import { startDgSession, endDgSession, resumeDgSession, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
@@ -136,8 +136,9 @@ export function checkAutoStartSession() {
   const dungeon = guess?.dg || lastFarmedDungeon() || AppState.dungeonList[0];
   if (!dungeon) return;
 
-  // Retroage pro primeiro drop não reivindicado: o farme dos minutos antes da detecção conta.
-  const startAt = Math.min(...recent.map(d => d.timestamp.getTime()));
+  // Retroage pro início do bloco de farme atual (mesmo critério do início manual) — não pro drop
+  // mais antigo da janela, que pode ser de antes de uma pausa.
+  const startAt = burstStartAt(recent);
   // Tempo por run vem do histórico da própria DG — é o que faz a contagem de runs funcionar sem
   // o jogador precisar informar nada. Sem histórico ainda, abre com 0 (contagem manual) em vez de
   // chutar um número.

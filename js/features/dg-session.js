@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
 import { getCostPerGem } from './rush-cart.js';
-import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
+import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveLastDiscardedSessionEndAt } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
@@ -52,9 +52,30 @@ function summarizeDrops(drops) {
 const UNCLAIMED_WINDOW_MS = 30 * 60 * 1000;
 export function unclaimedDropsSince(windowMs = UNCLAIMED_WINDOW_MS) {
   const lastEndAt = AppState.dgSessions.length ? Math.max(...AppState.dgSessions.map(s => s.endAt || 0)) : 0;
-  const cutoff = Math.max(lastEndAt, Date.now() - windowMs);
+  // lastDiscardedSessionEndAt entra no piso porque EXCLUIR uma sessão apagava o endAt dela daqui,
+  // devolvendo os drops pro limbo — e a próxima sessão iniciada os varria de volta, agora sob a
+  // DG errada. Sem esse piso não existia "descartar um trecho de farme": ele sempre voltava.
+  const cutoff = Math.max(lastEndAt, AppState.lastDiscardedSessionEndAt || 0, Date.now() - windowMs);
   return AppState.drops.filter(d =>
     d.timestamp && d.timestamp.getTime() > cutoff && !isExcludedGearItem(d.name));
+}
+
+// Início do bloco de farme que está acontecendo AGORA: caminha do drop mais recente pra trás e
+// para no primeiro intervalo grande (o mesmo limite que encerra sessão por inatividade).
+//
+// Retroagir por janela fixa de tempo era grosseiro demais: 30 minutos atrás pode ser farme de
+// antes de uma pausa, ou de outra DG. O bloco contínuo é a definição certa de "o que estou
+// farmando agora" — e para sozinho na pausa, sem precisar adivinhar quanto tempo faz.
+export function burstStartAt(drops) {
+  const times = drops.filter(d => d.timestamp).map(d => d.timestamp.getTime()).sort((a, b) => a - b);
+  if (!times.length) return null;
+  const gapMs = Math.max(1, +AppState.sessionIdleCloseMinutes || 5) * 60000;
+  let inicio = times[times.length - 1];
+  for (let i = times.length - 1; i > 0; i--) {
+    if (times[i] - times[i - 1] >= gapMs) break;
+    inicio = times[i - 1];
+  }
+  return inicio;
 }
 
 // startAt opcional: a detecção automática (session-autostart.js) só percebe que você começou a
@@ -74,9 +95,10 @@ export function startDgSession(dungeonId, runMinutes, { startAt, auto = false } 
   let retroagidos = 0;
   if (!startAt) {
     const pendentes = unclaimedDropsSince();
-    if (pendentes.length) {
-      startAt = Math.min(...pendentes.map(d => d.timestamp.getTime()));
-      retroagidos = pendentes.length;
+    const inicio = burstStartAt(pendentes);
+    if (inicio) {
+      startAt = inicio;
+      retroagidos = pendentes.filter(d => d.timestamp.getTime() >= inicio).length;
     }
   }
   // O watchdog liga junto com a sessão (resolve o "esqueci de ativar/desativar"). Se ele já estava
@@ -335,12 +357,20 @@ export function deleteSession(startAt) {
   const index = AppState.dgSessions.findIndex(s => s.startAt === startAt);
   if (index < 0) return;
   const [sessao] = AppState.dgSessions.splice(index, 1);
+  // Marca até onde o farme foi DESCARTADO (ver unclaimedDropsSince). Sem isso, excluir uma sessão
+  // ruim não resolvia nada: os drops dela voltavam a ser "sem sessão" e a próxima sessão iniciada
+  // os absorvia — o trecho ruim reaparecia, agora colado numa DG que não era a dele.
+  const pisoAnterior = AppState.lastDiscardedSessionEndAt || 0;
+  AppState.lastDiscardedSessionEndAt = Math.max(pisoAnterior, sessao.endAt || 0);
   saveDgSessions();
+  saveLastDiscardedSessionEndAt().catch(err => console.error('Falha ao salvar descarte:', err));
   renderPage();
 
   actWithUndo(`Sessão removida: ${sessao.dungeonName} (${formatAlzGamer(sessionTotalAlz(sessao))})`, () => {
     AppState.dgSessions.splice(index, 0, sessao);
+    AppState.lastDiscardedSessionEndAt = pisoAnterior;
     saveDgSessions();
+    saveLastDiscardedSessionEndAt().catch(err => console.error('Falha ao salvar descarte:', err));
     renderPage();
   });
 }
@@ -546,7 +576,9 @@ export function endDgSession({ endAt } = {}) {
 // de log de quem nunca usou o controle de sessão.
 export function suggestForgottenSessionWindow() {
   const lastEndAt = AppState.dgSessions.length ? Math.max(...AppState.dgSessions.map(s => s.endAt || 0)) : 0;
-  const anchor = lastEndAt || new Date().setHours(0, 0, 0, 0);
+  // Mesmo piso de unclaimedDropsSince: farme que você excluiu de propósito não deve reaparecer
+  // aqui como "sessão esquecida" pra ser registrado de novo.
+  const anchor = Math.max(lastEndAt, AppState.lastDiscardedSessionEndAt || 0) || new Date().setHours(0, 0, 0, 0);
   const unclaimed = AppState.drops.filter(d => d.timestamp && d.timestamp.getTime() > anchor && !isExcludedGearItem(d.name));
   if (!unclaimed.length) return null;
   const times = unclaimed.map(d => d.timestamp.getTime()).sort((a, b) => a - b);

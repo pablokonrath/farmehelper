@@ -204,6 +204,10 @@ export const AppState = {
   // Abrir sessão sozinho quando drops começam a cair sem nenhuma marcada. Ligado por padrão:
   // esquecer de marcar é a maior fonte de buraco no histórico. Ver session-autostart.js.
   autoSessionEnabled: true,
+  // Fim da sessão mais recente que você EXCLUIU. Serve de piso pra "drops sem sessão" (ver
+  // unclaimedDropsSince): apagar uma sessão devolvia os drops dela pro limbo, e a próxima sessão
+  // iniciada os varria de volta — não havia como descartar um trecho ruim de farme de verdade.
+  lastDiscardedSessionEndAt: 0,
   // Minutos sem nenhum drop até a sessão encerrar sozinha. Configurável (não mais fixo em código)
   // porque o número certo depende de como VOCÊ farma: quem rusha com macro sem parar quer curto;
   // quem alterna DG, vende no meio e volta quer folgado. Ver session-autostart.js — encerrar curto
