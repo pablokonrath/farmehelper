@@ -273,6 +273,19 @@ function unclaimedWindowsPanel(dateISO) {
   const janelas = findUnclaimedDropWindows(dateISO);
   if (!janelas.length) return '';
   const ehHoje = dateISO === todayISODate();
+
+  // As sessões do dia entram no topo do mesmo seletor, como alvo de "juntar". Nem todo bloco órfão
+  // é uma sessão que faltou: às vezes é um pedaço de uma sessão que JÁ existe (o log demorou a
+  // registrar, ou você parou um pouco mais que o limite de inatividade). Criar uma segunda sessão
+  // da mesma DG nesse caso partiria o farme em dois e estragaria o Alz/run dos dois pedaços.
+  // O prefixo "s:" no value distingue os dois alvos — id de DG nunca tem esse formato.
+  const sessoesDoDia = AppState.dgSessions
+    .filter(s => s.date === dateISO)
+    .sort((a, b) => a.startAt - b.startAt);
+  const grupoJuntar = !sessoesDoDia.length ? [] : [{
+    label: 'Juntar a uma sessão já registrada',
+    dungeons: sessoesDoDia.map(s => ({ id: `s:${s.startAt}`, name: `${s.dungeonName} · ${timeHM(s.startAt)}–${timeHM(s.endAt)}` })),
+  }];
   return `<div style="margin-top:12px">
     <div style="font-size:12px;color:var(--txt);margin-bottom:8px"><i class="ti ti-alert-triangle" style="color:var(--gold)"></i> <strong>${janelas.length} bloco(s) de farme ${ehHoje ? 'de hoje' : `de ${formatDateBR(dateISO)}`} sem DG.</strong> Estão no log mas fora de qualquer sessão — escolha a DG pra cada um e eles entram nas médias.</div>
     ${janelas.map(j => `<div style="padding:10px;background:var(--surf2);border:1px dashed var(--border);border-radius:8px;margin-bottom:8px">
@@ -282,8 +295,8 @@ function unclaimedWindowsPanel(dateISO) {
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(j.items.join(' · '))}</div>
       <div class="row" style="align-items:flex-end">
-        <div style="flex:1"><select class="inp inp-sm" id="unclaimedDg${j.startAt}">${renderDungeonOptionsGrouped(AppState.dungeonList)}</select></div>
-        <div><button class="btn btn-p btn-sm" onclick="recoverDropWindow(document.getElementById('unclaimedDg${j.startAt}').value, ${j.startAt}, ${j.endAt})"><i class="ti ti-history"></i>Registrar</button></div>
+        <div style="flex:1"><select class="inp inp-sm" id="unclaimedDg${j.startAt}">${renderDungeonOptionsGrouped(AppState.dungeonList, d => d.name, null, grupoJuntar)}</select></div>
+        <div><button class="btn btn-p btn-sm" onclick="applyUnclaimedWindow(document.getElementById('unclaimedDg${j.startAt}').value, ${j.startAt}, ${j.endAt})"><i class="ti ti-history"></i>Aplicar</button></div>
       </div>
     </div>`).join('')}
   </div>`;

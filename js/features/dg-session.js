@@ -689,6 +689,63 @@ export function recoverDropWindow(dungeonId, startAt, endAt) {
   showInfoToast(`Farme das ${new Date(startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} registrado em ${dg.name}`);
 }
 
+// Junta um bloco órfão a uma sessão que JÁ está registrada, em vez de criar outra.
+//
+// É o caso de "esse drop é da Siena que eu já registrei": criar uma segunda sessão de Siena pro
+// mesmo farme estragaria a contagem de sessões e o Alz/run das duas metades. Como a pertinência
+// é derivada da janela, juntar = esticar a janela até cobrir o bloco e reconstruir o registro a
+// partir dela — assim itens, drops, Alz e melhor drop saem todos coerentes de uma vez, sem
+// somar na mão e sem risco de o resumo discordar do log.
+//
+// A duração de relógio cresce com o intervalo entre os dois trechos, mas activeDurationMs
+// desconta parado acima do limite de inatividade — o tempo/run continua honesto.
+export function attachDropWindowToSession(sessionStartAt, blockStartAt, blockEndAt) {
+  const idx = AppState.dgSessions.findIndex(s => s.startAt === Number(sessionStartAt));
+  if (idx < 0) return;
+  const s = AppState.dgSessions[idx];
+  const novoInicio = Math.min(s.startAt, blockStartAt);
+  const novoFim = Math.max(s.endAt || s.startAt, blockEndAt);
+
+  // Esticar a janela não pode passar por cima de outra sessão: os drops dela passariam a contar
+  // nas duas, e aí o total do dia mentiria. Melhor recusar e deixar você registrar como sessão
+  // própria do que inventar uma atribuição dupla.
+  const conflito = AppState.dgSessions.find((o, i) => i !== idx && o.startAt <= novoFim && (o.endAt || o.startAt) >= novoInicio);
+  if (conflito) {
+    alert(`Não dá pra esticar até lá: a sessão de ${conflito.dungeonName} (${new Date(conflito.startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}) está no meio do caminho, e os drops dela acabariam contando duas vezes. Registre esse bloco como sessão própria.`);
+    return;
+  }
+  if (AppState.activeDgSession && AppState.activeDgSession.startAt <= novoFim) {
+    alert('Não dá pra esticar até lá: a sessão em andamento começa antes do fim desse trecho. Encerre ela primeiro.');
+    return;
+  }
+
+  // Espalha o registro antigo por baixo pra não perder o que buildSessionRecord não conhece
+  // (anotação, marcações manuais de runs).
+  AppState.dgSessions[idx] = {
+    ...s,
+    ...buildSessionRecord({
+      dungeonId: s.dungeonId,
+      dungeonName: s.dungeonName,
+      routeId: s.routeId,
+      routeName: s.routeName,
+      startAt: novoInicio,
+      endAt: novoFim,
+      runs: s.runs,
+    }),
+  };
+  saveDgSessions();
+  renderPage();
+  showInfoToast(`Trecho juntado a ${s.dungeonName} — ${AppState.dgSessions[idx].dropCount} drops na sessão agora.`);
+}
+
+// Um botão só no painel: o alvo escolhido diz se é pra juntar a uma sessão já registrada
+// ("s:<startAt>") ou abrir uma sessão nova na DG escolhida (o id da DG, sem prefixo).
+export function applyUnclaimedWindow(target, blockStartAt, blockEndAt) {
+  if (!target) return;
+  if (target.startsWith('s:')) attachDropWindowToSession(target.slice(2), blockStartAt, blockEndAt);
+  else recoverDropWindow(target, blockStartAt, blockEndAt);
+}
+
 export function toggleForgottenSessionRecovery() {
   AppState.forgottenSessionRecoveryOpen = !AppState.forgottenSessionRecoveryOpen;
   renderPage();
