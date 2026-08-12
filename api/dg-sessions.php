@@ -3,10 +3,12 @@
 // truncava em 64 KB e sumia). GET devolve as sessões do usuário; PUT substitui todas (replace-all,
 // igual aos outros endpoints de lista — o cliente manda o array inteiro do AppState).
 //
-// route_id/route_name (rótulo de rota, ver sql/migrate_dg_session_routes.sql) são colunas mais
-// novas que o resto da tabela — os dois métodos tentam a query completa primeiro e caem pra uma
-// versão sem essas colunas se elas ainda não existirem, em vez de esvaziar o histórico (GET) ou
-// quebrar o encerramento de sessão (PUT) enquanto a migração não roda.
+// route_id/route_name (rótulo de rota, ver sql/migrate_dg_session_routes.sql) e note (anotação da
+// sessão, ver sql/migrate_dg_session_note.sql) são colunas mais novas que o resto da tabela — os
+// dois métodos tentam a query completa primeiro e caem pra uma versão sem essas colunas se elas
+// ainda não existirem, em vez de esvaziar o histórico (GET) ou quebrar o encerramento de sessão
+// (PUT) enquanto a migração não roda. Sem a migração, tudo funciona menos a anotação, que some ao
+// recarregar em vez de derrubar o resto.
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/db.php';
 require_login();
@@ -20,7 +22,7 @@ if ($method === 'GET') {
   try {
     $stmt = $db->prepare('SELECT dungeon_id, dungeon_name, session_date, start_at, end_at, duration_ms,
       active_duration_ms, runs, drop_count, unique_items, total_alz, alz_per_hour, best_item_name,
-      best_item_price, items, route_id, route_name FROM dg_sessions WHERE user_id = :uid ORDER BY start_at');
+      best_item_price, items, route_id, route_name, note FROM dg_sessions WHERE user_id = :uid ORDER BY start_at');
     $stmt->execute(['uid' => $uid]);
   } catch (PDOException $e) {
     $hasRouteColumns = false;
@@ -52,6 +54,7 @@ if ($method === 'GET') {
     'items' => $r['items'] ? json_decode($r['items'], true) : [],
     'routeId' => $hasRouteColumns ? $r['route_id'] : null,
     'routeName' => $hasRouteColumns ? $r['route_name'] : null,
+    'note' => $hasRouteColumns ? ($r['note'] ?? null) : null,
   ], $stmt->fetchAll()));
 }
 
@@ -62,9 +65,9 @@ if ($method === 'PUT') {
   $withRouteColumns = 'INSERT INTO dg_sessions
     (user_id, dungeon_id, dungeon_name, session_date, start_at, end_at, duration_ms, active_duration_ms,
      runs, drop_count, unique_items, total_alz, alz_per_hour, best_item_name, best_item_price, items,
-     route_id, route_name)
+     route_id, route_name, note)
     VALUES (:uid, :did, :dname, :sdate, :start, :end, :dur, :active, :runs, :drops, :uniq, :alz, :aph,
-     :biname, :biprice, :items, :routeId, :routeName)';
+     :biname, :biprice, :items, :routeId, :routeName, :note)';
   $withoutRouteColumns = 'INSERT INTO dg_sessions
     (user_id, dungeon_id, dungeon_name, session_date, start_at, end_at, duration_ms, active_duration_ms,
      runs, drop_count, unique_items, total_alz, alz_per_hour, best_item_name, best_item_price, items)
@@ -100,6 +103,9 @@ if ($method === 'PUT') {
       if ($withRoute) {
         $params['routeId'] = $s['routeId'] ?? null;
         $params['routeName'] = $s['routeName'] ?? null;
+        // Anotação do jogador. Cortada em 120 pra bater com a coluna — sem isso, um texto maior
+        // faria o INSERT falhar e derrubar o encerramento da sessão inteiro no fallback.
+        $params['note'] = isset($s['note']) && $s['note'] !== '' ? mb_substr((string) $s['note'], 0, 120) : null;
       }
       $stmt->execute($params);
     }

@@ -114,6 +114,10 @@ CREATE TABLE IF NOT EXISTS dg_sessions (
   -- agrupar o histórico em Sessões de farme, não afeta nenhum cálculo.
   route_id VARCHAR(50) NULL,
   route_name VARCHAR(100) NULL,
+  -- Anotação livre do jogador sobre essa sessão ("lag", "testando build", "evento 2x"). Explica
+  -- um ponto fora da curva sem precisar excluir a sessão, que apagaria farme real. Só texto:
+  -- não entra em conta nenhuma.
+  note VARCHAR(120) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   KEY user_start (user_id, start_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
