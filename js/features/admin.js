@@ -1,10 +1,15 @@
 import { AppState } from '../state/app-state.js';
-import { saveItemCategories, saveItemCategoryAssignments } from '../state/persistence.js';
+import { saveItemCategories, saveItemCategoryAssignments, savePersonalCategories } from '../state/persistence.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
 export function toggleCategoryManager() {
   AppState.isCategoryManagerOpen = !AppState.isCategoryManagerOpen;
+  renderPage();
+}
+
+export function togglePersonalCategoryManager() {
+  AppState.isPersonalCategoryManagerOpen = !AppState.isPersonalCategoryManagerOpen;
   renderPage();
 }
 
@@ -51,6 +56,62 @@ export function setItemCategoryAssignment(itemName, categoryName) {
   if (categoryName) AppState.itemCategoryAssignments[itemName] = categoryName;
   else delete AppState.itemCategoryAssignments[itemName];
   saveItemCategoryAssignments().catch(err => console.error('Falha ao salvar atribuição de categoria:', err));
+  renderPage();
+}
+
+// ===== Categorias PESSOAIS =====
+// Espelho das funções acima, só que no escopo do jogador (ver personalCategories em app-state.js).
+// Não pedem confirmação nem avisam sobre "vale pra todo mundo": aqui o dado é só seu, e desfazer
+// é recriar — o peso da global vinha de ser compartilhada e irreversível.
+export function addPersonalCategory() {
+  const input = document.getElementById('newPersonalCategory');
+  const name = input?.value.trim();
+  if (!name) return;
+  if (AppState.personalCategories.includes(name) || AppState.itemCategories.includes(name)) {
+    alert(`"${name}" já existe como categoria (sua ou global).`);
+    return;
+  }
+  AppState.personalCategories.push(name);
+  savePersonalCategories().catch(err => console.error('Falha ao salvar categoria pessoal:', err));
+  input.value = '';
+  renderPage();
+}
+
+export function removePersonalCategory(name) {
+  AppState.personalCategories = AppState.personalCategories.filter(c => c !== name);
+  // Mesma limpeza de órfã da global: item apontando pra categoria que não existe mais ficaria
+  // preso num nome fantasma, sem aparecer em lista nenhuma pra ser corrigido.
+  Object.entries(AppState.personalCategoryAssignments).forEach(([itemName, cat]) => {
+    if (cat === name) delete AppState.personalCategoryAssignments[itemName];
+  });
+  savePersonalCategories().catch(err => console.error('Falha ao salvar categoria pessoal:', err));
+  renderPage();
+}
+
+// Atribuição pessoal. Vazio remove a sua escolha e o item volta a seguir a categoria global (se
+// tiver uma) — por isso é delete, não gravar string vazia: é "sem opinião", não "sem categoria".
+export function setPersonalCategoryAssignment(itemName, categoryName) {
+  if (categoryName) AppState.personalCategoryAssignments[itemName] = categoryName;
+  else delete AppState.personalCategoryAssignments[itemName];
+  savePersonalCategories().catch(err => console.error('Falha ao salvar categoria pessoal:', err));
+  renderPage();
+}
+
+export function bulkAssignPersonalCategoryByKeyword(categoryName, keyword) {
+  const key = normalizeForSearch(keyword || '');
+  if (!categoryName || !key) {
+    alert('Escolha uma categoria e digite uma palavra-chave antes de aplicar em massa.');
+    return;
+  }
+  const matches = (AppState.knownItemNames || []).filter(name => normalizeForSearch(name).includes(key));
+  if (!matches.length) {
+    alert(`Nenhum item cadastrado contém "${keyword}".`);
+    return;
+  }
+  if (!confirm(`Atribuir "${categoryName}" a ${matches.length} item(ns) que contêm "${keyword}"? Isso substitui a sua categoria atual nesses itens.`)) return;
+
+  matches.forEach(name => { AppState.personalCategoryAssignments[name] = categoryName; });
+  savePersonalCategories().catch(err => console.error('Falha ao salvar categoria pessoal:', err));
   renderPage();
 }
 

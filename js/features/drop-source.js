@@ -23,6 +23,12 @@ export function setDropSourceDungeon(value) {
   renderPage();
 }
 
+export function setDropSourceCompare(slot, value) {
+  if (slot === 'a') AppState.dropSourceCompareA = value;
+  else AppState.dropSourceCompareB = value;
+  renderPage();
+}
+
 // "Ir farmar aqui": leva pra Sessões de farme com essa DG já pré-selecionada no formulário de
 // iniciar sessão — não inicia nada sozinho (o jogador ainda escolhe o tempo por run e confirma),
 // só poupa achar de novo, num seletor que pode ter dezenas de DGs, o que já foi achado aqui.

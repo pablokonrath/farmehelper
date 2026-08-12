@@ -6,13 +6,13 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, setSessionNote, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, setSessionRuns, setSessionDungeon, setSessionNote, copyDaySummary, deleteSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession } from './features/dg-session.js';
 import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
-import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory } from './features/sales.js';
+import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory, updateSalePriceHint } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
@@ -25,12 +25,17 @@ import {
   setItemCategoryAssignment,
   setCategoryAssignSearchQuery,
   bulkAssignCategoryByKeyword,
+  togglePersonalCategoryManager,
+  addPersonalCategory,
+  removePersonalCategory,
+  setPersonalCategoryAssignment,
+  bulkAssignPersonalCategoryByKeyword,
 } from './features/admin.js';
 
-import { setDateFrom, setDateTo, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
-import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
+import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
 import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, setRarityMaxPercent, dismissRarity, restoreRarity } from './features/item-dungeon-sources.js';
 import {
   setRushCartDate,
@@ -102,6 +107,7 @@ Object.assign(window, {
   reconnectLiveFile,
   setDateFrom,
   setDateTo,
+  saveCurrentDateFromAsDefault,
   toggleManualDropsManager,
   setTrendPeriod,
   setTrendMode,
@@ -114,6 +120,7 @@ Object.assign(window, {
   searchDropSource,
   setDropSourceTargetQty,
   setDropSourceDungeon,
+  setDropSourceCompare,
   goFarmDungeon,
   clearPendingSessionDungeon,
   addItemDungeonSourceItem,
@@ -208,6 +215,11 @@ Object.assign(window, {
   setItemCategoryAssignment,
   setCategoryAssignSearchQuery,
   bulkAssignCategoryByKeyword,
+  togglePersonalCategoryManager,
+  addPersonalCategory,
+  removePersonalCategory,
+  setPersonalCategoryAssignment,
+  bulkAssignPersonalCategoryByKeyword,
   generateTelegramLinkCode,
   unlinkTelegram,
   setTelegramDropRelayEnabled,
@@ -221,6 +233,7 @@ Object.assign(window, {
   setSessionRuns,
   setSessionDungeon,
   setSessionNote,
+  copyDaySummary,
   deleteSession,
   toggleSessionItems,
   setResetConfig,
@@ -238,6 +251,7 @@ Object.assign(window, {
   repeatLastSale,
   dismissUnsoldInventory,
   restoreUnsoldInventory,
+  updateSalePriceHint,
   setPriceHistoryItem,
   addSalesGoal,
   deleteSalesGoal,

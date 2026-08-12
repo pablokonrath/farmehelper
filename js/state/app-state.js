@@ -169,10 +169,14 @@ export const AppState = {
   trackedKeywords: buildDefaultTrackedKeywords(),
   filterByTrackedKeywords: false,
   currentPage: 'overview',
-  // Piso padrão da Visão geral — dados de antes de 25/07/2026 eram de teste/sujeira (pedido do
-  // jogador, que passou a gerar sessão todo dia a partir daí). Não persiste nem apaga nada do
-  // banco, é só o valor inicial do filtro "De" — o jogador ainda pode limpar na mão e ver tudo.
-  dateFrom: '2026-07-25',
+  // Piso padrão do filtro "De" da Visão geral. Antes era uma data fixa em código ('2026-07-25' —
+  // o dia em que o dono do app passou a gerar sessão diária; antes disso era teste). Decisão
+  // pessoal de UM usuário embutida em código que roda pra todos: qualquer outra conta com
+  // histórico mais antigo abria com parte do próprio farme escondida, sem explicação. Agora vem
+  // de defaultDateFrom (por conta, ver persistence.js); vazio = sem piso, mostra tudo.
+  dateFrom: '',
+  // Valor salvo do piso acima — o jogador define uma vez no filtro da Visão geral.
+  defaultDateFrom: '',
   dateTo: '',
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
@@ -180,6 +184,10 @@ export const AppState = {
   // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma
   // página, ferramenta independente. Não persiste, mesmo espírito das outras duas acima.
   dropSourceDungeonId: '',
+  // Duas DGs escolhidas pra comparação lado a lado ("qual dessas duas eu rodo hoje") — o ranking
+  // sozinho responde "qual é a melhor de todas", que não é como a escolha acontece na prática.
+  dropSourceCompareA: '',
+  dropSourceCompareB: '',
   // DG escolhida em "Onde dropa" (botão "Ir farmar aqui") pra pré-selecionar no formulário de
   // iniciar sessão em Sessões de farme — fecha o ciclo "achei onde farmar" → "vou farmar lá" sem
   // precisar procurar a mesma DG de novo num seletor com dezenas de opções. Consumido uma vez (o
@@ -242,8 +250,14 @@ export const AppState = {
   isMasterAdmin: false,
   currentUsername: '',
   currentUserId: null,
+  // Categorias GLOBAIS (do admin mestre) — base comum pra todo mundo.
   itemCategories: [],
   itemCategoryAssignments: {},
+  // Categorias PESSOAIS, só suas — valem por cima da global (ver getItemCategory em drops.js).
+  // Categorizar é preferência de organização de cada jogador; depender do admin pra separar
+  // "meus insumos de craft" tornava o Relatório inútil pra quem não é o admin.
+  personalCategories: [],
+  personalCategoryAssignments: {},
   // Cadastro manual "em quais DGs este item pode cair" (item → [dungeonId, ...]), curado —
   // diferente de dgSessions/Onde Dropa, que é estatístico. Usado pra destacar em Sessões de
   // farme os itens esperados da DG.
@@ -251,6 +265,7 @@ export const AppState = {
   // Atalho no Relatório pra gerenciar categoria sem sair da página (mesma lista global do
   // Admin) — colapsado por padrão.
   isCategoryManagerOpen: false,
+  isPersonalCategoryManagerOpen: false,
   // Busca na tabela de "atribuir categoria aos itens já cadastrados" — pode ter dezenas de linhas,
   // uma por item conhecido. Não persiste (mesmo espírito de pricingSearchQuery).
   categoryAssignSearchQuery: '',

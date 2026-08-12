@@ -83,6 +83,14 @@ export function checkSalePriceDrop(itemName, unitPrice) {
 // recentemente (o histórico de drop é muito mais antigo que o de venda).
 export function computeLikelyUnsoldInventory(limit = 6) {
   const dropped = {};
+  // Data do drop mais RECENTE de cada item: dá a dimensão tempo ao radar. Sem ela, um item que
+  // caiu ontem e outro que está parado há um mês aparecem idênticos — e são situações diferentes
+  // (o segundo você provavelmente esqueceu; o primeiro nem deu tempo de vender).
+  const lastDrop = {};
+  getAllDrops().forEach(d => {
+    const key = stripEnhancementSuffix(d.name);
+    if (!lastDrop[key] || d.date > lastDrop[key]) lastDrop[key] = d.date;
+  });
   summarizeDropsByItem(getAllDrops()).forEach(i => { dropped[i.name] = i.qty; });
 
   const sold = {};
@@ -91,12 +99,15 @@ export function computeLikelyUnsoldInventory(limit = 6) {
     sold[key] = (sold[key] || 0) + s.qty;
   });
 
+  const hoje = Date.now();
   return Object.entries(dropped)
     .map(([itemName, droppedQty]) => {
       const soldQty = sold[itemName] || 0;
       const dismissedQty = AppState.unsoldInventoryDismissals[itemName]?.qty || 0;
       const unsoldQty = Math.max(0, droppedQty - soldQty - dismissedQty);
-      return { itemName, droppedQty, soldQty, unsoldQty, estValue: unsoldQty * getItemPrice(itemName) };
+      const last = lastDrop[itemName];
+      const idleDays = last ? Math.max(0, Math.floor((hoje - new Date(last + 'T00:00:00').getTime()) / 86400000)) : null;
+      return { itemName, droppedQty, soldQty, unsoldQty, idleDays, estValue: unsoldQty * getItemPrice(itemName) };
     })
     .filter(i => i.unsoldQty > 0 && i.estValue > 0)
     .sort((a, b) => b.estValue - a.estValue)
@@ -136,6 +147,42 @@ function findDuplicateSale(itemName, qty, unitPrice, date, excludeId) {
     s.id !== excludeId && s.date === date && s.qty === qty && s.unitPrice === unitPrice &&
     stripEnhancementSuffix(s.itemName) === key
   );
+}
+
+// Referência de preço mostrada ANTES de digitar o valor. O aviso de venda barata só age depois do
+// número digitado — ancorar antes previne o erro em vez de questioná-lo, e é quando o jogador
+// ainda está decidindo por quanto aceitar vender.
+export function updateSalePriceHint() {
+  const el = document.getElementById('salePriceHint');
+  if (!el) return;
+  const name = document.getElementById('saleItem')?.value.trim();
+  if (!name) { el.innerHTML = ''; return; }
+
+  const key = stripEnhancementSuffix(name);
+  const recent = AppState.salesLog.filter(s => stripEnhancementSuffix(s.itemName) === key).slice(-5);
+  if (recent.length) {
+    const avg = Math.round(recent.reduce((sum, s) => sum + s.unitPrice, 0) / recent.length);
+    el.innerHTML = `<i class="ti ti-history"></i> Suas últimas ${recent.length} venda(s) de "${name}": <strong>${formatAlzGamer(avg)}</strong>/un. em média.`;
+    return;
+  }
+  const cadastrado = getItemPrice(name);
+  el.innerHTML = cadastrado > 0
+    ? `<i class="ti ti-tag"></i> Nunca vendeu "${name}" ainda. Preço cadastrado: <strong>${formatAlzGamer(cadastrado)}</strong>/un.`
+    : `<i class="ti ti-help-circle"></i> Sem venda anterior nem preço cadastrado pra "${name}" — este valor vira a referência dele.`;
+}
+
+// Origem do preço cadastrado de um item: veio de uma venda REAL sua ou é estimativa digitada?
+// Um preço confirmado por venda vale muito mais que um chutado, e a interface tratava os dois
+// igual — sem isso, não dá pra saber em quais números do app confiar. Compara o preço atual com
+// o unitário da última venda: bate = veio dela; não bate = você editou à mão depois.
+export function getPriceOrigin(itemName) {
+  const key = stripEnhancementSuffix(itemName);
+  const sales = AppState.salesLog.filter(s => stripEnhancementSuffix(s.itemName) === key);
+  if (!sales.length) return { origem: 'estimado', rotulo: 'Estimado por você' };
+  const last = sales[sales.length - 1];
+  return getItemPrice(itemName) === last.unitPrice
+    ? { origem: 'venda', rotulo: `Confirmado pela sua venda de ${formatDateBR(last.date)}`, date: last.date }
+    : { origem: 'estimado', rotulo: `Editado à mão depois da última venda (${formatAlzGamer(last.unitPrice)} em ${formatDateBR(last.date)})` };
 }
 
 // Preenche o formulário com o último item vendido (nome + preço unitário, quantidade volta pra 1)

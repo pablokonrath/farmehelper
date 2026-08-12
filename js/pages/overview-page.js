@@ -7,10 +7,11 @@ import { getEventConfig, computeEventProgress } from '../features/event-tracker.
 import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
-import { computeSalesSummary } from '../features/sales.js';
-import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday, computeFarmingConsistency } from '../features/dg-session.js';
+import { computeSalesSummary, computeLikelyUnsoldInventory } from '../features/sales.js';
+import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday, computeFarmingConsistency, computeDaySummary, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
+import { saveDefaultDateFrom } from '../state/persistence.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
@@ -96,21 +97,91 @@ function buildNextStepCard() {
 </div>`;
   }
 
-  // 3) Rush completo: reconhece e sai do caminho.
-  if (rush?.items?.length) {
-    return `
-<div class="card" style="border-color:var(--ok-border)">
+  // Molde comum dos estados abaixo — todos têm a mesma anatomia (ícone, título, frase, ação).
+  const passo = (icone, cor, titulo, frase, botao = '', destaque = false) => `
+<div class="card${destaque ? ' card-featured' : ''}"${destaque ? '' : ` style="border-color:${cor}"`}>
   <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <i class="ti ti-circle-check" style="color:var(--ok);font-size:20px"></i>
+    <i class="ti ${icone}" style="color:${cor};font-size:20px"></i>
     <div style="flex:1;min-width:200px">
-      <div style="font-weight:700">Rush de hoje concluído</div>
-      <div style="font-size:var(--fs-sm);color:var(--muted)">Todas as runs planejadas foram feitas.${melhorDg ? ` Sobrou tempo? ${esc(melhorDg.dungeonName)} é a sua melhor entrada (${formatAlzGamer(melhorDg.alzPerRun)}/run).${avisoEsfriando}` : ''}</div>
+      <div style="font-weight:700">${titulo}</div>
+      <div style="font-size:var(--fs-sm);color:var(--muted)">${frase}</div>
     </div>
+    ${botao}
   </div>
 </div>`;
+
+  // 3) Rush completo, mas ainda sobrou entrada do limite diário: a decisão que resta é onde
+  // gastar as runs que sobraram — mais concreta que só dizer "concluído".
+  const runsFeitasHoje = (rush?.items || []).reduce((sum, it) => sum + computeRunsDoneToday(it.name), 0);
+  const dgsDoRush = new Set((rush?.items || []).map(it => it.name));
+  const sobramRuns = dgsDoRush.size * DAILY_RUN_LIMIT - runsFeitasHoje;
+  if (rush?.items?.length && sobramRuns >= 5 && melhorDg) {
+    return passo('ti-battery-3', 'var(--gold)', 'Rush concluído, mas ainda sobra entrada',
+      `Você fez ${runsFeitasHoje} run(s) hoje e o limite diário das DGs do plano ainda comporta cerca de <strong style="color:var(--txt)">${sobramRuns}</strong>. ${esc(melhorDg.dungeonName)} é a sua melhor entrada (${formatAlzGamer(melhorDg.alzPerRun)}/run).${avisoEsfriando}`,
+      `<button class="btn btn-p btn-xs" onclick="navigateTo('sessoes')"><i class="ti ti-player-play"></i>Farmar mais</button>`, true);
+  }
+
+  // 4) Nada pendente no farme: a pendência que sobra costuma ser de mercado. Estoque que já
+  // deveria ter virado Alz é a mais cara de esquecer — vale mais que "rush concluído" seco.
+  const estoque = computeLikelyUnsoldInventory(3);
+  const estoqueTotal = estoque.reduce((sum, i) => sum + i.estValue, 0);
+  const vendeuHoje = AppState.salesLog.some(s => s.date === hoje);
+  if (estoque.length && estoqueTotal > 0 && !vendeuHoje) {
+    return passo('ti-package', 'var(--gold)', 'Tem coisa parada pra vender',
+      `Cerca de <strong style="color:var(--txt)">${formatAlzGamer(estoqueTotal)}</strong> em itens que você dropou e ainda não registrou venda — ${esc(estoque[0].itemName)} é o maior deles.`,
+      `<button class="btn btn-d btn-xs" onclick="navigateTo('vendas')"><i class="ti ti-arrow-right"></i>Ver em Vendas</button>`);
+  }
+
+  // 5) Preço faltando em item que aparece muito: não é pendência de ação, é de confiabilidade —
+  // sem preço, o próprio número que essa página mostra está incompleto.
+  const semPreco = summarizeDropsByItem(getAllDrops()).filter(i => !i.price);
+  if (semPreco.length >= 3) {
+    return passo('ti-coins', 'var(--warn)', `${semPreco.length} itens seus ainda não têm preço`,
+      `Enquanto não tiverem, eles caem no seu farme valendo zero e o total desta página fica menor do que a realidade. O maior em volume é ${esc(semPreco[0].name)} (${semPreco[0].qty}×).`,
+      `<button class="btn btn-d btn-xs" onclick="navigateTo('calculo')"><i class="ti ti-arrow-right"></i>Cadastrar preços</button>`);
+  }
+
+  // 6) Rush completo e nada mais pendente: reconhece e sai do caminho.
+  if (rush?.items?.length) {
+    return passo('ti-circle-check', 'var(--ok)', 'Rush de hoje concluído',
+      `Todas as runs planejadas foram feitas.${melhorDg ? ` Sobrou tempo? ${esc(melhorDg.dungeonName)} é a sua melhor entrada (${formatAlzGamer(melhorDg.alzPerRun)}/run).${avisoEsfriando}` : ''}`);
   }
 
   return '';
+}
+
+// Recapitulação do dia — o placar de fim de partida (ver computeDaySummary em dg-session.js).
+// Fica logo abaixo da meta porque é o mesmo assunto (como foi hoje), e some em dia sem nada
+// registrado, pra não ocupar espaço com um card de zeros.
+function buildDaySummaryCard() {
+  const d = computeDaySummary();
+  if (!d.hasAnything) return '';
+  const bloco = (rotulo, valor, cor) => `<div style="flex:1;min-width:120px">
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">${rotulo}</div>
+    <div style="font-weight:700;font-size:15px;color:${cor}">${valor}</div>
+  </div>`;
+
+  return collapsibleCard({
+    id: 'overview-day-summary',
+    icon: 'ti-clipboard-text',
+    iconColor: 'var(--gold)',
+    title: 'Resumo do dia',
+    resumo: `<strong style="color:${getAlzTierColor(d.net)}">${d.net >= 0 ? '' : ''}${formatAlzGamer(d.net)}</strong> <span style="font-size:var(--fs-sm);color:var(--muted)">líquido</span>`,
+    body: `
+  <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
+    ${bloco('Farmado', formatAlzGamer(d.farmed), getAlzTierColor(d.farmed))}
+    ${d.spent > 0 ? bloco('Gasto em rush', formatAlzGamer(d.spent), 'var(--err)') : ''}
+    ${bloco('Líquido', `${d.net >= 0 ? '+' : ''}${formatAlzGamer(d.net)}`, d.net >= 0 ? 'var(--ok)' : 'var(--err)')}
+    ${d.sold > 0 ? bloco('Vendido', formatAlzGamer(d.sold), 'var(--gold)') : ''}
+    ${d.runs > 0 ? bloco('Runs', `${d.runs} <span style="font-size:11px;font-weight:400;color:var(--muted)">em ${d.sessionCount} sessão(ões)</span>`, 'var(--txt)') : ''}
+    ${d.activeMs > 0 ? bloco('Tempo ativo', formatDuration(d.activeMs), 'var(--txt)') : ''}
+  </div>
+  ${d.topDg || d.bestItem ? `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)">
+    ${d.topDg ? `<span>🏆 Melhor DG: <strong style="color:var(--txt)">${esc(d.topDg.name)}</strong> (${formatAlzGamer(d.topDg.alz)})</span>` : ''}
+    ${d.bestItem ? `<span>💎 Melhor drop: <strong style="color:var(--txt)">${esc(d.bestItem.name)}</strong> (${formatAlzGamer(d.bestItem.price)})</span>` : ''}
+  </div>` : ''}
+  <button class="btn btn-d btn-xs" style="margin-top:12px" onclick="copyDaySummary()"><i class="ti ti-copy"></i>Copiar pra mandar na guild</button>`,
+  });
 }
 
 // Card da meta de farme do dia: progresso, rendimento (Alz/h) e projeção de quando bate a meta
@@ -536,6 +607,15 @@ export function setDateTo(value) {
   renderPage();
 }
 
+// Fixa o "De" atual como piso padrão da conta — é ele que semeia o filtro toda vez que o app
+// abre (ver defaultDateFrom em persistence.js). Existe pra tirar do código uma decisão que é de
+// cada jogador: até onde vale a pena olhar pra trás.
+export function saveCurrentDateFromAsDefault() {
+  AppState.defaultDateFrom = AppState.dateFrom || '';
+  saveDefaultDateFrom().catch(err => console.error('Falha ao salvar piso do filtro:', err));
+  renderPage();
+}
+
 export function toggleManualDropsManager() {
   AppState.isManualDropsOpen = !AppState.isManualDropsOpen;
   renderPage();
@@ -650,13 +730,14 @@ export function renderOverviewPage() {
 </div>`;
 
   const metaCard = buildMetaCard();
+  const daySummaryCard = buildDaySummaryCard();
   const personalBestsCard = buildPersonalBestsCard();
 
   if (!getAllDrops().length) {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return buildNextStepCard() + metaCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log</div></div>`;
+    return buildNextStepCard() + metaCard + daySummaryCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log</div></div>`;
   }
 
   return `
@@ -669,11 +750,16 @@ ${/* Ordem pensada pra quem abre a página querendo um número, não um painel: 
      motivação e ferramenta, não dado operacional — foram pro fim, porque no celular empurravam o
      "Total de farme" pra ~4 telas abaixo. */''}
 ${metaCard}
+${daySummaryCard}
 <div class="card">
   <div class="row">
     <div style="width:130px"><label class="lbl">De</label>${renderDateInputBR({ value: AppState.dateFrom, onChange: 'setDateFrom' })}</div>
     <div style="width:130px"><label class="lbl">Até</label>${renderDateInputBR({ value: AppState.dateTo, onChange: 'setDateTo' })}</div>
+    ${AppState.dateFrom !== AppState.defaultDateFrom ? `<div style="display:flex;align-items:flex-end">
+      <button class="btn btn-d btn-xs" onclick="saveCurrentDateFromAsDefault()" title="O app passa a abrir sempre com essa data no campo De">Fixar como padrão</button>
+    </div>` : ''}
   </div>
+  ${AppState.defaultDateFrom ? `<div style="font-size:11px;color:var(--muted);margin-top:6px"><i class="ti ti-pin"></i> O app abre sempre a partir de ${formatDateBR(AppState.defaultDateFrom)}. Limpe o campo "De" e fixe de novo pra ver todo o histórico por padrão.</div>` : ''}
   <div class="alz-legend">
     <span>Escala Alz:</span>
     <span><span class="alz-dot" style="background:#fde68a"></span>&lt; 1kk</span>

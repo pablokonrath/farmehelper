@@ -133,6 +133,12 @@ export async function loadPersistedState() {
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.rushMonthlyBudgetAlz = appSettings.rushMonthlyBudgetAlz ?? 0;
+  // Piso do filtro "De" da Visão geral, por conta. Semeia dateFrom na abertura — o jogador ainda
+  // pode mudar o filtro livremente durante a sessão sem alterar o padrão salvo.
+  AppState.defaultDateFrom = appSettings.defaultDateFrom ?? '';
+  AppState.dateFrom = AppState.defaultDateFrom;
+  AppState.personalCategories = appSettings.personalCategories ?? [];
+  AppState.personalCategoryAssignments = appSettings.personalCategoryAssignments ?? {};
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
   AppState.weeklyGoalAlz = appSettings.weeklyGoalAlz ?? 0;
   AppState.monthlyGoalAlz = appSettings.monthlyGoalAlz ?? 0;
@@ -224,6 +230,17 @@ export function saveRushParams() {
     rushTicketPrice: AppState.rushTicketPrice,
     rushCardCashPrice: AppState.rushCardCashPrice,
   });
+}
+
+export function savePersonalCategories() {
+  return put('app-settings.php', {
+    personalCategories: AppState.personalCategories,
+    personalCategoryAssignments: AppState.personalCategoryAssignments,
+  });
+}
+
+export function saveDefaultDateFrom() {
+  return put('app-settings.php', { defaultDateFrom: AppState.defaultDateFrom });
 }
 
 export function saveRushMonthlyBudget() {

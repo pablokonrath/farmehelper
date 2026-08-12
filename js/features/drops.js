@@ -14,8 +14,23 @@ export function hasRegisteredPrice(itemName) {
   return AppState.itemPrices[itemName] !== undefined || AppState.itemPrices[stripEnhancementSuffix(itemName)] !== undefined;
 }
 
+// Categoria de um item. Duas camadas, e a PESSOAL ganha da global — mesma lógica de curadoria já
+// usada em raridade (o que você marca vale por cima do que a estatística diz).
+//
+// A camada global é do admin mestre e serve de base comum ("Núcleos", "Joias"). A pessoal existe
+// porque categorizar é preferência de organização de cada um: quem quer separar "meus insumos de
+// craft" ou "guardar pro set" não deveria depender de outra pessoa pra organizar o próprio farme.
 export function getItemCategory(itemName) {
-  return AppState.itemCategoryAssignments[itemName] ?? AppState.itemCategoryAssignments[stripEnhancementSuffix(itemName)] ?? null;
+  const base = stripEnhancementSuffix(itemName);
+  const pessoal = AppState.personalCategoryAssignments;
+  return pessoal[itemName] ?? pessoal[base]
+    ?? AppState.itemCategoryAssignments[itemName] ?? AppState.itemCategoryAssignments[base] ?? null;
+}
+
+// Todas as categorias disponíveis pra escolher: as globais mais as suas. Sem duplicar nome que
+// exista nas duas listas — pro seletor não mostrar a mesma opção duas vezes.
+export function getAllCategoryNames() {
+  return [...new Set([...AppState.itemCategories, ...AppState.personalCategories])].sort((a, b) => a.localeCompare(b));
 }
 
 // Itens cujo valor é tabelado pelo próprio jogo (ex: joia trocável em NPC por preço fixo), não

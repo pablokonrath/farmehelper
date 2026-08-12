@@ -68,6 +68,7 @@ export function renderSalesPage() {
         <div style="text-align:right">
           <div style="font-weight:700;color:var(--gold)">${i.unsoldQty}×</div>
           <div style="font-size:11px;color:var(--muted)" title="${formatNumber(i.estValue)} Alz">~${formatAlzGamer(i.estValue)}</div>
+          ${i.idleDays != null && i.idleDays >= 7 ? `<div style="font-size:10px;color:${i.idleDays >= 30 ? 'var(--warn)' : 'var(--muted)'}" title="Último drop desse item">parado há ${i.idleDays}d</div>` : ''}
         </div>
         <div style="display:flex;gap:4px">
           <button class="btn btn-d btn-xs" title="Já vendi isso, só não registrei aqui" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','vendido')">Vendido</button>
@@ -126,7 +127,7 @@ export function renderSalesPage() {
   <div id="sMsg" style="display:none;font-size:12px;color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-border);border-radius:6px;padding:8px 10px;margin-bottom:10px"></div>
   <div class="row" style="align-items:flex-end">
     <div style="flex:1"><label class="lbl">Item</label>
-      <input class="inp" id="saleItem" placeholder="ex: Anel Fatal" list="saleItemSugg" value="${editingSale ? escAttr(editingSale.itemName) : ''}" onkeydown="if(event.key==='Enter')addSale()">
+      <input class="inp" id="saleItem" placeholder="ex: Anel Fatal" list="saleItemSugg" value="${editingSale ? escAttr(editingSale.itemName) : ''}" oninput="updateSalePriceHint()" onchange="updateSalePriceHint()" onkeydown="if(event.key==='Enter')addSale()">
       <datalist id="saleItemSugg">${itemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
     <div style="width:100px"><label class="lbl">Quantidade</label><input class="inp" id="saleQty" type="number" min="1" value="${editingSale ? editingSale.qty : 1}" onkeydown="if(event.key==='Enter')addSale()"></div>
     <div style="width:150px"><label class="lbl">Valor recebido (total)</label><input class="inp" id="salePrice" type="text" inputmode="numeric" placeholder="Alz" value="${editingSale ? formatNumber(editingSale.unitPrice * editingSale.qty) : ''}" oninput="maskAlzInputLive(this)" onkeydown="if(event.key==='Enter')addSale()"></div>
@@ -136,6 +137,7 @@ export function renderSalesPage() {
       ${editingSale ? `<div><label class="lbl">&nbsp;</label><button class="btn btn-d" onclick="cancelEditingSale()">Cancelar</button></div>` : ''}
     </div>
   </div>
+  <div id="salePriceHint" style="font-size:11px;color:var(--gold);margin-top:8px"></div>
   <div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> É o total da venda (não por unidade) — a gente divide pela quantidade. O "real vs. estimado" compara com o preço cadastrado do item em Cálculo de farme, e toda venda já atualiza esse preço cadastrado sozinha.</div>
 </div>`;
 

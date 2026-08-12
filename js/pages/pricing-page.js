@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveFilterKeywordsFlag } from '../state/persistence.js';
 import { summarizeDropsByItem, getAllDrops, isFixedPriceItem, hasRegisteredPrice, getItemCategory } from '../features/drops.js';
-import { daysSincePriceUpdate, STALE_PRICE_DAYS, getSalePriceHistory } from '../features/sales.js';
+import { daysSincePriceUpdate, STALE_PRICE_DAYS, getSalePriceHistory, getPriceOrigin } from '../features/sales.js';
 import { renderAlzValue, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { esc, escAttr } from '../utils/escape.js';
@@ -137,10 +137,16 @@ ${!totalItems ? '<div class="empty">Nenhum item cadastrado ainda.</div>' : !filt
 ${filteredEntries.map(([name, price]) => {
   const category = getItemCategory(name);
   const categoryBadge = category ? ` <span class="badge badge-muted" style="font-size:10px;font-weight:400">${esc(category)}</span>` : '';
+  // Preço confirmado por venda real vale mais que estimativa digitada — sem o selo, os dois
+  // números pareciam ter o mesmo peso na hora de decidir em qual confiar.
+  const origem = getPriceOrigin(name);
+  const originBadge = origem.origem === 'venda'
+    ? ` <i class="ti ti-circle-check" style="color:var(--ok);font-size:12px" title="${esc(origem.rotulo)}"></i>`
+    : ` <i class="ti ti-pencil" style="color:var(--muted);font-size:11px" title="${esc(origem.rotulo)}"></i>`;
   if (AppState.editingItemPriceName === name) {
     const lastSale = getSalePriceHistory(name).slice(-1)[0];
     return `<tr style="background:var(--acc-bg)">
-  <td>${esc(name)}${categoryBadge}</td>
+  <td>${esc(name)}${originBadge}${categoryBadge}</td>
   <td><input class="inp inp-sm" id="editItemPriceInput" type="text" inputmode="numeric" value="${price ? formatNumber(price) : ''}" style="width:140px" oninput="maskAlzInputLive(this)" onkeydown="if(event.key==='Enter')saveItemPriceEdit('${escAttr(name)}')">
     ${lastSale ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">Última venda: ${renderAlzValue(lastSale.price)} em ${formatDateBR(lastSale.date)}</div>` : ''}</td>
   ${priceAgeCell(name)}
@@ -148,7 +154,7 @@ ${filteredEntries.map(([name, price]) => {
 </tr>`;
   }
   return `<tr>
-  <td>${esc(name)}${categoryBadge}</td><td>${renderAlzValue(price)}</td>
+  <td>${esc(name)}${originBadge}${categoryBadge}</td><td>${renderAlzValue(price)}</td>
   ${priceAgeCell(name)}
   <td><div style="display:flex;gap:4px"><button class="btn btn-d btn-xs" aria-label="Editar preço de ${esc(name)}" title="Editar" onclick="startEditingItemPrice('${escAttr(name)}')"><i class="ti ti-edit"></i></button><button class="btn btn-xs" aria-label="Remover preço de ${esc(name)}" title="Remover" style="background:var(--err-bg);color:var(--err);border:none" onclick="deleteItemPrice('${escAttr(name)}')"><i class="ti ti-trash"></i></button></div></td>
 </tr>`;

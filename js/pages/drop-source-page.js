@@ -1,8 +1,8 @@
 import { AppState } from '../state/app-state.js';
 import { findDropSources, findDungeonDrops, getKnownSessionItemNames, computeRouteItemYield } from '../features/drop-source.js';
 import { findKnownSourcesForQuery } from '../features/item-dungeon-sources.js';
-import { DAILY_RUN_LIMIT } from '../features/dg-session.js';
-import { formatDateBR, renderAlzValue } from '../utils/formatting.js';
+import { DAILY_RUN_LIMIT, computeDgComparison } from '../features/dg-session.js';
+import { formatDateBR, renderAlzValue, formatAlzGamer, formatDuration } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 
 // Cadastro manual (curado) de quais DGs cada item pode dropar — diferente da busca acima, que é
@@ -191,5 +191,62 @@ ${!routeYield.length ? '' : `
         <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
       </div>`}
 </div>
+${renderDgCompareCard()}
 ${renderItemDungeonSourcesCard()}`;
+}
+
+// Comparação direta de duas DGs. O ranking responde "qual é a melhor de todas"; a escolha real do
+// dia a dia costuma ser mais estreita — "entre essas duas, qual eu rodo agora?" —, e responder isso
+// no ranking exige achar duas linhas distantes e comparar de cabeça, coluna a coluna.
+function renderDgCompareCard() {
+  const idA = AppState.dropSourceCompareA;
+  const idB = AppState.dropSourceCompareB;
+  const stats = computeDgComparison();
+  const byId = {};
+  stats.forEach(s => { byId[s.dungeonId] = s; });
+  const a = idA ? byId[idA] : null;
+  const b = idB ? byId[idB] : null;
+
+  const seletor = (slot, valor) => `<select class="inp" onchange="setDropSourceCompare('${slot}', this.value)">
+    <option value="">Escolha uma DG…</option>
+    ${AppState.dungeonList.map(d => `<option value="${esc(d.id)}"${d.id === valor ? ' selected' : ''}>${esc(d.name)}</option>`).join('')}
+  </select>`;
+
+  // Cada linha destaca o lado vencedor — é o que a comparação existe pra responder. `melhor`
+  // diz qual direção é boa: em tempo/run, menor é melhor.
+  const linha = (rotulo, valA, valB, fmt, melhor = 'maior') => {
+    const temAmbos = valA != null && valB != null;
+    const aGanha = temAmbos && (melhor === 'maior' ? valA > valB : valA < valB);
+    const bGanha = temAmbos && (melhor === 'maior' ? valB > valA : valB < valA);
+    const cel = (v, ganha) => `<td data-label="${rotulo}" style="text-align:center;font-weight:${ganha ? '700' : '500'};color:${ganha ? 'var(--gold)' : v == null ? 'var(--muted)' : 'var(--txt)'}">${v == null ? '—' : fmt(v)}${ganha ? ' <i class="ti ti-arrow-up" style="font-size:11px"></i>' : ''}</td>`;
+    return `<tr><td style="color:var(--muted);font-size:12px">${rotulo}</td>${cel(valA, aGanha)}${cel(valB, bGanha)}</tr>`;
+  };
+
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-arrows-left-right"></i>Comparar duas DGs</div>
+  <div style="font-size:12px;color:var(--muted);margin:-4px 0 12px">Pra decidir entre duas opções concretas, sem procurar as duas linhas no ranking e comparar de cabeça. Números do seu histórico de sessões; a seta marca quem ganha em cada linha.</div>
+  <div class="row" style="margin-bottom:12px">
+    <div style="flex:1">${seletor('a', idA)}</div>
+    <div style="flex:1">${seletor('b', idB)}</div>
+  </div>
+  ${!idA || !idB
+    ? '<div class="empty">Escolha duas DGs pra comparar.</div>'
+    : !a || !b
+      ? `<div class="empty">${!a ? 'A primeira' : 'A segunda'} DG ainda não tem sessão encerrada com runs registradas — sem dado pra comparar.</div>`
+      : `<table><thead><tr><th></th><th style="text-align:center">${esc(a.dungeonName)}</th><th style="text-align:center">${esc(b.dungeonName)}</th></tr></thead><tbody>
+        ${linha('Alz / run', a.alzPerRun, b.alzPerRun, formatAlzGamer)}
+        ${linha('Líquido / run', a.netAlzPerRun, b.netAlzPerRun, formatAlzGamer)}
+        ${linha('Alz / hora', a.alzPerHour, b.alzPerHour, formatAlzGamer)}
+        ${linha('Tempo / run', a.msPerRun, b.msPerRun, formatDuration, 'menor')}
+        ${linha('Custo entrada / run', a.entryCostPerRun, b.entryCostPerRun, formatAlzGamer, 'menor')}
+        ${linha('Sessões registradas', a.sessions, b.sessions, v => String(v))}
+        ${linha('Runs registradas', a.runs, b.runs, v => v.toLocaleString('pt-BR'))}
+      </tbody></table>
+      ${a.cooling || b.cooling ? `<div style="font-size:11px;color:var(--warn);margin-top:10px"><i class="ti ti-trending-down"></i> ${[a.cooling && esc(a.dungeonName), b.cooling && esc(b.dungeonName)].filter(Boolean).join(' e ')} ${a.cooling && b.cooling ? 'estão' : 'está'} esfriando — as últimas sessões renderam menos que a média. Veja o detalhe em Sessões de farme.</div>` : ''}
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(idA)}')"><i class="ti ti-player-play"></i>Farmar ${esc(a.dungeonName)}</button>
+        <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(idB)}')"><i class="ti ti-player-play"></i>Farmar ${esc(b.dungeonName)}</button>
+      </div>`}
+</div>`;
 }

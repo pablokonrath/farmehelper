@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getFilteredDrops, getItemPrice, getItemCategory, summarizeDropsByItem } from '../features/drops.js';
+import { getFilteredDrops, getItemPrice, getItemCategory, getAllCategoryNames, summarizeDropsByItem } from '../features/drops.js';
 import { getHistoricalSummary } from '../features/drop-history.js';
 import { renderAlzValue, formatAlzGamer } from '../utils/formatting.js';
 import { normalizeForSearch } from '../utils/parsing.js';
@@ -58,6 +58,64 @@ function renderCategoryManagerCard() {
       </select></td>
     </tr>`).join('')}
     </tbody></table>`}`}
+  </div>` : ''}
+</div>`;
+}
+
+// Minhas categorias — o espelho pessoal do card de admin acima, disponível pra QUALQUER conta.
+// Categorizar é preferência de organização de cada um; antes dependia do admin mestre, o que
+// tornava o Relatório praticamente inútil pra qualquer outro jogador.
+function renderPersonalCategoryCard() {
+  const searchKey = normalizeForSearch(AppState.categoryAssignSearchQuery.trim());
+  const knownNames = [...AppState.knownItemNames].sort((a, b) => a.localeCompare(b));
+  const filteredNames = searchKey ? knownNames.filter(name => normalizeForSearch(name).includes(searchKey)) : knownNames;
+  const todas = getAllCategoryNames();
+
+  return `
+<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+  <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="togglePersonalCategoryManager()">
+    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-user-cog"></i>Minhas categorias <span style="font-size:11px;font-weight:400;color:var(--muted)">${AppState.personalCategories.length} sua(s)${AppState.itemCategories.length ? ` + ${AppState.itemCategories.length} global(is)` : ''}</span></div>
+    <i class="ti ti-chevron-${AppState.isPersonalCategoryManagerOpen ? 'up' : 'down'}" style="color:var(--muted)"></i>
+  </div>
+  ${AppState.isPersonalCategoryManagerOpen ? `<div style="border-top:1px solid var(--border);padding:14px 16px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Categorias suas, que ninguém mais vê. A sua escolha vale <strong>por cima</strong> da categoria global do mesmo item — deixe "Seguir a global" pra voltar ao padrão.</div>
+    ${!AppState.personalCategories.length ? '' : `
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
+    ${AppState.personalCategories.map(name => `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(name)}<button aria-label="Remover categoria ${esc(name)}" style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="removePersonalCategory('${escAttr(name)}')"><i class="ti ti-x"></i></button></span>`).join('')}
+    </div>`}
+    <div class="row" style="margin-bottom:16px">
+      <div style="flex:1"><label class="lbl">Nova categoria minha</label><input class="inp" id="newPersonalCategory" placeholder="ex: Insumos de craft" onkeydown="if(event.key==='Enter')addPersonalCategory()"></div>
+      <button class="btn btn-p" onclick="addPersonalCategory()"><i class="ti ti-plus"></i>Adicionar</button>
+    </div>
+    ${!todas.length ? '<div class="empty" style="padding:14px 0">Crie uma categoria acima pra começar a organizar.</div>' : `
+    <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px">
+      <label class="lbl" style="margin-bottom:6px">Atribuir em massa por palavra-chave</label>
+      <div class="row">
+        <select class="inp" id="bulkPersonalCatSelect" style="width:180px">
+          ${todas.map(cat => `<option value="${esc(cat)}">${esc(cat)}</option>`).join('')}
+        </select>
+        <input class="inp" id="bulkPersonalCatKeyword" placeholder="ex: Nucleo" style="flex:1" onkeydown="if(event.key==='Enter')bulkAssignPersonalCategoryByKeyword(document.getElementById('bulkPersonalCatSelect').value, this.value)">
+        <button class="btn btn-d btn-xs" onclick="bulkAssignPersonalCategoryByKeyword(document.getElementById('bulkPersonalCatSelect').value, document.getElementById('bulkPersonalCatKeyword').value)"><i class="ti ti-wand"></i>Aplicar</button>
+      </div>
+    </div>
+    ${!knownNames.length ? '' : `
+    <div class="row" style="margin-bottom:8px;align-items:center">
+      <div style="font-size:12px;color:var(--muted);flex:1">Atribuir item a item:</div>
+      ${knownNames.length > 8 ? `<input class="inp inp-sm" style="width:200px" placeholder="Buscar item..." value="${esc(AppState.categoryAssignSearchQuery)}" oninput="setCategoryAssignSearchQuery(this.value)">` : ''}
+    </div>
+    ${!filteredNames.length ? '<div class="empty" style="padding:10px 0">Nenhum item bate com essa busca.</div>' : `
+    <table><thead><tr><th>Item</th><th style="width:200px">Minha categoria</th></tr></thead><tbody>
+    ${filteredNames.map(name => {
+      const global = AppState.itemCategoryAssignments[name];
+      return `<tr>
+      <td>${esc(name)}${global ? ` <span class="badge badge-muted" style="font-size:10px;font-weight:400" title="Categoria global deste item">${esc(global)}</span>` : ''}</td>
+      <td><select class="inp inp-sm" onchange="setPersonalCategoryAssignment('${escAttr(name)}', this.value)">
+        <option value="">${global ? 'Seguir a global' : 'Sem categoria'}</option>
+        ${todas.map(cat => `<option value="${esc(cat)}"${AppState.personalCategoryAssignments[name] === cat ? ' selected' : ''}>${esc(cat)}</option>`).join('')}
+      </select></td>
+    </tr>`;
+    }).join('')}
+    </tbody></table>`}`}`}
   </div>` : ''}
 </div>`;
 }
@@ -165,6 +223,7 @@ export function renderReportPage() {
   <button class="btn btn-d btn-xs" onclick="exportDropsToCSV()" style="margin-left:auto"><i class="ti ti-download"></i>Exportar CSV</button>
 </div>
 ${renderCategoryComparisonCard()}
+${renderPersonalCategoryCard()}
 ${renderCategoryManagerCard()}
 ${uncategorizedNotice}
 ${!categories.length ? '<div class="empty" style="padding:60px">Nenhum dado carregado.</div>' :

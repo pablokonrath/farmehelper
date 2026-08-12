@@ -2,10 +2,10 @@ import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
 import { getCostPerGem } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig } from '../state/persistence.js';
-import { formatAlzGamer, parseTimeInputBR } from '../utils/formatting.js';
+import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
-import { setWatchdogEnabled } from './alerts.js';
+import { setWatchdogEnabled, showInfoToast } from './alerts.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { renderPage } from '../router.js';
 
@@ -135,6 +135,63 @@ export function deleteSession(startAt) {
   AppState.dgSessions = AppState.dgSessions.filter(s => s.startAt !== startAt);
   saveDgSessions();
   renderPage();
+}
+
+// Recapitulação do dia, no espírito do placar de fim de partida que todo jogo tem. O jogador já
+// tira print pra mandar no Discord da guild — hoje ele fotografa uma tela que não foi desenhada
+// pra ser fotografada. Só junta números que já existem espalhados; nenhuma conta nova.
+export function computeDaySummary(dateISO = todayISODate()) {
+  const sessions = AppState.dgSessions.filter(s => s.date === dateISO);
+  const farmed = sessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0);
+  const spent = AppState.rushHistory[dateISO]?.total || 0;
+  const runs = sessions.reduce((sum, s) => sum + (s.runs || 0), 0);
+  const activeMs = sessions.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0);
+  const sold = AppState.salesLog
+    .filter(s => s.date === dateISO)
+    .reduce((sum, s) => sum + s.unitPrice * s.qty, 0);
+
+  // Melhor drop do dia entre todas as sessões, pelo preço unitário de hoje.
+  let bestItem = null;
+  sessions.forEach(s => Object.keys(s.items || {}).forEach(name => {
+    if (isExcludedGearItem(name)) return;
+    const price = getItemPrice(name);
+    if (price > 0 && (!bestItem || price > bestItem.price)) bestItem = { name, price };
+  }));
+
+  // DG que mais rendeu no dia — o "MVP" da partida.
+  const byDg = {};
+  sessions.forEach(s => { byDg[s.dungeonName] = (byDg[s.dungeonName] || 0) + sessionTotalAlz(s); });
+  const topDg = Object.entries(byDg).sort((a, b) => b[1] - a[1])[0] || null;
+
+  return {
+    date: dateISO,
+    farmed, spent, net: farmed - spent, sold, runs, activeMs,
+    sessionCount: sessions.length,
+    bestItem,
+    topDg: topDg ? { name: topDg[0], alz: topDg[1] } : null,
+    hasAnything: sessions.length > 0 || spent > 0 || sold > 0,
+  };
+}
+
+// Copia o resumo do dia como texto pronto pra colar no Discord/WhatsApp da guild. Texto e não
+// imagem de propósito: sobrevive a copiar/colar em qualquer lugar, não depende de permissão de
+// canvas nem de o print sair legível no celular de quem recebe.
+export function copyDaySummary() {
+  const d = computeDaySummary();
+  const linhas = [
+    `⚔️ Farme de ${formatDateBR(d.date)}`,
+    `Farmado: ${formatAlzGamer(d.farmed)}`,
+  ];
+  if (d.spent > 0) linhas.push(`Gasto em rush: ${formatAlzGamer(d.spent)}`, `Líquido: ${d.net >= 0 ? '+' : ''}${formatAlzGamer(d.net)}`);
+  if (d.runs > 0) linhas.push(`Runs: ${d.runs} em ${d.sessionCount} sessão(ões)`);
+  if (d.topDg) linhas.push(`Melhor DG: ${d.topDg.name} (${formatAlzGamer(d.topDg.alz)})`);
+  if (d.bestItem) linhas.push(`Melhor drop: ${d.bestItem.name} (${formatAlzGamer(d.bestItem.price)})`);
+  if (d.sold > 0) linhas.push(`Vendido: ${formatAlzGamer(d.sold)}`);
+
+  const texto = linhas.join('\n');
+  navigator.clipboard?.writeText(texto)
+    .then(() => showInfoToast('Resumo do dia copiado'))
+    .catch(() => showInfoToast('Não consegui copiar — seu navegador bloqueou'));
 }
 
 // Anotação livre de uma sessão ("lag", "testando build nova", "evento 2×"). Existe porque uma
