@@ -45,6 +45,7 @@ ${topic('ti-layout-dashboard', 'Visão geral', `
     '<strong>Sua evolução:</strong> compara blocos de 30 dias pela média por <strong>dia farmado</strong> — se num mês você jogou 20 dias e no outro 5, comparar o total falaria mais de presença do que de rendimento.',
     '<strong>Resumo do dia:</strong> o placar de fim de partida — farmado, gasto, líquido, vendido, runs, melhor DG e melhor drop. Tem botão pra <strong>copiar em texto</strong> e colar direto no Discord da guild.',
     '<strong>O que fazer agora:</strong> o card do topo mostra sempre <em>uma</em> sugestão, a mais relevante do momento — continuar o rush, montar o rush, aproveitar entrada que sobrou do limite diário, vender o que está parado, ou cadastrar preço faltando.',
+    '<strong>Painel ou Completo:</strong> o botão no topo escolhe o quanto a página mostra. <strong>Painel</strong> (padrão) deixa só o essencial do dia; <strong>Completo</strong> abre raridades, evolução, consistência, gráfico, top itens e recordes. Nada é removido — muda só o que aparece primeiro, e a escolha fica salva.',
     '<strong>Filtro de data:</strong> depois de escolher um "De", dá pra <strong>fixar como padrão</strong> — o app passa a abrir sempre a partir dessa data. Limpe o campo e fixe de novo pra ver todo o histórico.',
     '<strong>Recorde pessoal:</strong> seu melhor dia e sua melhor sessão única, lá no fim da página.',
   ])}
@@ -113,6 +114,7 @@ ${topic('ti-compass', 'Onde dropa', `
     'Diga "quero calcular pra quantas unidades" e ele estima quantos runs faltam, com faixa otimista/pessimista.',
     '<strong>Qual rota rende mais deste item:</strong> ranking das suas rotas salvas pra esse item.',
     '<strong>Comparar duas DGs:</strong> escolha duas e veja Alz/run, líquido, Alz/hora, tempo por run e custo de entrada lado a lado, com seta marcando quem ganha em cada linha — pra decidir "entre essas duas, qual eu rodo agora", que é como a escolha acontece de verdade.',
+    '<strong>Minhas metas de item:</strong> as outras metas do app são em Alz; esta é em <strong>item</strong> ("preciso de 300 Núcleos pro +15"). Ele mostra o progresso, <strong>quantos runs faltam</strong>, <strong>em qual DG sai mais rápido</strong> e uma <strong>data estimada</strong> pelo seu ritmo real dos últimos 14 dias. Conta o que caiu a partir do dia em que você criou a meta — o app não conhece seu inventário, então esse é o único recorte honesto.',
     'Achou a DG certa? <strong>"Ir farmar aqui"</strong> leva pra Sessões de farme com ela já selecionada. Achou a rota certa? <strong>"Aplicar"</strong> soma ela ao carrinho de hoje e leva pro Planejamento de Rush.',
   ])}
 `)}
@@ -168,6 +170,16 @@ ${topic('ti-send', 'Fora do app: Telegram', `
     '<strong>Vincule sua conta:</strong> gera um código, você manda pro bot. Aí recebe avisos de TG/World Boss, drop rastreado e watchdog (helper travado ou conexão ao vivo perdida).',
     'Mande <strong>/drop</strong> pro bot pra ver o que você já dropou hoje, ou <strong>/farm</strong> pro resumo em Alz. <strong>/sessao</strong> mostra a sessão de DG ativa.',
     'Importante: alertas do SEU próprio drop e o watchdog (incluindo o aviso de reconexão) dependem do navegador aberto (é ele que detecta) — só chegam no Telegram enquanto ele estiver aberto (mesmo minimizado). TG/World Boss chegam mesmo com o navegador fechado.',
+  ])}
+`)}
+
+${sectionTitle('Como o app se comporta')}
+${topic('ti-arrow-back-up', 'Desfazer, e quando ele pergunta antes', `
+  Excluir uma venda, uma sessão, uma rota, um cofre, uma meta ou limpar o carrinho <strong>acontece na hora</strong> — e aparece um aviso com <strong>Desfazer</strong> por alguns segundos.
+  ${li([
+    'É de propósito: perguntar "tem certeza?" cobra pedágio de quem já sabia o que estava fazendo, e ainda por cima pergunta <em>antes</em> de você ver o resultado. Desfazer deixa ver e voltar atrás.',
+    'Onde ele <strong>ainda pergunta antes</strong> é onde não existe volta: apagar coisa global que vale pra todo mundo (categoria do admin, cadastro Itens × DGs, catálogo de DGs) e restaurar listas padrão.',
+    'As confirmações de <strong>preço/venda</strong> são outra coisa: não são "tem certeza que quer apagar", são conferência de valor (venda duplicada, preço fora de ordem de grandeza, venda abaixo da média).',
   ])}
 `)}
 
