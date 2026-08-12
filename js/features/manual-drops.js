@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveManualDrops } from '../state/persistence.js';
 import { updateBalanceSidebar } from './drops.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // A opção de ADICIONAR um drop manual foi retirada (pedido do jogador, 11/08/2026): misturava
@@ -14,11 +15,19 @@ import { renderPage } from '../router.js';
 // podem ser removidos — só não dá mais pra criar um novo, por isso só sobrou a função de baixo.
 
 export function deleteManualDropBatch(batchId) {
-  if (!confirm('Remover estes itens adicionados manualmente?')) return;
+  const removidos = AppState.manualDrops.filter(d => d.batchId === batchId);
+  if (!removidos.length) return;
   AppState.manualDrops = AppState.manualDrops.filter(d => d.batchId !== batchId);
   saveManualDrops();
   updateBalanceSidebar();
   renderPage();
+
+  actWithUndo(`${removidos.length}× ${removidos[0].name} removido`, () => {
+    AppState.manualDrops.push(...removidos);
+    saveManualDrops();
+    updateBalanceSidebar();
+    renderPage();
+  });
 }
 
 export function summarizeManualDropBatches() {

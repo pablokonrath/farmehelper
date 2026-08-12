@@ -14,8 +14,10 @@ import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
 import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory, updateSalePriceHint } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
+import { addItemGoal, deleteItemGoal } from './features/item-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
+import { runUndo } from './features/undo.js';
 import { toggleAutoSessionStart } from './features/session-autostart.js';
 import { setEventEnabled, setEventItemName, setEventSince, setEventMultiplier } from './features/event-tracker.js';
 import {
@@ -32,7 +34,7 @@ import {
   bulkAssignPersonalCategoryByKeyword,
 } from './features/admin.js';
 
-import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
@@ -108,6 +110,7 @@ Object.assign(window, {
   setDateFrom,
   setDateTo,
   saveCurrentDateFromAsDefault,
+  setOverviewMode,
   toggleManualDropsManager,
   setTrendPeriod,
   setTrendMode,
@@ -255,6 +258,8 @@ Object.assign(window, {
   setPriceHistoryItem,
   addSalesGoal,
   deleteSalesGoal,
+  addItemGoal,
+  deleteItemGoal,
   openQuickMode,
   quickPick,
   quickBackToMenu,
@@ -266,6 +271,7 @@ Object.assign(window, {
   toggleInfoBox,
   toggleCard,
   toggleAutoSessionStart,
+  runUndo,
 });
 
 // Registra o service worker já no carregamento, pra o app poder ser INSTALADO como PWA de

@@ -4,6 +4,7 @@ import { normalizeForSearch } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 import { relayDropToTelegram, relayWatchdogToTelegram } from './telegram.js';
+import { actWithUndo } from './undo.js';
 
 let audioCtx = null;
 function getAudioContext() {
@@ -397,11 +398,20 @@ export function markAllAlertsSeen() {
 }
 
 export function clearAlertHistory() {
-  if (!confirm('Limpar todo o histórico de alertas?')) return;
+  const anterior = AppState.alertHistory;
+  const gruposAnteriores = AppState.pendingAlertGroups;
+  if (!anterior.length) return;
   AppState.alertHistory = [];
   AppState.pendingAlertGroups = {};
   saveAlertHistory();
   renderPage();
+
+  actWithUndo(`Histórico de alertas limpo (${anterior.length} registro(s))`, () => {
+    AppState.alertHistory = anterior;
+    AppState.pendingAlertGroups = gruposAnteriores;
+    saveAlertHistory();
+    renderPage();
+  });
 }
 
 export function setAlertHistoryFilter(value) {

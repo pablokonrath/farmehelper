@@ -137,6 +137,7 @@ export async function loadPersistedState() {
   // pode mudar o filtro livremente durante a sessão sem alterar o padrão salvo.
   AppState.defaultDateFrom = appSettings.defaultDateFrom ?? '';
   AppState.dateFrom = AppState.defaultDateFrom;
+  AppState.overviewMode = appSettings.overviewMode === 'completo' ? 'completo' : 'painel';
   AppState.personalCategories = appSettings.personalCategories ?? [];
   AppState.personalCategoryAssignments = appSettings.personalCategoryAssignments ?? {};
   AppState.dailyGoalAlz = appSettings.dailyGoalAlz ?? 0;
@@ -145,6 +146,7 @@ export async function loadPersistedState() {
   AppState.salesLog = appSettings.salesLog ?? [];
   AppState.priceHistory = appSettings.priceHistory ?? {};
   AppState.salesGoals = appSettings.salesGoals ?? [];
+  AppState.itemGoals = appSettings.itemGoals ?? [];
   AppState.unsoldInventoryDismissals = appSettings.unsoldInventoryDismissals ?? {};
   // Sessões de DG vêm da tabela própria agora. Migração transparente: se a tabela ainda está vazia
   // mas há sessões no blob antigo (app_settings.dgSessions), usa o blob e migra pra tabela no fim.
@@ -239,6 +241,10 @@ export function savePersonalCategories() {
   });
 }
 
+export function saveOverviewMode() {
+  return put('app-settings.php', { overviewMode: AppState.overviewMode });
+}
+
 export function saveDefaultDateFrom() {
   return put('app-settings.php', { defaultDateFrom: AppState.defaultDateFrom });
 }
@@ -261,6 +267,10 @@ export function saveMonthlyGoal() {
 
 export function saveSalesGoals() {
   return put('app-settings.php', { salesGoals: AppState.salesGoals });
+}
+
+export function saveItemGoals() {
+  return put('app-settings.php', { itemGoals: AppState.itemGoals });
 }
 
 export function saveSalesLog() {

@@ -11,7 +11,7 @@ import { computeSalesSummary, computeLikelyUnsoldInventory } from '../features/s
 import { computePersonalBests, getActiveSessionSummary, computeDgComparison, computeRunsDoneToday, computeFarmingConsistency, computeDaySummary, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
-import { saveDefaultDateFrom } from '../state/persistence.js';
+import { saveDefaultDateFrom, saveOverviewMode } from '../state/persistence.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
@@ -607,6 +607,12 @@ export function setDateTo(value) {
   renderPage();
 }
 
+export function setOverviewMode(modo) {
+  AppState.overviewMode = modo === 'completo' ? 'completo' : 'painel';
+  saveOverviewMode().catch(err => console.error('Falha ao salvar modo da Visão geral:', err));
+  renderPage();
+}
+
 // Fixa o "De" atual como piso padrão da conta — é ele que semeia o filtro toda vez que o app
 // abre (ver defaultDateFrom em persistence.js). Existe pra tirar do código uma decisão que é de
 // cada jogador: até onde vale a pena olhar pra trás.
@@ -740,15 +746,26 @@ export function renderOverviewPage() {
     return buildNextStepCard() + metaCard + daySummaryCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log</div></div>`;
   }
 
+  // Painel × completo. A página tinha 13 cartões, e a maior parte das aberturas é pra ver um
+  // número ("quanto fiz hoje?"), não pra analisar. Em vez de apagar cartão bom — cada um é útil
+  // ÀS VEZES —, o que muda é a proeminência: painel entrega o operacional do dia, completo abre a
+  // análise. A escolha fica salva, então quem usa mais um dos dois nunca mais escolhe.
+  const completo = AppState.overviewMode === 'completo';
+  const botaoModoPagina = (v, txt, icone) => `<button class="btn btn-xs ${completo === v ? 'btn-p' : 'btn-d'}" onclick="setOverviewMode('${v ? 'completo' : 'painel'}')"><i class="ti ${icone}"></i>${txt}</button>`;
+
   return `
 <div class="pg-title"><i class="ti ti-map" style="color:var(--acc)"></i>Visão geral</div>
 <div class="pg-sub">Seu painel de farme. O filtro de data abaixo comanda os totais; cards de janela própria (meta de hoje, evolução, raridades) têm período próprio.</div>
+<div style="display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+  ${botaoModoPagina(false, 'Painel', 'ti-layout-dashboard')}
+  ${botaoModoPagina(true, 'Completo', 'ti-chart-histogram')}
+  <span style="font-size:11px;color:var(--muted);margin-left:4px">${completo ? 'Tudo à mostra — evolução, consistência, raridades, gráfico e top itens.' : 'Só o essencial do dia. Clique em "Completo" pra ver as análises.'}</span>
+</div>
 ${buildNextStepCard()}
 ${/* Ordem pensada pra quem abre a página querendo um número, não um painel: meta de hoje ->
      filtro (que comanda tudo abaixo) -> os totais -> contexto -> ferramentas. Recorde pessoal e
      os drops manuais (lotes de antes da opção de adicionar sair do ar, só gerenciáveis agora) são
-     motivação e ferramenta, não dado operacional — foram pro fim, porque no celular empurravam o
-     "Total de farme" pra ~4 telas abaixo. */''}
+     motivação e ferramenta, não dado operacional — foram pro fim. */''}
 ${metaCard}
 ${daySummaryCard}
 <div class="card">
@@ -786,6 +803,7 @@ ${avisoPrecoDesatualizado}
   <div class="kpi"><div class="kpi-lbl">Cobertura de preços</div><div class="kpi-val" style="color:${priceCoverage < 30 ? 'var(--err)' : priceCoverage < 70 ? 'var(--warn)' : 'var(--ok)'}">${priceCoverage}%</div><div class="kpi-sub" title="${volumeSemPreco.toLocaleString('pt-BR')} de ${history.dropCount.toLocaleString('pt-BR')} drops sem preço cadastrado">do que caiu já tem preço</div></div>
 </div>
 ${buildEventCard()}
+${!completo ? '' : `
 ${buildRareDropsCard()}
 ${buildTrendCard()}
 ${buildConsistencyCard()}
@@ -801,6 +819,6 @@ ${datesWithData.length > 1 ? `<div class="card"><div class="ctitle"><i class="ti
   </tr>`).join('') : `<tr><td colspan="5" class="empty">Nenhum item neste período</td></tr>`}
   </tbody></table>
 </div>
-${personalBestsCard}
+${personalBestsCard}`}
 ${manualDropsCard}`;
 }

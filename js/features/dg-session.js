@@ -7,6 +7,7 @@ import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled, showInfoToast } from './alerts.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // Limite diário conhecido de entradas por DG no Cabal Neo (antes de resetar por gemas) — usado
@@ -131,10 +132,17 @@ export function setSessionDungeon(startAt, dungeonId) {
 // removida). Sem confirmação extra: já tem o ícone de lixeira + é uma ação isolada por linha,
 // mesmo padrão de deleteRushForDay/deleteRushRoute.
 export function deleteSession(startAt) {
-  if (!confirm('Remover esta sessão do histórico? Essa ação não pode ser desfeita.')) return;
-  AppState.dgSessions = AppState.dgSessions.filter(s => s.startAt !== startAt);
+  const index = AppState.dgSessions.findIndex(s => s.startAt === startAt);
+  if (index < 0) return;
+  const [sessao] = AppState.dgSessions.splice(index, 1);
   saveDgSessions();
   renderPage();
+
+  actWithUndo(`Sessão removida: ${sessao.dungeonName} (${formatAlzGamer(sessionTotalAlz(sessao))})`, () => {
+    AppState.dgSessions.splice(index, 0, sessao);
+    saveDgSessions();
+    renderPage();
+  });
 }
 
 // Recapitulação do dia, no espírito do placar de fim de partida que todo jogo tem. O jogador já

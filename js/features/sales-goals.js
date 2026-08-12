@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveSalesGoals } from '../state/persistence.js';
 import { parseAlzInput } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // Núcleo sem DOM (reaproveitado pelo Modo guiado, que já acumula os dados do passo a passo em vez
@@ -27,11 +28,17 @@ export function addSalesGoal() {
 }
 
 export function deleteSalesGoal(id) {
-  const goal = AppState.salesGoals.find(g => g.id === id);
-  if (!goal || !confirm(`Excluir o cofre "${goal.name}"?`)) return;
-  AppState.salesGoals = AppState.salesGoals.filter(g => g.id !== id);
+  const index = AppState.salesGoals.findIndex(g => g.id === id);
+  if (index < 0) return;
+  const [goal] = AppState.salesGoals.splice(index, 1);
   saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
   renderPage();
+
+  actWithUndo(`Cofre removido: ${goal.name}`, () => {
+    AppState.salesGoals.splice(index, 0, goal);
+    saveSalesGoals().catch(err => console.error('Falha ao salvar meta:', err));
+    renderPage();
+  });
 }
 
 // Progresso de cada meta: soma da % fixa dela sobre toda venda registrada DEPOIS que a meta foi

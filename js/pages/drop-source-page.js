@@ -1,6 +1,8 @@
 import { AppState } from '../state/app-state.js';
 import { findDropSources, findDungeonDrops, getKnownSessionItemNames, computeRouteItemYield } from '../features/drop-source.js';
 import { findKnownSourcesForQuery } from '../features/item-dungeon-sources.js';
+import { computeItemGoalsProgress } from '../features/item-goals.js';
+import { infoToggle } from '../features/ui-toggles.js';
 import { DAILY_RUN_LIMIT, computeDgComparison } from '../features/dg-session.js';
 import { formatDateBR, renderAlzValue, formatAlzGamer, formatDuration } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
@@ -191,8 +193,54 @@ ${!routeYield.length ? '' : `
         <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
       </div>`}
 </div>
+${renderItemGoalsCard()}
 ${renderDgCompareCard()}
 ${renderItemDungeonSourcesCard()}`;
+}
+
+// Metas de item. Mora aqui, e não na Visão geral junto das metas de Alz, por dois motivos: é aqui
+// que vive a maquinaria de taxa de drop que responde "quantos runs faltam e em qual DG" — e a
+// Visão geral já é a página mais densa do app, não precisa de mais um cartão permanente.
+function renderItemGoalsCard() {
+  const metas = computeItemGoalsProgress();
+  const sugestoes = getKnownSessionItemNames();
+
+  return `
+<div class="card">
+  <div class="ctitle"><i class="ti ti-target-arrow"></i>Minhas metas de item</div>
+  ${infoToggle('item-goals', 'Toda outra meta do app é em Alz; esta é em <strong>item</strong> — que é como objetivo de jogador costuma nascer ("preciso de 300 Núcleos pro +15"). Conta o que caiu <strong>a partir do dia em que você criou a meta</strong>, não o acumulado de sempre: o app não conhece seu inventário (não sabe o que você já gastou, craftou ou vendeu), então "quanto você tem" seria chute — "quanto caiu desde que você decidiu perseguir isso" é verificável. A previsão usa o seu ritmo real dos últimos 14 dias, não um teórico de 20 runs/dia: projeção teórica sempre erra pra otimista, porque ninguém joga no teto todo dia.')}
+  ${!metas.length ? '<div class="empty" style="padding:10px 0;margin-bottom:12px">Nenhuma meta de item ainda.</div>' : `
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px">
+    ${metas.map(g => `<div style="padding:12px;background:var(--surf2);border:1px solid ${g.complete ? 'var(--ok-border)' : 'var(--border)'};border-radius:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <div style="font-weight:700;display:flex;align-items:center;gap:8px">${esc(g.itemName)}
+          ${g.complete ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Completa</span>' : `<span class="badge badge-acc">faltam ${g.remaining}</span>`}</div>
+        <button aria-label="Remover meta de ${esc(g.itemName)}" title="Remover meta" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteItemGoal('${g.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden"><div style="width:${Math.round(g.progress * 100)}%;height:100%;background:${g.complete ? 'var(--ok)' : 'var(--acc)'}"></div></div>
+        <div style="font-size:12px;font-weight:600;white-space:nowrap;color:${g.complete ? 'var(--ok)' : 'var(--txt)'}">${g.obtained} / ${g.targetQty}</div>
+      </div>
+      ${g.complete ? '' : `<div style="font-size:11px;color:var(--muted);margin-top:8px;display:flex;flex-direction:column;gap:3px">
+        ${g.melhorDg && g.runsNeeded != null
+          ? `<span><i class="ti ti-map-pin"></i> Sai mais rápido em <strong style="color:var(--txt)">${esc(g.melhorDg.dungeonName)}</strong> — ≈<strong style="color:var(--gold)">${g.runsNeeded.toLocaleString('pt-BR')} run(s)</strong> pro que falta.</span>`
+          : `<span><i class="ti ti-help-circle"></i> Nenhuma DG sua tem taxa calculável pra este item ainda — farme com "Runs feitas" preenchido pra o app saber de onde ele sai melhor.</span>`}
+        ${g.etaDate
+          ? `<span><i class="ti ti-calendar"></i> No seu ritmo dos últimos 14 dias (${g.perDay.toFixed(1).replace('.', ',')}/dia), chega por volta de <strong style="color:var(--txt)">${formatDateBR(g.etaDate)}</strong> (~${g.etaDays} dia(s)).</span>`
+          : `<span><i class="ti ti-minus"></i> Nenhum drop desse item nos últimos 14 dias — sem ritmo pra prever data.</span>`}
+        <span style="opacity:.75"><i class="ti ti-flag"></i> Contando desde ${formatDateBR(g.sinceDate)}.</span>
+      </div>`}
+    </div>`).join('')}
+  </div>`}
+  <div class="row" style="align-items:flex-end">
+    <div style="flex:1"><label class="lbl">Item que você precisa</label>
+      <input class="inp" id="newItemGoalName" placeholder="ex: Nucleo de Aprimoramento" list="dsSugg" onkeydown="if(event.key==='Enter')addItemGoal()"></div>
+    <div style="width:120px"><label class="lbl">Quantas unidades</label>
+      <input class="inp" id="newItemGoalQty" type="number" min="1" placeholder="ex: 300" onkeydown="if(event.key==='Enter')addItemGoal()"></div>
+    <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addItemGoal()"><i class="ti ti-plus"></i>Criar meta</button></div>
+  </div>
+  ${sugestoes.length ? '' : '<div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-info-circle"></i> Encerre sessões de DG com as runs preenchidas pra o app conseguir dizer em qual DG cada item sai mais rápido.</div>'}
+</div>`;
 }
 
 // Comparação direta de duas DGs. O ranking responde "qual é a melhor de todas"; a escolha real do

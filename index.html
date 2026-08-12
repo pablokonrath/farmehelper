@@ -447,8 +447,15 @@
           <div class="sb-logo"><i class="ti ti-sword"></i>FarmHub</div>
           <div class="sb-sub">Central de Farme</div>
         </div>
+        <!--
+          Quatro grupos, não dois. Antes era "Uso diário" (5 itens) e "Configuração & consulta"
+          (5 itens) — dez itens com pouca hierarquia, o ponto em que a pessoa para de ler os
+          rótulos e passa a decorar posições. Os grupos abaixo não são categorias inventadas: são
+          os quatro momentos reais de uso — o que faço agora, o que faço com o que ganhei, o que
+          aprendo com o histórico, e como o app me avisa.
+        -->
         <div class="sb-sec">
-          <div class="sec-lbl">Uso diário</div>
+          <div class="sec-lbl">Hoje</div>
           <button class="nav-btn" onclick="openQuickMode()" id="nb-rapido">
             <i class="ti ti-bolt" style="color: var(--gold)"></i>Modo guiado
           </button>
@@ -469,12 +476,12 @@
           >
             <i class="ti ti-shield"></i>Sessões de farme
           </button>
+        </div>
+        <div class="sb-sec" style="border-top: 1px solid var(--border)">
+          <div class="sec-lbl">Mercado</div>
           <button class="nav-btn" onclick="navigateTo('vendas')" id="nb-vendas">
             <i class="ti ti-cash"></i>Vendas
           </button>
-        </div>
-        <div class="sb-sec" style="border-top: 1px solid var(--border)">
-          <div class="sec-lbl">Configuração &amp; consulta</div>
           <button
             class="nav-btn"
             onclick="navigateTo('calculo')"
@@ -482,15 +489,11 @@
           >
             <i class="ti ti-coins"></i>Cálculo de farme
           </button>
+        </div>
+        <div class="sb-sec" style="border-top: 1px solid var(--border)">
+          <div class="sec-lbl">Conhecimento</div>
           <button class="nav-btn" onclick="navigateTo('origem')" id="nb-origem">
             <i class="ti ti-compass"></i>Onde dropa
-          </button>
-          <button
-            class="nav-btn"
-            onclick="navigateTo('alertas')"
-            id="nb-alertas"
-          >
-            <i class="ti ti-bell"></i>Alertas
           </button>
           <button
             class="nav-btn"
@@ -498,6 +501,16 @@
             id="nb-relatorio"
           >
             <i class="ti ti-notebook"></i>Relatório
+          </button>
+        </div>
+        <div class="sb-sec" style="border-top: 1px solid var(--border)">
+          <div class="sec-lbl">Sistema</div>
+          <button
+            class="nav-btn"
+            onclick="navigateTo('alertas')"
+            id="nb-alertas"
+          >
+            <i class="ti ti-bell"></i>Alertas
           </button>
           <button
             class="nav-btn"

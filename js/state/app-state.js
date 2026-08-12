@@ -177,6 +177,11 @@ export const AppState = {
   dateFrom: '',
   // Valor salvo do piso acima — o jogador define uma vez no filtro da Visão geral.
   defaultDateFrom: '',
+  // 'painel' (padrão) ou 'completo'. A Visão geral acumulou 13 cartões, e o jogador abre ela pra
+  // ver UM número. Nenhum cartão é supérfluo isoladamente — o errado é todos serem igualmente
+  // proeminentes o tempo todo. "Painel" mostra só o que responde "como estou agora"; "completo"
+  // abre a análise. Nada é removido, muda só o que aparece primeiro. Persiste por conta.
+  overviewMode: 'painel',
   dateTo: '',
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
@@ -297,6 +302,9 @@ export const AppState = {
   // com a Meta de farme do dia (pools diferentes: uma é farmado, esta é vendido de fato).
   // [{id, name, targetAlz, percentage, createdAt}]. Ver sales-goals.js.
   salesGoals: [],
+  // Metas de ITEM ("preciso de 300 Núcleos") — [{id, itemName, targetQty, createdAt, sinceDate}].
+  // Ver item-goals.js: conta drops a partir da criação, igual aos Cofres de Alz.
+  itemGoals: [],
   // Sessão de DG em andamento (opcional): { dungeonId, dungeonName, startAt }. Os drops do log
   // que caem na janela [startAt, agora] são atribuídos a esse DG. Persistida em app_settings pra
   // sobreviver a um reload. null = não está marcando DG (farme normal). Ver dg-session.js.

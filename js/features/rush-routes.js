@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { saveRushRoutes, saveAppliedRoutes } from '../state/persistence.js';
 import { buildCartItem, calculateRushCartCost, getCostPerGem } from './rush-cart.js';
 import { computeDgComparison, computeResetWorth, DAILY_RUN_LIMIT } from './dg-session.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // Custo extra (em Alz) de rodar uma DG além do limite diário de ${DAILY_RUN_LIMIT}, usando reset
@@ -142,16 +143,27 @@ export function renameRushRoute(routeId) {
 }
 
 export function deleteRushRoute(routeId) {
-  const route = AppState.rushRoutes.find(r => r.id === routeId);
-  if (!route || !confirm(`Excluir a rota "${route.name}"?`)) return;
-  AppState.rushRoutes = AppState.rushRoutes.filter(r => r.id !== routeId);
+  const index = AppState.rushRoutes.findIndex(r => r.id === routeId);
+  if (index < 0) return;
+  const [route] = AppState.rushRoutes.splice(index, 1);
+  const estavaAplicada = AppState.appliedRouteIds.includes(routeId);
   if (AppState.editingRouteId === routeId) AppState.editingRouteId = null;
-  if (AppState.appliedRouteIds.includes(routeId)) {
+  if (estavaAplicada) {
     AppState.appliedRouteIds = AppState.appliedRouteIds.filter(id => id !== routeId);
     saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   }
   saveRushRoutes().catch(err => console.error('Falha ao salvar rota:', err));
   renderPage();
+
+  actWithUndo(`Rota removida: ${route.name}`, () => {
+    AppState.rushRoutes.splice(index, 0, route);
+    if (estavaAplicada && !AppState.appliedRouteIds.includes(routeId)) {
+      AppState.appliedRouteIds.push(routeId);
+      saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+    }
+    saveRushRoutes().catch(err => console.error('Falha ao salvar rota:', err));
+    renderPage();
+  });
 }
 
 // Compara o retorno esperado de cada rota: Alz/run histórico de cada DG × repetições (via

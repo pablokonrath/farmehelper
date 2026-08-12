@@ -3,6 +3,7 @@ import { saveSalesLog, savePriceHistory, saveItemPrices, saveUnsoldInventoryDism
 import { getItemPrice, getAllDrops, summarizeDropsByItem } from './drops.js';
 import { parseAlzInput, parseDateInputBR, formatAlzGamer, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // Quantos dias sem revisar um preço cadastrado é considerado "desatualizado" — mesmo limite usado
@@ -284,16 +285,22 @@ export function cancelEditingSale() {
   renderPage();
 }
 
+// Remove na hora e oferece desfazer (ver undo.js) em vez de perguntar antes: a venda é guardada
+// inteira aqui e recolocada na mesma posição se você voltar atrás, então não há nada a proteger
+// com uma pergunta — só atrito a cobrar de quem já sabia o que estava fazendo.
 export function deleteSale(id) {
-  const sale = AppState.salesLog.find(s => s.id === id);
-  if (!sale) return;
-  // Exclusão de venda é irreversível e some com o dado que também atualizou o preço cadastrado
-  // do item — mesmo padrão de confirmação já usado em excluir sessão/rota, só que faltava aqui.
-  if (!confirm(`Remover a venda de ${sale.qty}× "${sale.itemName}" (${formatAlzGamer(sale.unitPrice * sale.qty)})? Essa ação não pode ser desfeita.`)) return;
-  AppState.salesLog = AppState.salesLog.filter(s => s.id !== id);
+  const index = AppState.salesLog.findIndex(s => s.id === id);
+  if (index < 0) return;
+  const [sale] = AppState.salesLog.splice(index, 1);
   if (AppState.editingSaleId === id) AppState.editingSaleId = null;
   saveSalesLog();
   renderPage();
+
+  actWithUndo(`Venda removida: ${sale.qty}× ${sale.itemName} (${formatAlzGamer(sale.unitPrice * sale.qty)})`, () => {
+    AppState.salesLog.splice(index, 0, sale);
+    saveSalesLog();
+    renderPage();
+  });
 }
 
 export function setPriceHistoryItem(item) {

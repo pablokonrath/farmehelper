@@ -3,6 +3,7 @@ import { saveItemPrices } from '../state/persistence.js';
 import { updateBalanceSidebar } from './drops.js';
 import { recordPriceChange, checkPricePlausibility } from './sales.js';
 import { parseAlzInput, formatAlzGamer } from '../utils/formatting.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // Última barreira antes de um preço errado entrar no sistema (ver checkPricePlausibility em
@@ -66,9 +67,17 @@ export function saveItemPriceEdit(name) {
 }
 
 export function deleteItemPrice(name) {
-  if (!confirm(`Remover preço de "${name}"?`)) return;
+  const anterior = AppState.itemPrices[name];
+  if (anterior === undefined) return;
   delete AppState.itemPrices[name];
   saveItemPrices();
   updateBalanceSidebar();
   renderPage();
+
+  actWithUndo(`Preço de "${name}" removido`, () => {
+    AppState.itemPrices[name] = anterior;
+    saveItemPrices();
+    updateBalanceSidebar();
+    renderPage();
+  });
 }

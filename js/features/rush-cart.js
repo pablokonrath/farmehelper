@@ -6,6 +6,7 @@ import { updateBalanceSidebar, getItemPrice } from './drops.js';
 import { computeDgComparison, computeResetWorth } from './dg-session.js';
 import { getDungeonDifficulty } from './dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
+import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
 // 1.000 Cash custam AppState.rushCardCashPrice Alz, e 1 gema de reset custa o equivalente a 1 Cash.
@@ -244,11 +245,20 @@ export function removeDungeonFromCart(index) {
 // aplicada (ver appliedRoutesToday em rush-routes.js), já que um carrinho vazio não é mais
 // nenhuma rota.
 export function clearRushCart() {
-  if (!AppState.rushCart.length || !confirm('Limpar todas as DGs do carrinho de hoje?')) return;
+  if (!AppState.rushCart.length) return;
+  const carrinho = AppState.rushCart;
+  const rotas = AppState.appliedRouteIds;
   AppState.rushCart = [];
   AppState.appliedRouteIds = [];
   saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
   renderPage();
+
+  actWithUndo(`Carrinho limpo (${carrinho.length} DG${carrinho.length > 1 ? 's' : ''})`, () => {
+    AppState.rushCart = carrinho;
+    AppState.appliedRouteIds = rotas;
+    saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+    renderPage();
+  });
 }
 
 export function toggleCreditsManager() {
@@ -438,11 +448,19 @@ export function saveRushForDay() {
 }
 
 export function deleteRushForDay(date) {
-  if (!confirm('Remover rush do dia ' + formatDateBR(date) + '?')) return;
+  const rush = AppState.rushHistory[date];
+  if (!rush) return;
   delete AppState.rushHistory[date];
   saveRushHistory();
   updateBalanceSidebar();
   renderPage();
+
+  actWithUndo(`Rush de ${formatDateBR(date)} removido (${formatAlzGamer(rush.total || 0)})`, () => {
+    AppState.rushHistory[date] = rush;
+    saveRushHistory();
+    updateBalanceSidebar();
+    renderPage();
+  });
 }
 
 // Recarrega os itens de um rush já salvo de volta no carrinho, para adicionar/remover DGs
