@@ -408,6 +408,12 @@ export function renderSessionsPage() {
             const expected = [...getExpectedItemNamesForDungeon(AppState.activeDgSession.dungeonId)];
             return expected.length ? `<div style="font-size:11px;color:var(--epic);margin-top:6px"><i class="ti ti-star"></i> Raros na mira: ${expected.map(esc).join(', ')}</div>` : '';
           })()}
+          ${/* A contagem automática de runs depende de "Min / run" estar preenchido. Quando não
+               está, ela simplesmente não acontece — e antes não havia NADA na tela dizendo isso,
+               então o contador parado parecia defeito. Agora ele diz o que falta e por quê. */''}
+          ${AppState.activeDgSession.runMinutes > 0 ? '' : `<div style="font-size:11px;color:var(--warn);margin-top:6px"><i class="ti ti-calculator-off"></i> <strong>Runs não estão sendo contadas sozinhas</strong> — falta o tempo por run em "Min / run" ao lado.${AppState.activeDgSession.dungeonId
+            ? ' Ainda não tenho histórico com runs preenchidas nessa DG pra sugerir sozinho: digite uma vez e, ao encerrar, eu já aprendo pra próxima.'
+            : ' Escolha a DG acima que eu tento preencher pelo seu histórico.'} Ou use o <strong>+1</strong> a cada run — ele também ensina o ritmo.</div>`}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -422,7 +428,7 @@ export function renderSessionsPage() {
                e se hoje a DG está saindo mais lenta, corrigir aqui recoloca a contagem no trilho
                sem precisar encerrar. */''}
           <div><label class="lbl" style="margin:0 0 2px">Min / run</label>
-            <input class="inp" style="width:78px" type="number" min="0" step="0.5" placeholder="—" value="${AppState.activeDgSession.runMinutes || ''}" onchange="setActiveSessionRunMinutes(this.value)" title="Tempo médio de cada run. Preenchido, as runs são contadas sozinhas pelo tempo ativo."></div>
+            <input class="inp" style="width:78px${AppState.activeDgSession.runMinutes > 0 ? '' : ';border-color:var(--warn)'}" type="number" min="0" step="0.5" placeholder="—" value="${AppState.activeDgSession.runMinutes || ''}" onchange="setActiveSessionRunMinutes(this.value)" title="Tempo médio de cada run. Preenchido, as runs são contadas sozinhas pelo tempo ativo."></div>
           <div><label class="lbl" style="margin:0 0 2px">&nbsp;</label>
             <button class="btn" style="background:var(--err-bg);color:var(--err);border:none" onclick="endDgSession()"><i class="ti ti-player-stop"></i>Encerrar</button></div>
         </div>

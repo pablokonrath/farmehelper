@@ -187,6 +187,10 @@ export function setActiveSessionRunMinutes(value) {
   const s = AppState.activeDgSession;
   if (!s) return;
   s.runMinutes = Math.max(0, parseFloat(String(value).replace(',', '.')) || 0);
+  // Marca que o tempo por run é palavra sua. Virou necessário quando a sessão passou a poder
+  // nascer sem DG: agora é normal digitar o tempo ANTES de escolher a DG, e sem essa marca o
+  // setActiveSessionDungeon sobrescrevia o seu número com a sugestão (ou com 0) logo em seguida.
+  s.runMinutesManuallySet = s.runMinutes > 0;
   // Voltar a informar um tempo devolve o controle pro automático — senão, quem corrigiu as runs
   // na mão uma vez ficaria presa no manual pro resto da sessão mesmo depois de ajustar o tempo.
   if (s.runMinutes > 0) s.runsManuallySet = false;
@@ -233,8 +237,15 @@ export function setActiveSessionDungeon(dungeonId, { auto = false } = {}) {
   s.dungeonId = dg.id;
   s.dungeonName = dg.name;
   // Tempo por run é POR DG — trocar a DG invalida o valor anterior. Reaplica a sugestão da DG
-  // nova, a menos que o jogador já tenha corrigido as runs na mão (aí a palavra é dele).
-  if (!s.runsManuallySet) s.runMinutes = suggestRunMinutes(dg.id)?.minutes || 0;
+  // nova, a menos que o jogador já tenha dito o tempo (ou corrigido as runs) na mão.
+  //
+  // Sem sugestão pra DG nova, MANTÉM o valor atual em vez de zerar. Zerar desliga a contagem
+  // automática caladamente — era o que acontecia ao escolher a DG numa sessão aberta sozinha:
+  // DG sem histórico, sugestão nula, contador morto sem nada na tela explicando. Um número
+  // herdado pode estar errado e você corrige; zero não conta nada e não avisa.
+  if (!s.runsManuallySet && !s.runMinutesManuallySet) {
+    s.runMinutes = suggestRunMinutes(dg.id)?.minutes || s.runMinutes || 0;
+  }
   // Confirmar a DG na mão tira o aviso de "aberta automaticamente, confira": você acabou de
   // conferir. A rota também é reavaliada — a nova DG pode pertencer a outra rota aplicada hoje.
   if (!auto) s.autoStarted = false;
@@ -703,6 +714,14 @@ export function recoverDropWindow(dungeonId, startAt, endAt) {
   const dg = AppState.dungeonList.find(d => d.id === dungeonId);
   if (!dg || !(startAt < endAt)) return;
   const routeMatch = findAppliedRouteForDungeon(dungeonId);
+  // Estima as runs pelo tempo por run que já conhecemos dessa DG. Sem isso a sessão recuperada
+  // nasce com 0 runs, e 0 runs significa "— runs" no Alz/run: justamente a métrica pela qual você
+  // recuperou o farme. Estimativa dá pra corrigir na tabela; zero não dá pra usar. Sem histórico
+  // da DG, continua 0 — aí não há de onde tirar número nenhum.
+  const porRun = suggestRunMinutes(dungeonId)?.minutes || 0;
+  const drops = sessionDrops(startAt, endAt);
+  const runsEstimadas = porRun > 0 ? Math.max(1, Math.round(activeDurationMs(drops) / (porRun * 60000))) : 0;
+
   AppState.dgSessions.push(buildSessionRecord({
     dungeonId: dg.id,
     dungeonName: dg.name,
@@ -710,12 +729,12 @@ export function recoverDropWindow(dungeonId, startAt, endAt) {
     routeName: routeMatch?.name,
     startAt,
     endAt,
-    runs: 0,
+    runs: runsEstimadas,
   }));
   AppState.dgSessions.sort((a, b) => a.startAt - b.startAt);
   saveDgSessions();
   renderPage();
-  showInfoToast(`Farme das ${new Date(startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} registrado em ${dg.name}`);
+  showInfoToast(`Farme das ${new Date(startAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} registrado em ${dg.name}${runsEstimadas ? ` — estimei ${runsEstimadas} run(s) pelo seu ritmo nessa DG, corrija na tabela se precisar` : ''}`);
 }
 
 // Junta um bloco órfão a uma sessão que JÁ está registrada, em vez de criar outra.
@@ -1113,7 +1132,7 @@ export function startDgSessionTicker() {
     const clock = mins > 0 ? `${mins}min ${secs}s` : `${secs}s`;
     if (sidebar) {
       sidebar.style.display = 'block';
-      sidebar.innerHTML = `<i class="ti ti-crosshair" style="color:var(--gold)"></i> ${esc(summary.dungeonName)} · ${clock} · <strong>${formatAlzGamer(summary.totalAlz)}</strong>`;
+      sidebar.innerHTML = `<i class="ti ti-crosshair" style="color:var(--gold)"></i> ${esc(summary.dungeonName || 'Sem DG')} · ${clock} · <strong>${formatAlzGamer(summary.totalAlz)}</strong>`;
     }
     if (pageBox) {
       pageBox.innerHTML = `${clock} · ${summary.dropCount} drops · <strong style="color:var(--gold)">${formatAlzGamer(summary.totalAlz)}</strong>${summary.alzPerHour != null ? ` · ${formatAlzGamer(summary.alzPerHour)}/h` : ''}`;
