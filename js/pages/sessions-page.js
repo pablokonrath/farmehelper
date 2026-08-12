@@ -339,8 +339,13 @@ export function renderSessionsPage() {
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div><label class="lbl" style="margin:0 0 2px">Runs feitas${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet ? ' <span style="color:var(--acc);font-weight:400">(auto)</span>' : ''}</label>
-            <input class="inp" id="dgRunsInput" style="width:80px" type="number" min="0" value="${AppState.activeDgSession.runs || 0}" onchange="setActiveSessionRuns(this.value)"></div>
+          <div><label class="lbl" style="margin:0 0 2px">Runs feitas${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet ? ' <span style="color:var(--acc);font-weight:400">(auto)</span>' : ' <span style="color:var(--warn);font-weight:400">(manual)</span>'}</label>
+            <div style="display:flex;gap:4px;align-items:center">
+              <input class="inp" id="dgRunsInput" style="width:70px" type="number" min="0" value="${AppState.activeDgSession.runs || 0}" onchange="setActiveSessionRuns(this.value)">
+              ${/* O jeito mais confiável de informar é o próprio jogador dizer "acabei uma agora" —
+                   e cada clique recalibra o ritmo, então a contagem se ajusta sozinha com o uso. */''}
+              <button class="btn btn-d btn-xs" onclick="bumpActiveSessionRuns()" title="Acabei mais uma run — soma 1 e recalibra o ritmo">+1</button>
+            </div></div>
           ${/* Tempo por run editável DURANTE a sessão: a sugestão do histórico é ponto de partida,
                e se hoje a DG está saindo mais lenta, corrigir aqui recoloca a contagem no trilho
                sem precisar encerrar. */''}
@@ -349,6 +354,11 @@ export function renderSessionsPage() {
           <div><label class="lbl" style="margin:0 0 2px">&nbsp;</label>
             <button class="btn" style="background:var(--err-bg);color:var(--err);border:none" onclick="endDgSession()"><i class="ti ti-player-stop"></i>Encerrar</button></div>
         </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">
+        <i class="ti ti-info-circle"></i> ${AppState.activeDgSession.runMinutes > 0 && !AppState.activeDgSession.runsManuallySet
+          ? `Contando sozinho a ${String(AppState.activeDgSession.runMinutes).replace('.', ',')}min por run. <strong>Não bateu com as entradas do inventário?</strong> Corrija o número (ou use o +1) — eu recalibro o ritmo pelo valor certo e sigo contando daí.`
+          : 'Contagem manual: informe o tempo por run ao lado, ou corrija "Runs feitas" com a sessão já andada — a partir daí eu conto sozinho no ritmo certo.'}
       </div>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <label class="lbl" style="margin-bottom:6px">Itens caindo agora</label>

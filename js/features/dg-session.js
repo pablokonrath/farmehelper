@@ -215,11 +215,43 @@ export function resumeDgSession(session) {
 // Nº de runs da sessão em andamento — informado pelo jogador na mão, ou derivado automaticamente
 // pelo ticker quando runMinutes está preenchido (ver startDgSessionTicker). Editar aqui manualmente
 // marca runsManuallySet=true, então o auto-cálculo não volta a sobrescrever pelo resto da sessão.
+// Corrigir "Runs feitas" na mão RECALIBRA o ritmo e continua contando — não desliga a contagem.
+//
+// Antes, editar o campo marcava runsManuallySet e o contador congelava no número digitado pelo
+// resto da sessão, sem nada avisar. Era o pior dos dois mundos: quem corrigia justamente porque a
+// contagem estava errada acabava com ela parada de vez. E era garantido acontecer, porque a
+// primeira estimativa depende de um tempo/run que quase nunca está exato.
+//
+// Você sabe o número verdadeiro (basta olhar as entradas restantes no inventário). Então o certo é
+// tratar a correção como ensino: com N runs em X de tempo ativo, o ritmo real é X/N — daí em
+// diante a contagem segue sozinha e certa. Uma correção por sessão passa a bastar.
 export function setActiveSessionRuns(value) {
-  if (!AppState.activeDgSession) return;
-  AppState.activeDgSession.runs = Math.max(0, parseInt(value, 10) || 0);
-  AppState.activeDgSession.runsManuallySet = true;
+  const s = AppState.activeDgSession;
+  if (!s) return;
+  const runs = Math.max(0, parseInt(value, 10) || 0);
+  s.runs = runs;
+
+  // Com pouco tempo de sessão, X/N seria um ritmo tirado de quase nenhuma amostra (e faria a
+  // contagem disparar). Nesse caso só respeita o número e congela, como antes.
+  const activeMs = getActiveSessionSummary()?.activeMs || 0;
+  const baseSuficiente = activeMs >= 2 * 60000;
+  if (runs > 0 && baseSuficiente) {
+    s.runMinutes = Math.max(0.5, Math.round((activeMs / runs / 60000) * 10) / 10);
+    s.runsManuallySet = false;
+    showInfoToast(`Ritmo recalibrado: ~${String(s.runMinutes).replace('.', ',')}min por run. Sigo contando sozinho.`);
+  } else {
+    s.runsManuallySet = true;
+  }
   saveActiveDgSession();
+  renderPage();
+}
+
+// Atalho pro jeito mais confiável de informar: você acabou de sair de uma run, clica. Cada clique
+// também recalibra (ver acima), então o ritmo vai ficando certo sozinho conforme você usa.
+export function bumpActiveSessionRuns() {
+  const s = AppState.activeDgSession;
+  if (!s) return;
+  setActiveSessionRuns((s.runs || 0) + 1);
 }
 
 // Runs de fato feitas HOJE numa DG — soma as sessões já encerradas + a sessão ativa (se for a
@@ -804,7 +836,10 @@ export function startDgSessionTicker() {
     const session = AppState.activeDgSession;
     if (session.runMinutes > 0 && !session.runsManuallySet) {
       const computedRuns = Math.floor(summary.activeMs / (session.runMinutes * 60000));
-      if (computedRuns !== session.runs) {
+      // Só pra CIMA. Depois de uma recalibração o ritmo muda, e o novo cálculo pode dar menos que
+      // o número que já está na tela — ver o contador andar pra trás faria parecer defeito, e o
+      // número menor não seria mais verdadeiro que o que o jogador acabou de confirmar.
+      if (computedRuns > session.runs) {
         session.runs = computedRuns;
         saveActiveDgSession();
         const runsInput = document.getElementById('dgRunsInput');
