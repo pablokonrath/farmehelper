@@ -44,7 +44,6 @@ ${topic('ti-layout-dashboard', 'Visão geral', `
     '<strong>Raridades:</strong> área só pros itens raros — o histórico do que já veio (com DG, valor e há quanto tempo) e, embaixo, "o que você caça": as raridades cadastradas com a última vez que caíram e a taxa real (ex: 1/120 runs). Item que nunca caiu aparece como "ainda não caiu pra você".',
     '<strong>Sua evolução:</strong> compara blocos de 30 dias pela média por <strong>dia farmado</strong> — se num mês você jogou 20 dias e no outro 5, comparar o total falaria mais de presença do que de rendimento.',
     '<strong>Recorde pessoal:</strong> seu melhor dia e sua melhor sessão única, lá no fim da página.',
-    'Dá pra adicionar drops manuais também, pra itens que não vieram do log.',
   ])}
 `)}
 ${topic('ti-history', 'Por que o histórico não some (importante)', `
@@ -60,9 +59,13 @@ ${sectionTitle('Farme, rush e sessões')}
 ${topic('ti-coins', 'Cálculo de farme (preços & itens rastreados)', `
   Aqui você diz <strong>quanto vale cada item</strong> (o preço é individual seu — cada um cadastra o seu). É isso que transforma "10 joias" em Alz na Visão geral.
   ${li([
-    '<strong>Itens rastreados:</strong> marque os itens que te interessam. Eles alimentam os alertas (gerencie a lista completa na página <strong>Alertas</strong>; aqui fica o filtro de exibição).',
-    'Dá pra filtrar a Visão geral só pelos itens rastreados, se quiser focar no que importa.',
-    '<strong>Coluna "Atualizado":</strong> mostra há quanto tempo cada preço não é revisto e destaca os que passaram de 2 semanas — preço velho vira estimativa errada em silêncio, e todo Alz do app depende dele.',
+    'KPIs no topo mostram de cara quantos itens tem cadastrado, quantos ainda faltam preço e quantos estão desatualizados.',
+    '<strong>Tabela ordenável e com busca:</strong> clique no cabeçalho pra ordenar por nome, valor ou "Atualizado" (que já ordena do mais desatualizado pro mais recente — vira uma fila de revisão de verdade). Busca aparece a partir de 6 itens cadastrados.',
+    '<strong>Coluna "Atualizado":</strong> mostra há quanto tempo cada preço não é revisto e destaca os que passaram de 2 semanas — preço velho vira estimativa errada em silêncio, e todo Alz do app depende dele. Item de preço <strong>fixo do próprio jogo</strong> (ex: Joia Enfraquecida) não entra nesse aviso — não é você quem revisa esse preço.',
+    'Editando um item que você já vendeu, aparece a última venda real (valor e data) como referência — decide o novo preço com dado de verdade, não achismo.',
+    'Categoria (se cadastrada, veja o Relatório) aparece como selo ao lado do nome.',
+    '<strong>Itens sem preço:</strong> lista clicável no topo pra preencher rápido, com "ver todos" se passar de 6.',
+    '<strong>Itens rastreados:</strong> marque os itens que te interessam. Eles alimentam os alertas (gerencie a lista completa e ligue o sininho na página <strong>Alertas</strong>; aqui fica só o filtro de exibição — que também vale pra Visão geral e Relatório).',
     '<strong>Equipamento genérico</strong> (armadura, elmo, luva, espada, sapato...) é ignorado em todo o sistema: não tem valor de venda e só inflaria as listas.',
   ])}
 `)}
@@ -92,27 +95,56 @@ ${topic('ti-crosshair', 'Sessões de farme (por DG)', `
     '<strong>Vigilância automática:</strong> ao iniciar a sessão, o watchdog (aviso de travamento) liga sozinho; ao encerrar, desliga.',
   ])}
 `)}
+${topic('ti-compass', 'Onde dropa', `
+  Descobre onde farmar, nos dois sentidos: qual DG dropa um item, e o que uma DG dropa.
+  ${li([
+    '<strong>Busca por item:</strong> digite o nome (completo ou parte) e veja em quais DGs ele já caiu no seu histórico de sessões, ordenado pela taxa por run — com a faixa provável (não só um número seco) e aviso quando a amostra ainda é pequena.',
+    'Ainda não farmou aquela DG? Se o cadastro curado (Itens × DGs, do admin) já sabe que o item cai lá, aparece como "também já é sabido que cai em", mesmo sem taxa sua ainda.',
+    '<strong>Busca reversa — "O que uma DG dropa":</strong> escolha uma DG e veja tudo que ela já deu, ordenado pelo que rende mais Alz esperado por run (taxa × preço cadastrado). Com uma sessão ativa, já abre nela sozinha.',
+    'Diga "quero calcular pra quantas unidades" e ele estima quantos runs faltam, com faixa otimista/pessimista.',
+    '<strong>Qual rota rende mais deste item:</strong> ranking das suas rotas salvas pra esse item.',
+    'Achou a DG certa? <strong>"Ir farmar aqui"</strong> leva pra Sessões de farme com ela já selecionada. Achou a rota certa? <strong>"Aplicar"</strong> soma ela ao carrinho de hoje e leva pro Planejamento de Rush.',
+  ])}
+`)}
+${topic('ti-notebook', 'Relatório', `
+  Seus drops agrupados por categoria, com exportação em CSV.
+  ${li([
+    '<strong>Categorias</strong> são um cadastro do admin mestre (ex: "Núcleos", "Joias") — cada item pode ser atribuído a uma. Sem atribuição, cai num balde único "Sem categoria".',
+    '<strong>Atribuição em massa:</strong> categoriza de uma vez todo item que contém uma palavra (ex: "Nucleo" → categoria "Núcleos"), em vez de escolher item por item.',
+    '<strong>Mês atual vs. mês passado, por categoria:</strong> compara o mês civil corrente com o anterior, categoria a categoria — sempre olha tudo, sem filtro de data por cima.',
+    '<strong>Exportar CSV</strong> de todos os drops do período filtrado, pra planilha ou backup.',
+  ])}
+`)}
 
 ${sectionTitle('Mercado')}
 ${topic('ti-cash', 'Vendas', `
   Registre suas vendas reais (item, quantidade, valor) e compare com o preço estimado.
   ${li([
-    '<strong>Total vendido</strong> (real) vs. o estimado pelo preço cadastrado, e a diferença.',
-    '<strong>Histórico de preço:</strong> a variação do preço pelo qual você <strong>realmente vendeu</strong> cada item (não o que cadastrou como estimativa) — um ponto por dia com venda.',
+    '<strong>Total vendido</strong> (real), <strong>real vs. estimado</strong> e <strong>ticket médio</strong> — com um filtro De/Até próprio da página (Cofres e Histórico de preço ignoram esse filtro de propósito, são sobre acumulado/tendência).',
+    '<strong>Erros de digitação:</strong> falta preencher algo? Ele avisa em vez de simplesmente não fazer nada. Vai registrar uma venda idêntica a uma já lançada no mesmo dia? Ele confere antes — pega o clássico "cliquei duas vezes sem perceber".',
+    '<strong>Editar venda:</strong> clique no lápis da linha pra corrigir item, quantidade, valor ou data — sem precisar excluir e digitar tudo de novo. "Repetir última venda" preenche o formulário com o último item vendido, útil quando você vende o mesmo item várias vezes seguidas.',
+    '<strong>Possível estoque não vendido:</strong> cruza tudo que você já dropou com tudo que já vendeu e aponta o que caiu bastante e vendeu pouco — é radar, não auditoria. Dê baixa (vendido sem registrar / virou coleção / usado em craft) pra parar de aparecer; se cair mais desse item depois, só o excedente novo volta a sinalizar. Dá pra desfazer a baixa a qualquer momento.',
     '<strong>Aviso de venda barata:</strong> se você registrar uma venda 20% abaixo da sua média recente daquele item, ele pergunta antes de gravar — evita que uma venda apressada distorça seu histórico de preço.',
-    '<strong>Cofres de Alz:</strong> reserve uma % fixa de cada venda pra um objetivo (ex: 30% de tudo que vender vai pro set novo). Vale só pras vendas registradas depois que o cofre foi criado. Não confunda com a "Meta de farme" do dia — uma é o que você farma, o cofre é o que você vende de fato.',
+    '<strong>Real vs. estimado por item:</strong> quebra o total geral item a item, pra achar rápido qual está vendendo abaixo do esperado — com aviso quando o problema pode ser o preço cadastrado desatualizado, não a venda em si.',
+    '<strong>Histórico de preço</strong> e <strong>Vendas ao longo do tempo:</strong> o primeiro é a variação do preço pelo qual você <strong>realmente vendeu</strong> cada item; o segundo é o total realizado por dia (ritmo de venda, não preço).',
+    '<strong>Exportar CSV</strong> das vendas do período filtrado.',
+    '<strong>Cofres de Alz:</strong> reserve uma % fixa de cada venda pra um objetivo (ex: 30% de tudo que vender vai pro set novo). Vale só pras vendas registradas depois que o cofre foi criado, e agora mostra o ritmo (Alz/dia) e uma data estimada de conclusão. Não confunda com a "Meta de farme" do dia — uma é o que você farma, o cofre é o que você vende de fato.',
   ])}
 `)}
 ${sectionTitle('Alertas e avisos')}
 ${topic('ti-bell', 'Alertas de itens', `
-  Configure som, pop-up e notificação do sistema pros itens que você rastreia (em Cálculo de farme, no sininho). Quando o item cai no seu farme, você é avisado na hora.
+  Configure som, pop-up e notificação do sistema pros itens que você rastreia. Quando o item cai no seu farme, você é avisado na hora.
   ${li([
+    'Uma faixa no topo da página mostra o status geral (alertas, watchdog, Telegram, quantos avisos não vistos) sem precisar abrir nenhum card.',
+    '<strong>Palavras rastreadas:</strong> gerencie tudo aqui — adicionar, remover, ligar/desligar o sininho de cada uma. Cada palavra mostra quantos itens já dropados batem com ela (0 é sinal de erro de digitação, ou item que ainda não caiu).',
+    '<strong>Sugestão automática:</strong> itens valiosos que você já dropou e ainda não rastreia aparecem com um botão de 1 clique, já com o alerta ligado.',
     'Tem controle de volume, tempo do pop-up e agrupamento (pra não spammar quando cai vários juntos).',
     'Dá pra subir um som personalizado pra cada tipo de alerta.',
+    'Histórico de alertas guarda os últimos 50 (ou tudo dentro das últimas 4h, o que for mais) — poda sozinho, sem precisar limpar na mão.',
   ])}
 `)}
 ${topic('ti-shield-bolt', 'Vigilância de inatividade (watchdog)', `
-  Avisa quando o helper <strong>trava</strong> (para de dropar) ou quando um item rastreado some por muito tempo.
+  Avisa quando o helper <strong>trava</strong> (para de dropar) ou quando um item rastreado some por muito tempo. Card colapsado por padrão — o resumo já mostra se tá vigiando ou não sem precisar abrir.
   ${li([
     '<strong>Liga e desliga sozinho</strong> junto com a sessão de DG — você não precisa lembrar de ativar.',
     'Você define os limites em minutos (sem nenhum drop / sem dropar um item específico).',
