@@ -6,8 +6,26 @@ import { getCostPerGem, calculateRushCartCost, getCreditUnitCost, getCreditItemP
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
 
+// ===== CONTRATO DESTE MÓDULO (decisão deliberada, não descuido) =====
+// O Modo guiado é um ATALHO pras ações mais comuns do dia a dia, e é DE PROPÓSITO que ele não
+// espelhe tudo que as páginas fazem. Ele reimplementa fluxos em paralelo, então espelhar o app
+// inteiro significaria que toda funcionalidade nova precisaria ser escrita duas vezes — e o que
+// acontecia na prática era pior: ele ia ficando para trás em silêncio e contava uma versão mais
+// velha do app justamente pra quem mais precisa de ajuda.
+//
+// A regra, daqui pra frente:
+//   - Ação nova que seja do fluxo diário e caiba em 1-4 passos -> pode entrar aqui.
+//   - Refinamento de página (editar registro, filtrar, comparar, dar baixa, analisar) -> NÃO
+//     entra; o lugar dele é a página, e o rodapé abaixo aponta pra lá.
+// Assim a defasagem deixa de ser acidente e vira escopo declarado.
 const HEADER = `<div class="pg-title"><i class="ti ti-bolt" style="color:var(--gold)"></i>Modo guiado</div>
 <div class="pg-sub">Escolha o que quer fazer — eu te guio passo a passo.</div>`;
+
+// Rodapé do menu: diz o que este modo NÃO faz, em vez de deixar o jogador procurar aqui algo que
+// só existe na página cheia.
+const PICKER_FOOTER = `<div style="font-size:11px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--border);line-height:1.6">
+  <i class="ti ti-info-circle"></i> Estes são os atalhos do dia a dia. Corrigir um registro, filtrar por período, comparar DGs, dar baixa em estoque e as análises ficam nas páginas completas — use o menu lateral.
+</div>`;
 
 // Botão grande da tela inicial ("O que você quer fazer?").
 function bigChoice(onclick, icon, title, desc) {
@@ -59,6 +77,7 @@ function renderPicker() {
   ${bigChoice("quickPick('rota')", '🗺️', 'Aplicar uma rota salva', 'Soma as DGs dela ao carrinho de hoje')}
   ${bigChoice("quickPick('meta_venda')", '🐷', 'Criar um cofre de Alz', 'Reserva uma % das suas vendas pra um objetivo')}
   ${bigChoice("quickPick('sessao_recuperar')", '⏱️', 'Recuperar sessão esquecida', 'Esqueceu de marcar a DG? Ainda dá pra contar pelo log')}
+  ${PICKER_FOOTER}
 </div>`;
 }
 
