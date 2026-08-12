@@ -21,10 +21,19 @@ require_login();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') json_response(['error' => 'method_not_allowed'], 405);
 
-// price > 0 de propósito: item cadastrado como 0 é uma decisão pessoal ("isso é lixo pra mim") e
-// não deve puxar a referência da comunidade pra baixo.
+// Traz TODO item já cadastrado por alguém, inclusive os marcados como 0.
+//
+// São duas coisas diferentes sendo compartilhadas aqui, e elas têm regras diferentes:
+//   - O ITEM (o nome no catálogo): compartilhado sempre. O ponto principal é ninguém precisar
+//     digitar de novo um nome que outro jogador já cadastrou.
+//   - O PREÇO: mediana só dos valores > 0.
+//
+// Por isso o 0 não é filtrado no SELECT, e sim ignorado no cálculo da mediana: item que alguém
+// marcou como 0 ("isso é lixo") continua aparecendo no catálogo de todo mundo — só não puxa o
+// preço de referência pra baixo. Filtrar no SELECT sumia com o item da lista dos outros, que é
+// justamente o trabalho manual que isto existe pra evitar.
 $rows = get_db()
-  ->query('SELECT item_name, price FROM item_prices WHERE price > 0 ORDER BY item_name, price')
+  ->query('SELECT item_name, price FROM item_prices ORDER BY item_name, price')
   ->fetchAll();
 
 $porItem = [];
@@ -33,9 +42,15 @@ foreach ($rows as $row) {
 }
 
 $result = [];
-foreach ($porItem as $name => $precos) {
-  // Já vêm ordenados pelo ORDER BY acima.
+foreach ($porItem as $name => $todos) {
+  // Já vêm ordenados pelo ORDER BY acima, então o subconjunto > 0 também sai ordenado.
+  $precos = array_values(array_filter($todos, fn($p) => $p > 0));
   $n = count($precos);
+  if ($n === 0) {
+    // Todo mundo que cadastrou marcou 0 — o item entra no catálogo valendo 0 mesmo.
+    $result[$name] = ['price' => 0, 'accounts' => count($todos)];
+    continue;
+  }
   $meio = intdiv($n, 2);
   $mediana = $n % 2 ? $precos[$meio] : (int) round(($precos[$meio - 1] + $precos[$meio]) / 2);
   $result[$name] = ['price' => $mediana, 'accounts' => $n];
