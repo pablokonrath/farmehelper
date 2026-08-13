@@ -91,7 +91,7 @@ import {
   toggleCreditsManager,
   applySuggestedCreditQuantities,
 } from './features/rush-cart.js';
-import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute } from './features/rush-routes.js';
+import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute, applyGeneratedRoute } from './features/rush-routes.js';
 import { exportDropsToCSV, exportSalesToCSV } from './features/export.js';
 import { copyAiRouteBriefing } from './features/ai-briefing.js';
 import { maskDateInputBR, parseDateInputBR, maskAlzInputLive, maskTimeInputBR } from './utils/formatting.js';
@@ -197,6 +197,7 @@ Object.assign(window, {
   deleteRushRoute,
   setTimeAvailableHours,
   applySuggestedRoute,
+  applyGeneratedRoute,
   setRushCreditQuantity,
   setRushCreditMarketPrice,
   setRushCreditItemName,

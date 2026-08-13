@@ -338,6 +338,15 @@ export function suggestRouteForTime(hoursAvailable, dgStats = computeDgCompariso
     };
   }
 
+  return buildGeneratedRoute(budgetMs, dgStats, resetWorth);
+}
+
+// Monta uma rota do ZERO pro tempo dado, escolhendo DGs pelo rendimento — sem olhar pras rotas
+// salvas. Era código embutido no fim de suggestRouteForTime e só rodava quando NENHUMA rota salva
+// cabia no tempo. Na prática isso escondia o gerador de quem tem rotas salvas: sempre aparecia
+// uma delas, e a montagem automática nunca chegava à tela. Virou função própria pra poder ser
+// oferecida SEMPRE, ao lado da rota salva, com os dois lucros à vista pra você escolher.
+export function buildGeneratedRoute(budgetMs, dgStats = computeDgComparison(), resetWorth = computeResetWorth(dgStats)) {
   const fill = greedyFillTimeWithDgs(budgetMs, dgStats, resetWorth, {});
   if (!fill.items.length) return { type: 'none' };
 
@@ -359,6 +368,23 @@ export function suggestRouteForTime(hoursAvailable, dgStats = computeDgCompariso
     profit: expectedAlz - cost,
     estimatedTimeMs: budgetMs - fill.remainingMs,
   };
+}
+
+// Aplica a montagem do zero no carrinho, ignorando a rota salva que o card sugeriu ao lado.
+export function applyGeneratedRoute() {
+  const hours = Number(AppState.timeAvailableHours) || 0;
+  if (!(hours > 0)) return;
+  const gerada = buildGeneratedRoute(hours * 3600000);
+  if (!gerada || gerada.type === 'none') return;
+
+  AppState.rushCart = gerada.items
+    .map(it => buildCartItem(it.dungeonId, it.repetitions, buildResetParamForRepetitions(it.repetitions)))
+    .filter(Boolean);
+  // Carrinho montado na hora não pertence a rota nenhuma — deixar uma rota "aplicada" faria as
+  // sessões desse farme herdarem o rótulo dela no histórico.
+  AppState.appliedRouteIds = [];
+  saveAppliedRoutes().catch(err => console.error('Falha ao salvar rota aplicada:', err));
+  renderPage();
 }
 
 export function setTimeAvailableHours(value) {
