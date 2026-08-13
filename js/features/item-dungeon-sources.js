@@ -168,7 +168,26 @@ function getStatisticalRareItemNames(dungeonId) {
 // marcou como "não é raro" — usado em Sessões de farme pra destacar as raridades e pra o palpite
 // de DG da sessão automática. A exclusão vale por último: é a sua palavra final sobre o item.
 export function getExpectedItemNamesForDungeon(dungeonId) {
-  const names = getManualExpectedItemNames(dungeonId);
+  const names = new Set();
+  const maxPerRun = getRarityMaxPercent() / 100;
+
+  // O cadastro manual serve pra DUAS coisas que não são a mesma: identificar a DG e destacar
+  // raridade. Cristal de Fogo identifica o Solo Flamejante perfeitamente — e cai toda run, ou
+  // quase. Entrar como "raro" faria o destaque roxo acender o tempo todo e o histórico de raros
+  // encher de item comum; um destaque que aparece sempre não destaca nada.
+  //
+  // Então aqui, que é o lado do DESTAQUE, o cadastro passa por uma checagem: item que o seu
+  // próprio histórico mostra cair acima do limiar de raridade fica de fora. Sem dado suficiente
+  // ainda, entra — é justamente pra DG pouco farmada que a curadoria existe.
+  //
+  // A identificação não passa por aqui: ela lê getManualExpectedItemNames direto (ver
+  // guessDungeonFromDrops), então cadastrar item comum continua sendo a melhor coisa a fazer.
+  for (const name of getManualExpectedItemNames(dungeonId)) {
+    const taxa = getItemRateInDungeon(dungeonId, name);
+    if (taxa && taxa.runs >= getMinRunsToJudgeRarity() && taxa.perRun > maxPerRun) continue;
+    names.add(name);
+  }
+
   for (const name of getStatisticalRareItemNames(dungeonId)) names.add(name);
   for (const name of AppState.rarityDismissed || []) names.delete(name);
   return names;
