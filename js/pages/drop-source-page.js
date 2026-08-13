@@ -65,6 +65,23 @@ function formatAvgPerRun(rate) {
   return low === high ? `≈${low} por run` : `≈${low} a ${high} por run`;
 }
 
+// "Alz esperado/run" é média de longo prazo, e pra item que cai menos de uma vez por run ela
+// descreve um resultado que NUNCA acontece: a jóia de 180kk com 4,7% de taxa vira "8,49kk por
+// run", número que você não recebe em run nenhuma. Ou ela cai e você leva os 180kk, ou não cai e
+// leva zero.
+//
+// A média fica, porque é ela que ordena a tabela e responde "onde rende mais" — trocar por outra
+// coisa faria o melhor drop da DG afundar pro fim da lista. O que entra é a leitura real embaixo:
+// quanto vale quando cai, e de quantas em quantas runs. Aí o número de cima é comparação e o de
+// baixo é expectativa.
+function expectedAlzCell(entry) {
+  if (!entry.expectedAlzPerRun) return '<td><span style="color:var(--muted)">—</span></td>';
+  const tudoOuNada = entry.dropRate != null && entry.dropRate < 1 && entry.price > 0;
+  return `<td style="color:var(--gold);font-weight:700">${renderAlzValue(Math.round(entry.expectedAlzPerRun))}${tudoOuNada
+    ? `<div style="font-size:11px;font-weight:400;color:var(--muted)" title="Média de longo prazo. Na prática é tudo ou nada: quando cai, vem o valor cheio.">${formatAlzGamer(entry.price)} a cada ${Math.round(1 / entry.dropRate).toLocaleString('pt-BR')} runs</div>`
+    : ''}</td>`;
+}
+
 // Faixa provável (min–max) ao lado da taxa pontual — só quando a amostra já é boa o bastante pra
 // a faixa dizer algo útil (amostra "baixa" produz uma faixa larga demais, que mais atrapalha do
 // que ajuda; nesse caso já tem o ícone de alerta separado avisando).
@@ -186,7 +203,7 @@ ${!routeYield.length ? '' : `
           <td>${i.qty.toLocaleString('pt-BR')}×</td>
           <td>${rateWithConfidence(i)}</td>
           <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
-          <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+          ${expectedAlzCell(i)}
         </tr>`).join('')}
         ${reverseResult.groups.map(g => gearGroupRows(g)).join('')}
         </tbody></table>
@@ -242,7 +259,7 @@ function gearClassRows(groupKey, c) {
       <td>${i.qty.toLocaleString('pt-BR')}×</td>
       <td>${rateWithConfidence(i)}</td>
       <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
-      <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+      ${expectedAlzCell(i)}
     </tr>`).join('')}`;
 }
 
