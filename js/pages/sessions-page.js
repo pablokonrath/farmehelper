@@ -572,17 +572,22 @@ export function renderSessionsPage() {
   // A alternativa montada na hora, mostrada embaixo da rota salva. Só aparece quando de fato tem
   // conteúdo — e diz de cara se rende mais ou menos que a salva, porque comparar dois números de
   // Alz de cabeça, em kk, é exatamente o tipo de conta que a tela deveria poupar.
-  const generatedRouteBlock = (gerada, lucroDaSalva) => {
+  const generatedRouteBlock = (gerada, lucroDaSalva, salvaTemDadoFaltando) => {
     if (!gerada || gerada.type === 'none' || !gerada.items.length) return '';
     const diferenca = gerada.profit - lucroDaSalva;
     const melhor = diferenca > 0;
+    // Comparar com uma rota cujo lucro está subestimado (DG sem Alz/run entra como zero) daria uma
+    // vantagem falsa pra montada na hora — ela ganharia por dado faltando, não por ser melhor.
+    const comparacao = salvaTemDadoFaltando
+      ? '<span style="color:var(--muted)">(não dá pra comparar: o lucro da rota acima está incompleto)</span>'
+      : `<span style="color:${melhor ? 'var(--ok)' : 'var(--muted)'}">(${melhor ? `${formatAlzGamer(diferenca)} a mais` : diferenca === 0 ? 'igual' : `${formatAlzGamer(-diferenca)} a menos`} que a rota acima)</span>`;
     return `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
       <div style="font-size:12px;color:var(--muted);margin-bottom:6px"><i class="ti ti-wand"></i> Ou <strong style="color:var(--txt)">montar na hora</strong>, sem usar rota salva — escolhendo as DGs que melhor preenchem ${formatDuration(gerada.estimatedTimeMs)}:</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
         ${gerada.items.map(it => `<span class="badge badge-muted">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ` <i class="ti ti-sparkles" title="Passa dos ${DAILY_RUN_LIMIT} runs/dia — precisa resetar"></i>` : ''}</span>`).join('')}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div style="font-size:12px;color:var(--muted)">Lucro esperado: <strong style="color:${gerada.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${gerada.profit >= 0 ? '+' : ''}${formatAlzGamer(gerada.profit)}</strong> <span style="color:${melhor ? 'var(--ok)' : 'var(--muted)'}">(${melhor ? `${formatAlzGamer(diferenca)} a mais` : diferenca === 0 ? 'igual' : `${formatAlzGamer(-diferenca)} a menos`} que a rota acima)</span></div>
+        <div style="font-size:12px;color:var(--muted)">Lucro esperado: <strong style="color:${gerada.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${gerada.profit >= 0 ? '+' : ''}${formatAlzGamer(gerada.profit)}</strong> ${comparacao}</div>
         <button class="btn btn-d btn-xs" onclick="applyGeneratedRoute()"><i class="ti ti-player-play"></i>Aplicar esta</button>
       </div>
     </div>`;
@@ -609,7 +614,8 @@ export function renderSessionsPage() {
             ${timeSuggestion.extraItems.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ' <i class="ti ti-sparkles" title="Passa dos ' + DAILY_RUN_LIMIT + ' runs/dia — precisa resetar"></i>' : ''}</span>`).join('')}
           </div>` : ''}
           <div style="font-size:12px;color:var(--muted);margin-top:8px">Tempo estimado: <strong style="color:var(--txt)" title="${esc(timeBreakdownTooltip(timeSuggestion.timeBreakdown))}">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
-          ${generatedRouteBlock(generatedRoute, timeSuggestion.profit)}
+          ${!timeSuggestion.missingAlzDataDgNames?.length ? '' : `<div style="margin-top:8px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:11px;color:var(--warn)"><i class="ti ti-alert-triangle"></i> <strong>Esse lucro está incompleto.</strong> ${timeSuggestion.missingAlzDataDgNames.length === 1 ? 'A DG' : 'As DGs'} <strong>${timeSuggestion.missingAlzDataDgNames.map(esc).join(', ')}</strong> ainda ${timeSuggestion.missingAlzDataDgNames.length === 1 ? 'não tem' : 'não têm'} Alz por run registrado, então ${timeSuggestion.missingAlzDataDgNames.length === 1 ? 'entra' : 'entram'} rendendo <strong>zero</strong> — mas o custo de entrada é cobrado. O lucro real é maior que o mostrado. Preencha as runs de uma sessão dessa DG no histórico e o número se corrige sozinho.</div>`}
+          ${generatedRouteBlock(generatedRoute, timeSuggestion.profit, timeSuggestion.missingAlzDataDgNames?.length)}
         </div>`
       : `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Nenhuma rota salva coube no tempo — encaixe novo montado pelas DGs de melhor Alz/hora:</div>

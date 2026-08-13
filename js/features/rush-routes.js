@@ -188,6 +188,7 @@ export function computeRouteComparison(dgStats = computeDgComparison()) {
   return AppState.rushRoutes.map(route => {
     let expectedAlz = 0;
     let missingDataCount = 0;
+    const missingAlzDataDgNames = [];
     const cartItems = [];
 
     let estimatedTimeMs = 0;
@@ -199,7 +200,13 @@ export function computeRouteComparison(dgStats = computeDgComparison()) {
     route.items.forEach(it => {
       const stat = dgStatsById[it.dungeonId];
       if (stat && stat.alzPerRun != null) expectedAlz += stat.alzPerRun * it.repetitions;
-      else missingDataCount++;
+      else {
+        missingDataCount++;
+        // DG sem Alz/run conhecido rende ZERO na conta mas continua CUSTANDO a entrada inteira.
+        // O lucro da rota fica artificialmente negativo, e sem saber quais DGs são não há como
+        // perceber que o número está incompleto em vez de ruim.
+        missingAlzDataDgNames.push(stat?.dungeonName || AppState.dungeonList.find(d => d.id === it.dungeonId)?.name || it.dungeonId);
+      }
 
       if (stat && stat.msPerRun != null) {
         const timeMs = stat.msPerRun * it.repetitions;
@@ -228,6 +235,7 @@ export function computeRouteComparison(dgStats = computeDgComparison()) {
       name: route.name,
       dgCount: route.items.length,
       missingDataCount,
+      missingAlzDataDgNames,
       expectedAlz,
       cost,
       needsReset,
