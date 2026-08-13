@@ -852,6 +852,16 @@ export function sessionTotalAlz(session) {
 // conta que "Vale a pena resetar?" já fazia inline. Fatorado aqui pra "líquido" significar
 // exatamente a mesma coisa em todo lugar que compara DG (comparação, reset, rotas), em vez de
 // três fórmulas que podem divergir se uma mudar e as outras não.
+// Mediana de uma lista de números, ou null se vazia. Existe porque quase todo número por run do
+// app é derivado de "Runs feitas", que é digitado à mão — e uma sessão com runs erradas move a
+// média muito mais do que move a mediana.
+function medianaDe(valores) {
+  const lista = valores.filter(v => Number.isFinite(v)).sort((a, b) => a - b);
+  if (!lista.length) return null;
+  const meio = Math.floor(lista.length / 2);
+  return lista.length % 2 ? lista[meio] : (lista[meio - 1] + lista[meio]) / 2;
+}
+
 export function entryCostPerRun(dg, gemValue, ticketValue) {
   if (!dg) return 0;
   return (dg.alzCost || 0) + (dg.ticketsPerRun || 0) * ticketValue + (dg.gemsPerRun || 0) * gemValue;
@@ -902,7 +912,27 @@ export function computeDgComparison({ sinceDate } = {}) {
       // valor do bruto (custo 0) em vez de virar null, já que "sem dado de custo" não é o mesmo
       // erro que "sem dado de rendimento" (alzPerRun/netAlzPerRun continuam null por runs=0).
       const netTotalAlz = a.totalAlz - costPerRun * a.runs;
-      const alzPerRun = a.runs > 0 ? a.totalAlz / a.runs : null;
+
+      // Alz por run TÍPICO: mediana entre as sessões, e só entre as que têm "Runs feitas".
+      //
+      // Eram dois erros somados no `a.totalAlz / a.runs` de antes:
+      //
+      // 1) Sessão sem runs preenchidas entrava com o Alz dela no numerador e com ZERO no
+      //    denominador — inflava a média. É o mesmo bug que findDropSources já tinha corrigido
+      //    do lado da taxa de drop; aqui tinha passado.
+      //
+      // 2) Média ponderada dá mais peso justo à sessão com mais runs — e "mais runs" é
+      //    exatamente onde o número erra mais, porque runs é digitado à mão (e o contador
+      //    automático já falhou pra cima mais de uma vez). Uma sessão com runs infladas tem
+      //    Alz/run baixo E peso grande: o dado pior é o que mais manda no resultado.
+      //
+      // Mediana entre sessões resolve os dois. Mesmo raciocínio já usado em suggestRunMinutes.
+      const sessoesComRuns = a.sessionsList.filter(s => (s.runs || 0) > 0);
+      const alzPerRun = medianaDe(sessoesComRuns.map(s => sessionTotalAlz(s) / s.runs));
+
+      // Tempo por run pela mesma régua: mediana das sessões com runs, não o tempo total dividido
+      // pelo total de runs (que também somava o tempo de sessões sem runs no numerador).
+      const msPerRun = medianaDe(sessoesComRuns.map(s => (s.activeDurationMs ?? s.durationMs) / s.runs));
 
       // "Esfriando": compara as últimas RECENT_SESSIONS_FOR_TREND sessões desta DG (por Alz/run)
       // contra a média geral acima. O histórico nunca é purgado (de propósito), então sem isso uma
@@ -925,7 +955,10 @@ export function computeDgComparison({ sinceDate } = {}) {
       let coolingCause = null;
       if (recentSessions.length >= MIN_SESSIONS_FOR_TREND) {
         const recentRuns = recentSessions.reduce((sum, s) => sum + (s.runs || 0), 0);
-        recentAlzPerRun = recentRuns > 0 ? recentSessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0) / recentRuns : null;
+        // Mediana também aqui: a janela recente é comparada contra alzPerRun, que agora é mediana.
+        // Comparar média contra mediana marcaria "esfriando" só pela troca de régua, não porque a
+        // DG piorou — as duas pontas da conta têm que ser medidas do mesmo jeito.
+        recentAlzPerRun = medianaDe(recentSessions.map(s => sessionTotalAlz(s) / s.runs));
         cooling = recentAlzPerRun != null && alzPerRun != null && recentAlzPerRun < alzPerRun * (1 - COOLING_DROP_THRESHOLD);
         if (cooling) {
           const countItems = list => list.reduce((sum, s) => sum + Object.entries(s.items || {})
@@ -951,13 +984,14 @@ export function computeDgComparison({ sinceDate } = {}) {
         durationMs: a.activeMs, // "tempo total" exibido = soma do tempo ativo
         alzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? a.totalAlz / (a.activeMs / 3600000) : null,
         alzPerRun,
-        // Tempo médio por run = tempo ativo somado ÷ runs somadas — mesma ideia do Alz/run, sem
-        // precisar de nenhum campo novo (usado pra sugerir rota pelo tempo disponível do jogador).
-        msPerRun: a.runs > 0 ? a.activeMs / a.runs : null,
+        msPerRun,
         entryCostPerRun: costPerRun,
         netTotalAlz,
-        netAlzPerRun: a.runs > 0 ? netTotalAlz / a.runs : null,
-        netAlzPerHour: a.activeMs > MIN_ACTIVE_MS_FOR_RATE ? netTotalAlz / (a.activeMs / 3600000) : null,
+        // Derivados do Alz/run típico, não do total dividido — senão o líquido por run e o líquido
+        // por hora continuariam contando a mesma média distorcida que o bruto acabou de deixar de
+        // usar, e as duas metades da mesma tela discordariam entre si.
+        netAlzPerRun: alzPerRun != null ? alzPerRun - costPerRun : null,
+        netAlzPerHour: alzPerRun != null && msPerRun > 0 ? (alzPerRun - costPerRun) / (msPerRun / 3600000) : null,
         recentAlzPerRun,
         cooling,
         coolingCause,
