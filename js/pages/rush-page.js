@@ -126,6 +126,12 @@ export function renderRushPage() {
   });
   const expectedProfit = expectedReturn - cost.total;
 
+  // Carrinho x rush já gravado pra esta data. Compara pelo TOTAL, não item a item: é o total que
+  // vira o "gasto em rush" do dia, e é ele que o jogador vê não bater. Carrinho vazio sem nada
+  // salvo não é divergência, é só uma página em branco.
+  const rushSalvoDoDia = AppState.rushHistory[AppState.rushCartDate];
+  const cartUnsaved = AppState.rushCart.length > 0 && Math.round(cost.total) !== Math.round(rushSalvoDoDia?.total || 0);
+
   // Gasto acumulado do MÊS CIVIL corrente contra o teto que o jogador definiu (0 = sem teto).
   const agora = new Date();
   const prefixoMes = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}`;
@@ -365,8 +371,16 @@ export function renderRushPage() {
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-shopping-cart"></i>Carrinho do dia ${formatDateBR(AppState.rushCartDate)}${appliedRoutes.length ? appliedRoutes.map(r => ` <span style="font-size:11px;font-weight:600;color:var(--gold);text-transform:uppercase;letter-spacing:.4px"><i class="ti ti-route"></i> ${esc(r.name)}</span>`).join('') : ''}</div>
   <div style="display:flex;gap:8px">
     ${AppState.rushCart.length ? '<button class="btn btn-d" onclick="clearRushCart()" title="Remove todas as DGs do carrinho"><i class="ti ti-eraser"></i>Limpar carrinho</button>' : ''}
-    <button class="btn btn-s" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>${AppState.rushHistory[AppState.rushCartDate] ? 'Atualizar rush do dia' : 'Salvar rush do dia'}</button>
+    <button class="btn ${cartUnsaved ? 'btn-p' : 'btn-s'}" onclick="saveRushForDay()"><i class="ti ti-device-floppy"></i>${AppState.rushHistory[AppState.rushCartDate] ? 'Atualizar rush do dia' : 'Salvar rush do dia'}</button>
   </div></div>
+  ${/* O gasto do dia é um SNAPSHOT tirado no momento de salvar — mexer no carrinho depois (aplicar
+       uma rota, mudar repetições, trocar o preço do ticket) não muda o que já foi gravado, e é
+       assim que tem que ser: rush salvo é registro, não espelho ao vivo do carrinho.
+       O problema era o silêncio. As duas coisas divergiam sem nada na tela dizendo, e o gasto do
+       dia no sidebar simplesmente parecia errado. */''}
+  ${!cartUnsaved ? '' : `<div style="margin-top:10px;padding:8px 12px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:12px;color:var(--warn)"><i class="ti ti-alert-triangle"></i> ${!rushSalvoDoDia
+    ? `Este carrinho <strong>ainda não foi salvo</strong> — o gasto de ${formatDateBR(AppState.rushCartDate)} continua zerado até você salvar.`
+    : `O carrinho mudou desde que você salvou: agora dá <strong>${formatAlzGamer(cost.total)}</strong>, mas o gasto gravado em ${formatDateBR(AppState.rushCartDate)} ainda é <strong>${formatAlzGamer(rushSalvoDoDia.total || 0)}</strong>. Atualize pra bater.`}</div>`}
   ${AppState.rushCart.length ? `
   ${editingRoute ? `<div style="font-size:12px;color:var(--gold);background:var(--gold-bg);border:1px solid var(--gold-border);border-radius:6px;padding:7px 12px;margin-bottom:10px"><i class="ti ti-edit"></i> Editando a rota <strong>${esc(editingRoute.name)}</strong> — salvar abaixo sobrescreve ela (não cria outra). <a href="#" onclick="cancelEditingRushRoute();return false" style="color:var(--gold);text-decoration:underline">Cancelar edição</a></div>` : ''}
   <div class="row" style="margin-bottom:12px">
