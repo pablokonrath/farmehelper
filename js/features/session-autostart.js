@@ -1,9 +1,9 @@
 import { AppState } from '../state/app-state.js';
 import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
-import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
+import { getExpectedItemNamesForDungeon, getManualExpectedItemNames } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
-import { stripEnhancementSuffix } from '../utils/parsing.js';
+import { stripEnhancementSuffix, normalizeForSearch } from '../utils/parsing.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { renderPage } from '../router.js';
 
@@ -33,25 +33,22 @@ const MIN_DROPS_TO_KEEP_UNASSIGNED = 3;
 // Só considera drops recentes — um lote antigo relido do arquivo não deve abrir sessão.
 const RECENT_WINDOW_MS = 10 * 60 * 1000;
 
-// Palpite da DG pelos itens que caíram — usando SÓ os itens que identificam uma DG.
-//
-// A versão anterior pontuava cada DG pelo nº de itens caídos que constavam como raridade dela, e
-// ficava com a de maior pontuação. O problema é que muito item cai em várias DGs: ele pontuava
-// pra todas, e no empate vencia a primeira da lista — ou seja, a ordem do cadastro decidia a DG.
-// Um palpite errado por desempate arbitrário é pior que palpite nenhum, porque vem com a mesma
-// cara de certeza.
-//
-// Agora só conta item EXCLUSIVO: aquele que aparece na lista de uma única DG. Item que cai em
-// tudo é ignorado em vez de virar voto. E se dois itens exclusivos apontarem pra DGs diferentes,
-// a evidência se contradiz e não há palpite — a sessão fica sem DG (o que hoje é uma resposta
-// perfeitamente boa) até você escolher ou até cair algo que decida.
-function guessDungeonFromDrops(drops) {
-  const names = new Set(drops.map(d => stripEnhancementSuffix(d.name)));
+// Chave de comparação: sem +N, sem acento, minúscula. O catálogo é digitado à mão, então casar
+// string crua faria "cristal de fogo" não reconhecer o "Cristal de Fogo" do log — e o cadastro
+// pareceria simplesmente não funcionar, sem nenhum sinal de por quê.
+const chaveItem = nome => normalizeForSearch(stripEnhancementSuffix(nome));
 
-  // Pra cada item caído, quais DGs o reivindicam.
+// Só conta item EXCLUSIVO: o que aparece na lista de uma única DG. Item que cai em tudo é
+// ignorado em vez de virar voto — antes ele pontuava pra todas as DGs e, no empate, vencia a
+// primeira da lista, ou seja, a ordem do cadastro decidia a DG. Palpite errado por desempate
+// arbitrário é pior que palpite nenhum, porque vem com a mesma cara de certeza.
+//
+// E se dois exclusivos apontarem pra DGs diferentes, a evidência se contradiz e não há palpite —
+// a sessão fica sem DG, que hoje é uma resposta perfeitamente boa.
+function votarPorExclusivos(names, listaEsperadaDe) {
   const dgsPorItem = new Map();
   for (const dg of AppState.dungeonList) {
-    const expected = getExpectedItemNamesForDungeon(dg.id);
+    const expected = new Set([...listaEsperadaDe(dg.id)].map(chaveItem));
     if (!expected.size) continue;
     for (const name of names) {
       if (!expected.has(name)) continue;
@@ -69,6 +66,24 @@ function guessDungeonFromDrops(drops) {
 
   const [dg, score] = [...votos][0];
   return { dg, score };
+}
+
+function guessDungeonFromDrops(drops) {
+  const names = new Set(drops.map(d => chaveItem(d.name)));
+
+  // 1) Catálogo curado primeiro, SOZINHO. É o cadastro "Itens × DGs", onde alguém afirmou de
+  //    propósito que aquele item sai daquela DG — Cristal de Fogo no Solo Flamejante, Cristal de
+  //    Terra na Tumba, e assim por diante. Isso é a ferramenta de identificação por excelência.
+  //
+  //    Precisa vir sozinho porque a lista combinada mistura curadoria com inferência: basta o
+  //    Cristal de Fogo ter caído uma vez numa sessão marcada com a DG errada pra ele entrar como
+  //    "raro estatístico" de outra DG também — e aí deixa de ser exclusivo e é DESCARTADO. Um
+  //    acidente no histórico anulava a afirmação deliberada. Curadoria ganha de coincidência.
+  const curado = votarPorExclusivos(names, getManualExpectedItemNames);
+  if (curado) return curado;
+
+  // 2) Sem catálogo que resolva, cai no que o histórico sugere ser raro daquela DG.
+  return votarPorExclusivos(names, getExpectedItemNamesForDungeon);
 }
 
 export function toggleAutoSessionStart(enabled) {
