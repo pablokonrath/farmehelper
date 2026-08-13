@@ -131,8 +131,10 @@ const ARMOR_CLASS_TOKENS = /(^|[^a-z0-9])(gu|ga|du|ea|gl|ma|mn|aa|at)([^a-z0-9]|
 
 // 2) Arma: exige o MATERIAL no nome ("Katana de Mithril"). Arma não traz sigla de classe — o
 // próprio tipo já diz a classe —, então o sinal aqui é outro.
+// "disco" não entra: é material, não arma. Estava na lista antiga e teria voltado a esconder item
+// bom — bastaria um material com nome composto pra sumir sem aviso.
 const WEAPON_KEYWORDS = [
-  'montante', 'espada', 'daikatana', 'katana', 'orb', 'cristal', 'chakram', 'chakran', 'disco',
+  'montante', 'espada', 'daikatana', 'katana', 'orb', 'cristal', 'chakram', 'chakran',
 ].map(kw => normalizeForSearch(kw));
 
 const WEAPON_MATERIALS = [
