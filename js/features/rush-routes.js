@@ -1,7 +1,7 @@
 import { AppState } from '../state/app-state.js';
 import { saveRushRoutes, saveAppliedRoutes } from '../state/persistence.js';
 import { buildCartItem, calculateRushCartCost, getCostPerGem } from './rush-cart.js';
-import { computeDgComparison, computeResetWorth, DAILY_RUN_LIMIT } from './dg-session.js';
+import { computeDgComparison, computeResetWorth, computeRunsDoneToday, DAILY_RUN_LIMIT } from './dg-session.js';
 import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
@@ -276,7 +276,17 @@ function greedyFillTimeWithDgs(remainingMs, dgStats, resetWorth, usedRunsByDgId)
     if (remainingMs <= 0) return;
     const canExceedCap = resetWorth.gemValueSet && worthResetByDgName[dg.dungeonName];
     const cap = canExceedCap ? Infinity : DAILY_RUN_LIMIT;
-    const alreadyUsed = usedRunsByDgId[dg.dungeonId] || 0;
+    // O limite diário conta as runs que você JÁ FEZ hoje, não só as que a rota deste encaixe
+    // reservou. Sem isso, um encaixe de fim de tarde propunha 20 runs de uma DG que você já tinha
+    // esgotado de manhã — runs que não existem, mas que entravam no tempo estimado e no lucro
+    // prometido. É a pergunta "o que faço com o tempo que tenho AGORA", então o dia já andado
+    // precisa entrar na conta.
+    //
+    // max() e não soma: quando o encaixe complementa uma rota salva, as runs que a rota reserva e
+    // as que você já fez hoje costumam ser a MESMA coisa (você está executando aquela rota) —
+    // somar contaria o mesmo farme duas vezes e deixaria o encaixe conservador demais.
+    const reservadoPelaRota = usedRunsByDgId[dg.dungeonId] || 0;
+    const alreadyUsed = Math.max(reservadoPelaRota, computeRunsDoneToday(dg.dungeonName));
     const capRemaining = cap - alreadyUsed;
     if (capRemaining <= 0) return;
     const runs = Math.min(Math.floor(remainingMs / dg.msPerRun), capRemaining);
