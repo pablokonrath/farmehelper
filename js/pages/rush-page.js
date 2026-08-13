@@ -181,9 +181,13 @@ export function renderRushPage() {
   const routesCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-route"></i>Minhas rotas</div>
-  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. <strong>Lucro esperado</strong> e <strong>Lucro/hora</strong> são a mesma conta de "Qual rota rende mais" em Sessões de farme (Alz/run histórico de cada DG × repetições, menos o custo de rodar nos preços de hoje) — trazida pra cá pra decidir sem precisar trocar de página. <i class="ti ti-trophy" style="color:var(--gold)"></i> marca a rota de melhor Lucro/hora entre as suas. Clique no número de DGs pra ver quais são.')}
+  ${infoToggle('rush-routes', 'Molde reutilizável de DGs + repetições, sem data fixa. Aplicar <strong>soma</strong> as DGs da rota ao carrinho de hoje (com os preços atuais) — dá pra aplicar mais de uma rota no mesmo dia; DG repetida em duas rotas tem as repetições somadas numa linha só. Monte o carrinho abaixo e clique "Salvar como rota" pra criar uma nova. <strong>Retorno bruto</strong> é o que a rota deve farmar (Alz/run histórico de cada DG × repetições); <strong>Custo</strong> é o que ela consome em entradas — Alz + tickets + gemas aos preços de hoje, mais reset quando alguma DG passa do limite diário. Crédito de macro não entra aqui: é compra do dia, não desta rota. <strong>Lucro</strong> é a diferença, e é a mesma conta de "Qual rota rende mais" em Sessões de farme — trazida pra cá pra decidir sem precisar trocar de página. <i class="ti ti-trophy" style="color:var(--gold)"></i> marca a rota de melhor Lucro/hora entre as suas. Clique no número de DGs pra ver quais são.')}
   ${!AppState.rushRoutes.length ? '<div class="empty">Nenhuma rota criada ainda.</div>' : `
-  <table class="t-cards"><thead><tr><th>Rota</th><th style="width:130px">DGs</th><th>Tempo estimado</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
+  ${/* Bruto e custo ao lado do lucro: só o lucro esconde COMO ele foi obtido. Duas rotas com o
+       mesmo lucro podem ser uma de retorno alto e entrada cara e outra de retorno modesto e quase
+       sem custo — e elas se comportam de forma bem diferente quando o preço do ticket ou da gema
+       muda. Mesmas colunas de "Qual rota rende mais" em Sessões, que já mostrava as três. */''}
+  <table class="t-cards"><thead><tr><th>Rota</th><th style="width:130px">DGs</th><th>Tempo estimado</th><th>Retorno bruto</th><th>Custo</th><th>Lucro esperado</th><th>Lucro/hora</th><th style="width:150px">Ações</th></tr></thead><tbody>
   ${AppState.rushRoutes.map(route => {
     const stats = routeTimeById[route.id];
     const isBest = melhorRota && route.id === melhorRota.id;
@@ -209,6 +213,8 @@ export function renderRushPage() {
         ? `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown))}">${formatDuration(stats.estimatedTimeMs)}</span>`
         : `<span title="${esc(timeBreakdownTooltip(stats.timeBreakdown) + (stats.timeBreakdown.length ? '\n\n' : '') + 'Falta tempo/run farmado de: ' + stats.missingTimeDataDgNames.join(', ') + ' — soma só das DGs com dado')}">≈${formatDuration(stats.estimatedTimeMs)} <i class="ti ti-alert-triangle" style="color:var(--warn)"></i></span>`)
       : '<span style="color:var(--muted)" title="Nenhuma DG desta rota tem tempo/run farmado ainda">—</span>'}</td>
+    <td data-label="Retorno bruto">${stats && stats.expectedAlz > 0 ? `<span title="${formatNumber(stats.expectedAlz)} Alz — o que a rota deve farmar, antes de descontar as entradas">${formatAlzGamer(stats.expectedAlz)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+    <td data-label="Custo">${stats && stats.expectedAlz > 0 ? `<span style="color:var(--err)" title="${formatNumber(stats.cost)} Alz — Alz de entrada + tickets + gemas das DGs desta rota (crédito de macro não entra: é compra do dia, não desta rota)">−${formatAlzGamer(stats.cost)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
     <td data-label="Lucro esperado">${stats && stats.expectedAlz > 0 ? `<span style="color:${stats.profit >= 0 ? 'var(--ok)' : 'var(--err)'};font-weight:600" title="${formatNumber(stats.profit)} Alz">${stats.profit >= 0 ? '+' : ''}${formatAlzGamer(stats.profit)}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
     <td data-label="Lucro/hora">${stats?.profitPerHour != null ? `<strong style="color:var(--gold)">${formatAlzGamer(stats.profitPerHour)}/h</strong>` : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
     <td><div style="display:flex;gap:4px">

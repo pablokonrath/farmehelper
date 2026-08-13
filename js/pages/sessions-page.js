@@ -604,7 +604,7 @@ export function renderSessionsPage() {
         ${gerada.items.map(it => `<span class="badge badge-muted">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ` <i class="ti ti-sparkles" title="Passa dos ${DAILY_RUN_LIMIT} runs/dia — precisa resetar"></i>` : ''}</span>`).join('')}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div style="font-size:12px;color:var(--muted)">Lucro esperado: <strong style="color:${gerada.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${gerada.profit >= 0 ? '+' : ''}${formatAlzGamer(gerada.profit)}</strong> ${comparacao}</div>
+        <div style="font-size:12px;color:var(--muted)">Bruto: <strong style="color:var(--txt)">${formatAlzGamer(gerada.expectedAlz)}</strong> · Custo: <strong style="color:var(--err)">−${formatAlzGamer(gerada.cost)}</strong> · Lucro: <strong style="color:${gerada.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${gerada.profit >= 0 ? '+' : ''}${formatAlzGamer(gerada.profit)}</strong> ${comparacao}</div>
         <button class="btn btn-d btn-xs" onclick="applyGeneratedRoute()"><i class="ti ti-player-play"></i>Aplicar esta</button>
       </div>
     </div>`;
@@ -630,7 +630,7 @@ export function renderSessionsPage() {
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
             ${timeSuggestion.extraItems.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ' <i class="ti ti-sparkles" title="Passa dos ' + DAILY_RUN_LIMIT + ' runs/dia — precisa resetar"></i>' : ''}</span>`).join('')}
           </div>` : ''}
-          <div style="font-size:12px;color:var(--muted);margin-top:8px">Tempo estimado: <strong style="color:var(--txt)" title="${esc(timeBreakdownTooltip(timeSuggestion.timeBreakdown))}">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px">Tempo estimado: <strong style="color:var(--txt)" title="${esc(timeBreakdownTooltip(timeSuggestion.timeBreakdown))}">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Bruto: <strong style="color:var(--txt)">${formatAlzGamer(timeSuggestion.expectedAlz)}</strong> · Custo: <strong style="color:var(--err)">−${formatAlzGamer(timeSuggestion.cost)}</strong> · Lucro: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
           ${missingAlzWarning(timeSuggestion.missingAlzDataDgNames)}
           ${generatedRouteBlock(generatedRoute, timeSuggestion.profit, timeSuggestion.missingAlzDataDgNames?.length)}
         </div>`
