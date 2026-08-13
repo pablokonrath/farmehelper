@@ -119,6 +119,16 @@ const EXCLUDED_ITEM_KEYWORDS = [
   'disco', 'chakram',
 ].map(kw => normalizeForSearch(kw));
 
+// A palavra sozinha não basta: peça de equipamento vem com a sigla da classe no nome. Sem essa
+// segunda condição, "Cristal da Terra" e "Disco" caíam na exclusão só por carregarem uma palavra
+// que também nomeia arma de classe — e sumiam do app inteiro, que é o pior tipo de erro aqui
+// (some calado, e você só descobre se for procurar).
+//
+// A sigla é casada como PALAVRA INTEIRA, nunca como pedaço. São siglas de duas letras: procurar
+// por trecho faria "ma" casar dentro de "arMAdura", "at" dentro de "chAkram" e por aí vai —
+// qualquer nome viraria equipamento.
+const GEAR_CLASS_TOKENS = /(^|[^a-z0-9])(gu|ga|du|ea|gl|ma|mn|aa|at)([^a-z0-9]|$)/;
+
 // Cache nome -> é equipamento genérico? O log tem dezenas de milhares de drops mas pouquíssimos
 // nomes DISTINTOS (o mesmo item cai centenas de vezes), e essa checagem roda por drop em toda
 // varredura (getAllDrops é chamado ~5x por render da Visão geral, que re-renderiza a cada lote
@@ -126,11 +136,18 @@ const EXCLUDED_ITEM_KEYWORDS = [
 // vezes — medido: 15x mais lento num log de 96 mil drops.
 const excludedGearCache = new Map();
 
+// A sigla da classe no nome da peça ("Armadura GU" -> "GU"), ou null. Mesma regra de casamento
+// do isExcludedGearItem — a sigla que decide se é equipamento é a que serve pra agrupar.
+export function getGearClass(name) {
+  const m = normalizeForSearch(name).match(GEAR_CLASS_TOKENS);
+  return m ? m[2].toUpperCase() : null;
+}
+
 export function isExcludedGearItem(name) {
   let cached = excludedGearCache.get(name);
   if (cached === undefined) {
     const normalized = normalizeForSearch(name);
-    cached = EXCLUDED_ITEM_KEYWORDS.some(kw => normalized.includes(kw));
+    cached = EXCLUDED_ITEM_KEYWORDS.some(kw => normalized.includes(kw)) && GEAR_CLASS_TOKENS.test(normalized);
     excludedGearCache.set(name, cached);
   }
   return cached;

@@ -188,7 +188,7 @@ ${!routeYield.length ? '' : `
           <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
           <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
         </tr>`).join('')}
-        ${gearGroupRows(reverseResult.gear, reverseResult.items.length)}
+        ${gearGroupRows(reverseResult.gear)}
         </tbody></table>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
@@ -206,7 +206,7 @@ ${renderItemDungeonSourcesCard()}`;
 // caminho sem sumir do app: os números do grupo são os mesmos da soma das partes, e abrir mostra
 // item por item. Recolhido é o padrão porque, na esmagadora maioria das vezes, não é o que você
 // veio ver — mas quando é, está a um clique.
-function gearGroupRows(gear, offset) {
+function gearGroupRows(gear) {
   if (!gear) return '';
   const aberto = AppState.dropSourceGearOpen;
   return `<tr style="cursor:pointer" onclick="toggleDropSourceGear()" title="${aberto ? 'Recolher' : 'Ver item por item'}">
@@ -218,9 +218,25 @@ function gearGroupRows(gear, offset) {
       <td><span style="color:var(--muted)">varia</span></td>
       <td style="color:var(--muted);font-weight:700">${gear.expectedAlzPerRun ? renderAlzValue(Math.round(gear.expectedAlzPerRun)) : '<span style="font-weight:400">—</span>'}</td>
     </tr>
-    ${!aberto ? '' : gear.items.map((i, idx) => `<tr style="background:var(--surf2)">
-      <td class="rank" style="color:var(--muted)">${offset + idx + 1}</td>
-      <td style="padding-left:26px">${esc(i.name)}</td>
+    ${!aberto ? '' : gear.classes.map(c => gearClassRows(c)).join('')}`;
+}
+
+// Segundo nível: uma linha por classe (GU, GA, DU...). A sigla que define se a peça é equipamento
+// é a mesma que agrupa, então isso responde "o que essa DG larga pra cada classe" sem custo
+// nenhum. Abre pra ver as peças daquela classe.
+function gearClassRows(c) {
+  const aberta = AppState.dropSourceGearClass === c.code;
+  return `<tr style="background:var(--surf2);cursor:pointer" onclick="toggleDropSourceGearClass('${escAttr(c.code)}')" title="${aberta ? 'Recolher' : `Ver as peças de ${c.code}`}">
+      <td class="rank"><i class="ti ti-chevron-${aberta ? 'down' : 'right'}" style="color:var(--muted)"></i></td>
+      <td style="padding-left:26px;font-weight:600">${esc(c.code)} <span style="font-size:11px;font-weight:400;color:var(--muted)">${c.count} tipo${c.count > 1 ? 's' : ''}</span></td>
+      <td>${c.qty.toLocaleString('pt-BR')}×</td>
+      <td>${rateWithConfidence(c)}</td>
+      <td><span style="color:var(--muted)">varia</span></td>
+      <td style="font-weight:700">${c.expectedAlzPerRun ? renderAlzValue(Math.round(c.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+    </tr>
+    ${!aberta ? '' : c.items.map(i => `<tr>
+      <td></td>
+      <td style="padding-left:52px;color:var(--muted)">${esc(i.name)}</td>
       <td>${i.qty.toLocaleString('pt-BR')}×</td>
       <td>${rateWithConfidence(i)}</td>
       <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>

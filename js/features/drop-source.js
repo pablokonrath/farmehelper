@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { getItemPrice, isExcludedGearItem } from './drops.js';
+import { getItemPrice, isExcludedGearItem, getGearClass } from './drops.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { renderPage, navigateTo } from '../router.js';
 
@@ -8,6 +8,13 @@ import { renderPage, navigateTo } from '../router.js';
 // já que o normal é você vir aqui olhar os drops que importam.
 export function toggleDropSourceGear() {
   AppState.dropSourceGearOpen = !AppState.dropSourceGearOpen;
+  renderPage();
+}
+
+// Uma classe aberta por vez: abrir todas devolveria exatamente a lista enorme que o agrupamento
+// veio resolver. Clicar na que já está aberta fecha.
+export function toggleDropSourceGearClass(code) {
+  AppState.dropSourceGearClass = AppState.dropSourceGearClass === code ? null : code;
   renderPage();
 }
 
@@ -174,13 +181,29 @@ export function findDungeonDrops(dungeonId) {
   // O resumo do grupo é a soma real, não uma média de médias: quantidade somada, taxa recalculada
   // sobre o mesmo total de runs, e Alz/run somado item a item (cada um tem preço próprio, então
   // um "preço do grupo" não significaria nada — a coluna fica vazia de propósito).
+  const resumoGrupo = (nome, lista) => ({
+    name: nome,
+    count: lista.length,
+    qty: lista.reduce((s, i) => s + i.qty, 0),
+    ...summarizeRate(lista.reduce((s, i) => s + i.qtyWithRuns, 0), totalRuns),
+    expectedAlzPerRun: lista.reduce((s, i) => s + (i.expectedAlzPerRun || 0), 0) || null,
+    items: lista,
+  });
+
+  // Dentro do grupo, uma camada por classe (GU, GA, DU...). É a sigla que já decide se a peça é
+  // equipamento, então agrupar por ela sai de graça — e responde "o que essa DG larga pra cada
+  // classe", que é a pergunta real de quem olha esse bloco (vender pra quem, ou o que reciclar).
+  const porClasse = new Map();
+  gearItems.forEach(i => {
+    const classe = getGearClass(i.name) || '?';
+    if (!porClasse.has(classe)) porClasse.set(classe, []);
+    porClasse.get(classe).push(i);
+  });
+
   const gear = !gearItems.length ? null : {
-    name: 'Equipamentos',
-    count: gearItems.length,
-    qty: gearItems.reduce((s, i) => s + i.qty, 0),
-    ...summarizeRate(gearItems.reduce((s, i) => s + i.qtyWithRuns, 0), totalRuns),
-    expectedAlzPerRun: gearItems.reduce((s, i) => s + (i.expectedAlzPerRun || 0), 0) || null,
-    items: gearItems,
+    ...resumoGrupo('Equipamentos', gearItems),
+    classes: [...porClasse].map(([code, lista]) => ({ code, ...resumoGrupo(code, lista) }))
+      .sort((a, b) => b.qty - a.qty),
   };
 
   return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items, gear };

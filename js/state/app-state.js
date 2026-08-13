@@ -188,6 +188,9 @@ export const AppState = {
   // Grupo "Equipamentos" da tabela "O que uma DG dropa". Só de tela, não persiste — o certo é
   // começar recolhido a cada visita.
   dropSourceGearOpen: false,
+  // Classe aberta dentro do grupo de equipamentos (uma por vez — abrir todas devolveria a lista
+  // enorme que o agrupamento veio resolver).
+  dropSourceGearClass: null,
   dropSourceTargetQty: '',
   // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma
   // página, ferramenta independente. Não persiste, mesmo espírito das outras duas acima.
