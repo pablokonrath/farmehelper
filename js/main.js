@@ -93,6 +93,7 @@ import {
 } from './features/rush-cart.js';
 import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute } from './features/rush-routes.js';
 import { exportDropsToCSV, exportSalesToCSV } from './features/export.js';
+import { copyAiRouteBriefing } from './features/ai-briefing.js';
 import { maskDateInputBR, parseDateInputBR, maskAlzInputLive, maskTimeInputBR } from './utils/formatting.js';
 
 // Abre/fecha a gaveta lateral no celular (o botão hambúrguer, ver index.html/styles.css).
@@ -200,6 +201,7 @@ Object.assign(window, {
   setRushCreditMarketPrice,
   setRushCreditItemName,
   exportDropsToCSV,
+  copyAiRouteBriefing,
   exportSalesToCSV,
   maskDateInputBR,
   parseDateInputBR,

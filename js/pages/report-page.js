@@ -221,7 +221,9 @@ export function renderReportPage() {
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
   <span style="font-size:13px;color:var(--txt2)">${drops.length.toLocaleString('pt-BR')} drops</span>
   <button class="btn btn-d btn-xs" onclick="exportDropsToCSV()" style="margin-left:auto"><i class="ti ti-download"></i>Exportar CSV</button>
+  <button class="btn btn-d btn-xs" onclick="copyAiRouteBriefing()" title="Copia seu histórico de DGs num texto pronto pra colar numa IA e pedir rotas — inclui as regras do jogo, o tamanho de cada amostra e a proibição de inventar número"><i class="ti ti-sparkles"></i>Copiar pra IA</button>
 </div>
+<div class="notice" style="margin-bottom:12px"><i class="ti ti-info-circle" style="flex-shrink:0;margin-top:1px"></i><div><strong>"Copiar pra IA"</strong> monta um texto com seus números reais (Alz/run líquido, tempo/run, custo de entrada, runs que faltam hoje) e já vem com o pedido pronto: rotas para 30min, 1h, 2h, 3h e 4h. Cole numa IA e ela responde comparando os cenários. Para <strong>um</strong> tempo específico, o próprio FarmHub já monta e aplica no carrinho — é o "Quanto tempo você tem hoje?" em Sessões de farme.</div></div>
 ${renderCategoryComparisonCard()}
 ${renderPersonalCategoryCard()}
 ${renderCategoryManagerCard()}
