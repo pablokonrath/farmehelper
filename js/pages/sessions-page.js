@@ -2,7 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
-import { computeRouteComparison, suggestRouteForTime, buildGeneratedRoute } from '../features/rush-routes.js';
+import { computeRouteComparison } from '../features/rush-routes.js';
 import { getCostPerGem } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
@@ -338,14 +338,6 @@ export function renderSessionsPage() {
   comparisonAllTime.forEach(c => { comparisonByDgId[c.dungeonId] = c; });
   const reset = computeResetWorth(comparisonAllTime);
   const routeComparison = computeRouteComparison(comparisonAllTime);
-  const timeAvailableHours = Number(AppState.timeAvailableHours) || 0;
-  const timeSuggestion = timeAvailableHours > 0 ? suggestRouteForTime(timeAvailableHours, comparisonAllTime) : null;
-  // A montagem do zero é calculada SEMPRE, não só quando nenhuma rota salva cabe. Antes ela ficava
-  // escondida de quem tem rotas salvas — o card sempre mostrava uma delas e a opção de montar na
-  // hora nunca chegava à tela. Agora as duas aparecem juntas, com o lucro de cada uma à vista.
-  const generatedRoute = timeAvailableHours > 0 && timeSuggestion?.type !== 'generated'
-    ? buildGeneratedRoute(timeAvailableHours * 3600000, comparisonAllTime)
-    : null;
   const today = todayISODate();
   const historyDate = AppState.sessionsHistoryDate || today;
   const history = AppState.dgSessions.filter(s => s.date === historyDate).reverse();
@@ -569,83 +561,6 @@ export function renderSessionsPage() {
   </tbody></table>
 </div>`;
 
-  // Por que o lucro da rota está incompleto — separado pelos dois motivos possíveis, que pedem
-  // ações opostas e são indistinguíveis de fora. "Sem sessão" significa que aquela DG nunca
-  // apareceu no seu histórico (ou apareceu sob outro nome); "sem runs" significa que o farme
-  // existe mas ninguém preencheu "Runs feitas" — e sem runs não dá pra dividir Alz por entrada.
-  const missingAlzWarning = (faltando) => {
-    if (!faltando?.length) return '';
-    const semSessao = faltando.filter(f => f.motivo === 'sem-sessao').map(f => f.nome);
-    const semRuns = faltando.filter(f => f.motivo === 'sem-runs').map(f => f.nome);
-    const partes = [];
-    if (semRuns.length) partes.push(`<strong>${semRuns.map(esc).join(', ')}</strong> — ${semRuns.length === 1 ? 'tem sessão' : 'têm sessões'} no histórico, mas nenhuma com "Runs feitas" preenchido. Sem runs não dá pra saber quanto rende por entrada. Preencha numa sessão dessa DG no histórico abaixo e o número se corrige sozinho.`);
-    if (semSessao.length) partes.push(`<strong>${semSessao.map(esc).join(', ')}</strong> — ${semSessao.length === 1 ? 'não aparece' : 'não aparecem'} em nenhuma sessão sua ainda. Farme uma vez com as runs preenchidas pra ${semSessao.length === 1 ? 'ela entrar' : 'elas entrarem'} na conta.`);
-    return `<div style="margin-top:8px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:11px;color:var(--warn)">
-      <i class="ti ti-alert-triangle"></i> <strong>Esse lucro está incompleto — o real é maior.</strong> ${faltando.length === 1 ? 'Uma DG da rota rende' : `${faltando.length} DGs da rota rendem`} <strong>zero</strong> na conta por falta de dado, mas ${faltando.length === 1 ? 'seu custo de entrada é cobrado' : 'seus custos de entrada são cobrados'} normalmente.
-      ${partes.map(p => `<div style="margin-top:6px">${p}</div>`).join('')}
-    </div>`;
-  };
-
-  // A alternativa montada na hora, mostrada embaixo da rota salva. Só aparece quando de fato tem
-  // conteúdo — e diz de cara se rende mais ou menos que a salva, porque comparar dois números de
-  // Alz de cabeça, em kk, é exatamente o tipo de conta que a tela deveria poupar.
-  const generatedRouteBlock = (gerada, lucroDaSalva, salvaTemDadoFaltando) => {
-    if (!gerada || gerada.type === 'none' || !gerada.items.length) return '';
-    const diferenca = gerada.profit - lucroDaSalva;
-    const melhor = diferenca > 0;
-    // Comparar com uma rota cujo lucro está subestimado (DG sem Alz/run entra como zero) daria uma
-    // vantagem falsa pra montada na hora — ela ganharia por dado faltando, não por ser melhor.
-    const comparacao = salvaTemDadoFaltando
-      ? '<span style="color:var(--muted)">(não dá pra comparar: o lucro da rota acima está incompleto)</span>'
-      : `<span style="color:${melhor ? 'var(--ok)' : 'var(--muted)'}">(${melhor ? `${formatAlzGamer(diferenca)} a mais` : diferenca === 0 ? 'igual' : `${formatAlzGamer(-diferenca)} a menos`} que a rota acima)</span>`;
-    return `<div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:6px"><i class="ti ti-wand"></i> Ou <strong style="color:var(--txt)">montar na hora</strong>, sem usar rota salva — escolhendo as DGs que melhor preenchem ${formatDuration(gerada.estimatedTimeMs)}:</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-        ${gerada.items.map(it => `<span class="badge badge-muted">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ` <i class="ti ti-sparkles" title="Passa dos ${DAILY_RUN_LIMIT} runs/dia — precisa resetar"></i>` : ''}</span>`).join('')}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <div style="font-size:12px;color:var(--muted)">Bruto: <strong style="color:var(--txt)">${formatAlzGamer(gerada.expectedAlz)}</strong> · Custo: <strong style="color:var(--err)">−${formatAlzGamer(gerada.cost)}</strong> · Lucro: <strong style="color:${gerada.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${gerada.profit >= 0 ? '+' : ''}${formatAlzGamer(gerada.profit)}</strong> ${comparacao}</div>
-        <button class="btn btn-d btn-xs" onclick="applyGeneratedRoute()"><i class="ti ti-player-play"></i>Aplicar esta</button>
-      </div>
-    </div>`;
-  };
-
-  const timeSuggestionCard = `
-<div class="card card-featured">
-  <div class="ctitle"><i class="ti ti-clock" style="color:var(--gold)"></i>Quanto tempo você tem hoje?</div>
-  ${infoToggle('sessions-time-suggestion', `Sugere a rota salva de melhor Lucro/hora que cabe no tempo (tempo/run vem da média real das suas sessões) e completa a sobra com DGs avulsas pelas de melhor Alz/hora, sem deixar tempo disponível sem uso. Se nenhuma rota salva couber, monta um encaixe novo do zero, respeitando o limite de ${DAILY_RUN_LIMIT} runs/dia por DG.`)}
-  <div class="row" style="margin-bottom:14px;align-items:flex-end">
-    <div style="width:140px"><label class="lbl">Horas disponíveis</label><input class="inp" id="timeAvailableHoursInput" type="number" min="0" step="0.5" placeholder="ex: 3" value="${AppState.timeAvailableHours || ''}" onchange="setTimeAvailableHours(this.value)"></div>
-  </div>
-  ${!timeAvailableHours ? '' : !timeSuggestion || timeSuggestion.type === 'none'
-    ? '<div class="empty">Ainda não há DG com runs e tempo suficientes farmados pra sugerir algo pro seu tempo.</div>'
-    : timeSuggestion.type === 'saved' || timeSuggestion.type === 'saved+extra'
-      ? `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Rota salva que cabe no seu tempo:</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div style="font-weight:700;font-size:15px;color:var(--gold)">${esc(timeSuggestion.name)}${timeSuggestion.needsReset ? ` <i class="ti ti-sparkles" style="color:var(--warn);font-size:13px" title="Inclui reset por gemas em alguma DG"></i>` : ''}</div>
-            <button class="btn btn-p btn-xs" onclick="applySuggestedRoute()"><i class="ti ti-player-play"></i>Aplicar no carrinho</button>
-          </div>
-          ${timeSuggestion.type === 'saved+extra' ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">A rota sozinha não usa todo seu tempo — completado com avulsas:</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-            ${timeSuggestion.extraItems.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ' <i class="ti ti-sparkles" title="Passa dos ' + DAILY_RUN_LIMIT + ' runs/dia — precisa resetar"></i>' : ''}</span>`).join('')}
-          </div>` : ''}
-          <div style="font-size:12px;color:var(--muted);margin-top:8px">Tempo estimado: <strong style="color:var(--txt)" title="${esc(timeBreakdownTooltip(timeSuggestion.timeBreakdown))}">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Bruto: <strong style="color:var(--txt)">${formatAlzGamer(timeSuggestion.expectedAlz)}</strong> · Custo: <strong style="color:var(--err)">−${formatAlzGamer(timeSuggestion.cost)}</strong> · Lucro: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
-          ${missingAlzWarning(timeSuggestion.missingAlzDataDgNames)}
-          ${generatedRouteBlock(generatedRoute, timeSuggestion.profit, timeSuggestion.missingAlzDataDgNames?.length)}
-        </div>`
-      : `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Nenhuma rota salva coube no tempo — encaixe novo montado pelas DGs de melhor Alz/hora:</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-            ${timeSuggestion.items.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ' <i class="ti ti-sparkles" title="Passa dos ' + DAILY_RUN_LIMIT + ' runs/dia — precisa resetar"></i>' : ''}</span>`).join('')}
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-            <div style="font-size:12px;color:var(--muted)">Tempo estimado: <strong style="color:var(--txt)">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
-            <button class="btn btn-p btn-xs" onclick="applySuggestedRoute()"><i class="ti ti-player-play"></i>Aplicar no carrinho</button>
-          </div>
-        </div>`}
-</div>`;
-
   const historyCard = `
 <div class="card">
   <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-history"></i>Histórico de sessões</div>
@@ -698,7 +613,6 @@ export function renderSessionsPage() {
 <div class="pg-sub">Marque o DG que está farmando e veja, por dungeon, quanto rende por run — pra decidir onde gastar suas entradas limitadas do dia (as 20, ou o que resetar por gemas).</div>
 ${nowFarmingCard}
 ${renderRushProgressCard(comparisonByDgId, comparisonAllTime)}
-${timeSuggestionCard}
 ${comparisonCard}
 ${bestHoursCard}
 ${routeComparisonCard}
