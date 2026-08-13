@@ -569,6 +569,23 @@ export function renderSessionsPage() {
   </tbody></table>
 </div>`;
 
+  // Por que o lucro da rota está incompleto — separado pelos dois motivos possíveis, que pedem
+  // ações opostas e são indistinguíveis de fora. "Sem sessão" significa que aquela DG nunca
+  // apareceu no seu histórico (ou apareceu sob outro nome); "sem runs" significa que o farme
+  // existe mas ninguém preencheu "Runs feitas" — e sem runs não dá pra dividir Alz por entrada.
+  const missingAlzWarning = (faltando) => {
+    if (!faltando?.length) return '';
+    const semSessao = faltando.filter(f => f.motivo === 'sem-sessao').map(f => f.nome);
+    const semRuns = faltando.filter(f => f.motivo === 'sem-runs').map(f => f.nome);
+    const partes = [];
+    if (semRuns.length) partes.push(`<strong>${semRuns.map(esc).join(', ')}</strong> — ${semRuns.length === 1 ? 'tem sessão' : 'têm sessões'} no histórico, mas nenhuma com "Runs feitas" preenchido. Sem runs não dá pra saber quanto rende por entrada. Preencha numa sessão dessa DG no histórico abaixo e o número se corrige sozinho.`);
+    if (semSessao.length) partes.push(`<strong>${semSessao.map(esc).join(', ')}</strong> — ${semSessao.length === 1 ? 'não aparece' : 'não aparecem'} em nenhuma sessão sua ainda. Farme uma vez com as runs preenchidas pra ${semSessao.length === 1 ? 'ela entrar' : 'elas entrarem'} na conta.`);
+    return `<div style="margin-top:8px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:11px;color:var(--warn)">
+      <i class="ti ti-alert-triangle"></i> <strong>Esse lucro está incompleto — o real é maior.</strong> ${faltando.length === 1 ? 'Uma DG da rota rende' : `${faltando.length} DGs da rota rendem`} <strong>zero</strong> na conta por falta de dado, mas ${faltando.length === 1 ? 'seu custo de entrada é cobrado' : 'seus custos de entrada são cobrados'} normalmente.
+      ${partes.map(p => `<div style="margin-top:6px">${p}</div>`).join('')}
+    </div>`;
+  };
+
   // A alternativa montada na hora, mostrada embaixo da rota salva. Só aparece quando de fato tem
   // conteúdo — e diz de cara se rende mais ou menos que a salva, porque comparar dois números de
   // Alz de cabeça, em kk, é exatamente o tipo de conta que a tela deveria poupar.
@@ -614,7 +631,7 @@ export function renderSessionsPage() {
             ${timeSuggestion.extraItems.map(it => `<span class="badge badge-acc">${esc(it.dungeonName)} × ${it.repetitions}${it.usedReset ? ' <i class="ti ti-sparkles" title="Passa dos ' + DAILY_RUN_LIMIT + ' runs/dia — precisa resetar"></i>' : ''}</span>`).join('')}
           </div>` : ''}
           <div style="font-size:12px;color:var(--muted);margin-top:8px">Tempo estimado: <strong style="color:var(--txt)" title="${esc(timeBreakdownTooltip(timeSuggestion.timeBreakdown))}">${formatDuration(timeSuggestion.estimatedTimeMs)}</strong> · Lucro esperado: <strong style="color:${timeSuggestion.profit >= 0 ? 'var(--ok)' : 'var(--err)'}">${timeSuggestion.profit >= 0 ? '+' : ''}${formatAlzGamer(timeSuggestion.profit)}</strong></div>
-          ${!timeSuggestion.missingAlzDataDgNames?.length ? '' : `<div style="margin-top:8px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:11px;color:var(--warn)"><i class="ti ti-alert-triangle"></i> <strong>Esse lucro está incompleto.</strong> ${timeSuggestion.missingAlzDataDgNames.length === 1 ? 'A DG' : 'As DGs'} <strong>${timeSuggestion.missingAlzDataDgNames.map(esc).join(', ')}</strong> ainda ${timeSuggestion.missingAlzDataDgNames.length === 1 ? 'não tem' : 'não têm'} Alz por run registrado, então ${timeSuggestion.missingAlzDataDgNames.length === 1 ? 'entra' : 'entram'} rendendo <strong>zero</strong> — mas o custo de entrada é cobrado. O lucro real é maior que o mostrado. Preencha as runs de uma sessão dessa DG no histórico e o número se corrige sozinho.</div>`}
+          ${missingAlzWarning(timeSuggestion.missingAlzDataDgNames)}
           ${generatedRouteBlock(generatedRoute, timeSuggestion.profit, timeSuggestion.missingAlzDataDgNames?.length)}
         </div>`
       : `<div style="padding:12px;background:var(--surf2);border:1px solid var(--gold-border);border-radius:8px">

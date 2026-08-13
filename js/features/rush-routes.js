@@ -183,7 +183,20 @@ export function deleteRushRoute(routeId) {
 // quando quem chama (Sessões de farme, suggestRouteForTime) já tem um em mãos.
 export function computeRouteComparison(dgStats = computeDgComparison()) {
   const dgStatsById = {};
-  dgStats.forEach(d => { dgStatsById[d.dungeonId] = d; });
+  const dgStatsByName = {};
+  dgStats.forEach(d => {
+    dgStatsById[d.dungeonId] = d;
+    if (d.dungeonName) dgStatsByName[d.dungeonName] = d;
+  });
+
+  // O histórico é indexado por ID, mas nem tudo no app usa ID: computeRunsDoneToday casa por NOME,
+  // e a própria criação de rota já tem fallback por nome (ver createRushRouteFromCart) porque
+  // existe rota antiga cujo item nasceu sem dungeonId. Consequência: uma sessão gravada sob um id
+  // que não bate some da busca por ID e reaparece na busca por nome — e a rota mostrava a DG como
+  // "sem dado" enquanto ela aparecia normalmente em "Qual DG rende mais". Procurar pelos dois
+  // resolve, e o nome da DG é praticamente único no catálogo.
+  const statDaRota = it => dgStatsById[it.dungeonId]
+    || dgStatsByName[AppState.dungeonList.find(d => d.id === it.dungeonId)?.name];
 
   return AppState.rushRoutes.map(route => {
     let expectedAlz = 0;
@@ -198,14 +211,22 @@ export function computeRouteComparison(dgStats = computeDgComparison()) {
     let needsReset = false;
 
     route.items.forEach(it => {
-      const stat = dgStatsById[it.dungeonId];
+      const stat = statDaRota(it);
       if (stat && stat.alzPerRun != null) expectedAlz += stat.alzPerRun * it.repetitions;
       else {
         missingDataCount++;
         // DG sem Alz/run conhecido rende ZERO na conta mas continua CUSTANDO a entrada inteira.
         // O lucro da rota fica artificialmente negativo, e sem saber quais DGs são não há como
         // perceber que o número está incompleto em vez de ruim.
-        missingAlzDataDgNames.push(stat?.dungeonName || AppState.dungeonList.find(d => d.id === it.dungeonId)?.name || it.dungeonId);
+        //
+        // O MOTIVO vem junto porque os dois casos pedem ações opostas, e de fora eles são
+        // indistinguíveis: ou a DG nunca apareceu numa sessão sua (aí é farmar), ou apareceu mas
+        // nenhuma sessão dela tem "Runs feitas" preenchido (aí é só preencher, o farme já existe).
+        const nome = stat?.dungeonName || AppState.dungeonList.find(d => d.id === it.dungeonId)?.name || it.dungeonId;
+        missingAlzDataDgNames.push({
+          nome,
+          motivo: stat ? 'sem-runs' : 'sem-sessao',
+        });
       }
 
       if (stat && stat.msPerRun != null) {
@@ -268,7 +289,17 @@ export function computeRouteComparison(dgStats = computeDgComparison()) {
 function greedyFillTimeWithDgs(remainingMs, dgStats, resetWorth, usedRunsByDgId) {
   const worthResetByDgName = {};
   resetWorth.rows.forEach(r => { worthResetByDgName[r.dungeonName] = r.worth; });
-  const candidates = [...dgStats].filter(d => d.msPerRun != null && d.alzPerHour != null).sort((a, b) => b.alzPerHour - a.alzPerHour);
+  // Escolhe pelo LÍQUIDO, não pelo bruto. Esta era a origem do "a rota deu negativo": ordenava por
+  // alzPerHour, que é o Alz farmado antes de descontar a entrada. DG de rendimento bruto alto mas
+  // entrada cara (tickets, gemas) subia pro topo da fila, era enfiada no encaixe até encher o
+  // tempo, e o custo dela afundava o total — a mesma rota aparecia com lucro positivo em "Minhas
+  // rotas" e negativo aqui, só por causa das avulsas que este encaixe escolheu.
+  //
+  // E DG com líquido <= 0 sai da lista inteira: preencher tempo com ela é pagar pra farmar. Antes
+  // não havia esse piso — bastava ter o melhor bruto pra ser escolhida.
+  const candidates = [...dgStats]
+    .filter(d => d.msPerRun != null && d.netAlzPerHour != null && d.netAlzPerRun > 0)
+    .sort((a, b) => b.netAlzPerHour - a.netAlzPerHour);
 
   const items = [];
   let anyReset = false;
