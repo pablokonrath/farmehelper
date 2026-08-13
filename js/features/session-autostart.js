@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes, DAILY_RUN_LIMIT } from './dg-session.js';
+import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
@@ -97,29 +97,16 @@ function idleCloseMs() {
   return Math.max(1, +AppState.sessionIdleCloseMinutes || 5) * 60000;
 }
 
-// Quanto tempo sem drop essa sessão específica aguenta antes de ser encerrada.
+// O limite de inatividade é UM SÓ: o que você configurou. Nada de derivar da DG.
 //
-// Um número fixo pra todas as DGs é errado dos dois lados: numa DG de 2min por run, 5min parado é
-// uma eternidade (você já saiu faz tempo); numa de 20min, pode ser o meio de uma run normal. O
-// tempo por run já está na sessão (vem do seu próprio histórico) — dá pra derivar dele.
+// Já tentamos derivar (metade de uma run sem drop, metade disso depois das 20 runs) partindo de
+// que fechar cedo custaria pouco, porque a retomada religaria a mesma sessão. Na prática não
+// custa pouco: a retomada exige evidência POSITIVA de que o farme é o mesmo (ver pareceMesmoFarme)
+// e, quando não tem essa evidência, ela abre sessão nova em vez de retomar — de propósito, porque
+// juntar farme de duas DGs é o erro caro. O resultado era fechar no meio da DG e picar o farme em
+// várias sessões.
 //
-// Regra: METADE de uma run sem drop já é sinal de que travou ou acabou. E se a sessão já bateu o
-// limite diário de runs, a DG está esgotada (sem reset não dá pra continuar), então a paciência
-// cai pela metade de novo.
-//
-// O que você configurou vira TETO, não valor fixo: ele pode fechar antes, nunca depois. Isso é
-// deliberado. Fechar cedo demais hoje custa pouco, porque se os drops voltarem logo a retomada
-// religa a MESMA sessão. Fechar tarde é que é caro: o farme seguinte, possivelmente de outra DG,
-// entra somado nesta — e aí o Alz/run das duas mente.
-function idleCloseMsFor(session) {
-  const teto = idleCloseMs();
-  const porRunMs = (+session?.runMinutes || 0) * 60000;
-  if (!porRunMs) return teto; // sem tempo por run conhecido, não há o que derivar
-
-  let limite = porRunMs / 2;
-  if ((session.runs || 0) >= DAILY_RUN_LIMIT) limite /= 2;
-  return Math.min(teto, Math.max(60000, limite));
-}
+// Entre um número que você escolhe e entende e um número derivado que erra sozinho, o seu ganha.
 
 // Sessão encerrada há pouco que provavelmente é o MESMO farme: você parou 5 minutos (foi vender,
 // trocou de canal, andou até a próxima entrada) e voltou. Retomar em vez de abrir outra é o que
@@ -254,12 +241,11 @@ export function checkAutoEndSession() {
   // Sem nenhum drop ainda: mede a inatividade desde a abertura, senão uma sessão aberta por
   // engano (ou um auto-start que não vingou) ficaria aberta pra sempre.
   const referencia = summary?.lastDropAt || AppState.activeDgSession.startAt;
-  const limite = idleCloseMsFor(AppState.activeDgSession);
+  const limite = idleCloseMs();
   if (Date.now() - referencia < limite) return;
 
   const nome = AppState.activeDgSession.dungeonName;
   const total = summary?.totalAlz || 0;
-  const esgotou = (AppState.activeDgSession.runs || 0) >= DAILY_RUN_LIMIT;
 
   // Nunca ganhou DG e mal dropou: era drop perdido, não farme. Descarta em vez de sujar o
   // histórico com uma linha "sem DG" de 1 drop. Nada se perde — os drops seguem no log e
@@ -273,6 +259,6 @@ export function checkAutoEndSession() {
 
   showGoalToast(
     '⏹️ Sessão encerrada sozinha',
-    `${nome || 'Sessão sem DG'} ficou ${formatMinutos(limite)} sem drop${esgotou ? ` e já tinha feito as ${DAILY_RUN_LIMIT} runs do dia` : ''}, então encerrei no horário do último — o tempo parado não entrou na conta.${nome ? '' : ' Ela está no histórico esperando você dizer qual DG era.'} Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
+    `${nome || 'Sessão sem DG'} ficou ${formatMinutos(limite)} sem drop, então encerrei no horário do último — o tempo parado não entrou na conta.${nome ? '' : ' Ela está no histórico esperando você dizer qual DG era.'} Se os drops voltarem logo, eu retomo esta mesma sessão. Total: ${formatAlzGamer(total)}.`
   );
 }
