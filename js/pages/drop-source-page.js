@@ -6,6 +6,7 @@ import { infoToggle } from '../features/ui-toggles.js';
 import { DAILY_RUN_LIMIT, computeDgComparison } from '../features/dg-session.js';
 import { formatDateBR, renderAlzValue, formatAlzGamer, formatDuration } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
+import { expectedCountRange } from '../utils/stats.js';
 
 // Cadastro manual (curado) de quais DGs cada item pode dropar — diferente da busca acima, que é
 // estatística. Alimenta o destaque de "item esperado" em Sessões de farme, E complementa a busca
@@ -71,14 +72,18 @@ function formatAvgPerRun(rate) {
 // leva zero.
 //
 // A média fica, porque é ela que ordena a tabela e responde "onde rende mais" — trocar por outra
-// coisa faria o melhor drop da DG afundar pro fim da lista. O que entra é a leitura real embaixo:
-// quanto vale quando cai, e de quantas em quantas runs. Aí o número de cima é comparação e o de
-// baixo é expectativa.
+// coisa faria o melhor drop da DG afundar pro fim da lista.
+//
+// A segunda linha NÃO é mais "1 a cada N runs": aquilo se lia como agenda, como se na run 21
+// fosse cair. Virou a faixa que de fato acontece numa leva de 20 runs (o limite diário, que é a
+// unidade em que o jogador raciocina): "0 a 3". Sair zero numa leva inteira e sair três na
+// seguinte é o comportamento NORMAL dessa taxa, não sinal de que a conta está errada.
 function expectedAlzCell(entry) {
   if (!entry.expectedAlzPerRun) return '<td><span style="color:var(--muted)">—</span></td>';
   const tudoOuNada = entry.dropRate != null && entry.dropRate < 1 && entry.price > 0;
-  return `<td style="color:var(--gold);font-weight:700">${renderAlzValue(Math.round(entry.expectedAlzPerRun))}${tudoOuNada
-    ? `<div style="font-size:11px;font-weight:400;color:var(--muted)" title="Média de longo prazo. Na prática é tudo ou nada: quando cai, vem o valor cheio.">${formatAlzGamer(entry.price)} a cada ${Math.round(1 / entry.dropRate).toLocaleString('pt-BR')} runs</div>`
+  const faixa = tudoOuNada ? expectedCountRange(entry.dropRate, DAILY_RUN_LIMIT) : null;
+  return `<td style="color:var(--gold);font-weight:700">${renderAlzValue(Math.round(entry.expectedAlzPerRun))}${faixa
+    ? `<div style="font-size:11px;font-weight:400;color:var(--muted)" title="Tudo ou nada: quando cai, vem o valor cheio (${formatAlzGamer(entry.price)}). Em ${DAILY_RUN_LIMIT} runs a média é ${faixa.media.toFixed(1).replace('.', ',')}, mas o resultado varia nessa faixa — zero numa leva e três na outra é normal.">${formatAlzGamer(entry.price)} quando cai · <strong>${faixa.min}–${faixa.max}</strong> a cada ${DAILY_RUN_LIMIT} runs</div>`
     : ''}</td>`;
 }
 

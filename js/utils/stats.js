@@ -34,6 +34,35 @@ export function dropRateRange(qty, runs) {
   };
 }
 
+// Quantas unidades esperar numa leva de N runs — de 0 a quanto, não um número só.
+//
+// É uma pergunta DIFERENTE da que dropRateRange responde. Aquela mede a incerteza sobre a taxa
+// verdadeira ("a taxa real está entre 2,3% e 8,7%"). Esta mede a variação natural do resultado
+// mesmo com a taxa perfeitamente conhecida: com 4,7% por run, 20 runs dão em média ~1 unidade,
+// mas sair 0 é comum e sair 3 também. As duas incertezas existem e não são a mesma.
+//
+// Sem isso, "≈1 a cada 21 runs" se lê como agenda — como se na run 21 fosse cair. Não é: é média
+// de longo prazo, e não descreve nada sobre as próximas 20 runs.
+//
+// Poisson exata por soma acumulada, faixa central de 90%. λ aqui é sempre pequeno (poucas
+// unidades por leva), então somar termo a termo é barato e dispensa aproximação.
+export function expectedCountRange(ratePerRun, runs) {
+  const lambda = ratePerRun * runs;
+  if (!(lambda > 0)) return null;
+
+  let pmf = Math.exp(-lambda);
+  let cdf = pmf;
+  let min = cdf >= 0.05 ? 0 : null;
+  let k = 0;
+  while (k < 1000 && cdf < 0.95) {
+    k++;
+    pmf *= lambda / k;
+    cdf += pmf;
+    if (min === null && cdf >= 0.05) min = k;
+  }
+  return { min: min ?? 0, max: k, media: lambda };
+}
+
 // Quão confiável é a estimativa, pelo nº de OCORRÊNCIAS (não de runs) — é isso que manda na
 // precisão. Os cortes seguem a faixa que cada quantidade produz: com <3 drops a faixa é larga
 // demais pra afirmar qualquer coisa; a partir de ~10 já dá pra confiar na ordem de grandeza.
