@@ -13,9 +13,9 @@ import { renderPage } from '../router.js';
 //
 // Este módulo fecha isso: quando drops começam a cair sem nenhuma sessão aberta, ele abre uma
 // sozinho, retroagindo o início pro primeiro drop. O palpite da DG usa o cadastro "Onde dropa"
-// (itens que só caem em certas DGs); se não der pra cravar, abre com a última DG farmada mesmo —
-// conforme combinado, é melhor uma sessão com a DG errada (corrigível em 1 clique no histórico)
-// do que farme nenhum registrado.
+// (itens que só caem em certas DGs); se não der pra cravar, a sessão abre SEM DG e você escolhe
+// quando quiser — sessão sem DG fica fora de todas as médias, então não contamina nada enquanto
+// espera. Antes ela caía na última DG farmada, o que enfiava drops na média da DG errada.
 
 // Quantos drops precisam cair sem sessão antes de abrir uma. Agora é 1: o primeiro drop já abre.
 //
@@ -69,17 +69,6 @@ function guessDungeonFromDrops(drops) {
 
   const [dg, score] = [...votos][0];
   return { dg, score };
-}
-
-// Última DG que você farmou (sessão mais recente do histórico) — as pessoas repetem DG, então
-// é o chute mais provável quando o cadastro de itens não resolve.
-function lastFarmedDungeon() {
-  let latest = null;
-  for (const s of AppState.dgSessions) {
-    if (!latest || s.startAt > latest.startAt) latest = s;
-  }
-  if (!latest) return null;
-  return AppState.dungeonList.find(d => d.id === latest.dungeonId) || null;
 }
 
 export function toggleAutoSessionStart(enabled) {
