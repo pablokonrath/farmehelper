@@ -244,7 +244,7 @@ export function computeRouteComparison(dgStats = computeDgComparison()) {
       if (cartItem) cartItems.push(cartItem);
     });
 
-    const cost = calculateRushCartCost(cartItems).total + resetCost;
+    const cost = calculateRushCartCost(cartItems).dungeonsTotal + resetCost;
     const hasTimeData = missingTimeDataDgNames.length === 0;
     const profit = expectedAlz - cost;
     // estimatedTimeMs aqui já é a soma PARCIAL (só das DGs com dado) — só vira profitPerHour
@@ -367,7 +367,7 @@ export function suggestRouteForTime(hoursAvailable, dgStats = computeDgCompariso
       const alreadyUsed = usedRunsByDgId[it.dungeonId] || 0;
       return sum + (extraResetCostAlz(alreadyUsed + it.repetitions) - extraResetCostAlz(alreadyUsed));
     }, 0);
-    const extraCost = calculateRushCartCost(extraCartItems).total + extraResetCost;
+    const extraCost = calculateRushCartCost(extraCartItems).dungeonsTotal + extraResetCost;
 
     return {
       type: 'saved+extra',
@@ -405,7 +405,7 @@ export function buildGeneratedRoute(budgetMs, dgStats = computeDgComparison(), r
   }, 0);
   const cartItems = fill.items.map(it => buildCartItem(it.dungeonId, it.repetitions)).filter(Boolean);
   const resetCost = fill.items.reduce((sum, it) => sum + extraResetCostAlz(it.repetitions), 0);
-  const cost = calculateRushCartCost(cartItems).total + resetCost;
+  const cost = calculateRushCartCost(cartItems).dungeonsTotal + resetCost;
 
   return {
     type: 'generated',

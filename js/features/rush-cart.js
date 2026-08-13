@@ -178,6 +178,14 @@ export function calculateRushCartCost(cart = AppState.rushCart) {
     gemCount,
     gemCost,
     creditsCost,
+    // Custo atribuível ÀS DGS desta lista: Alz de entrada + tickets + gemas. Fora dele ficam os
+    // créditos de macro, que são compra do DIA (quantidade fixa que você comprou, ver
+    // calculateCreditsCost) e não dependem de quais DGs estão na lista.
+    //
+    // Quem quer "quanto vou gastar hoje" usa total. Quem quer "quanto custa esta rota" usa este —
+    // senão o custo fixo do dia é lançado inteiro em cima de cada rota avaliada, e pior: numa
+    // sugestão que soma rota + avulsas, ele é lançado DUAS vezes na mesma conta.
+    dungeonsTotal: alzFromDungeons + ticketCost + gemCost,
     total: alzFromDungeons + ticketCost + gemCost + creditsCost,
   };
 }
