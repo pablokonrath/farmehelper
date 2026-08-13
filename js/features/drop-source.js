@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { getItemPrice } from './drops.js';
+import { getItemPrice, isExcludedGearItem } from './drops.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { renderPage, navigateTo } from '../router.js';
 
@@ -66,9 +66,14 @@ export function searchDropSource() {
 // Nomes de item já vistos em alguma sessão de DG encerrada — sugestão pro campo de busca, só com
 // itens que de fato têm chance de dar resultado (mesma ideia do "o que você já dropou" usado em
 // Vendas/Cálculo de farme).
+// Alimenta a sugestão de nomes da busca. Sem o filtro de equipamento genérico, cada variação de
+// sapatilha/luva entra na lista e empurra pra fora os nomes que você realmente procura. Buscar
+// por eles continua funcionando se você digitar — o que muda é só o que aparece sugerido.
 export function getKnownSessionItemNames() {
   const names = new Set();
-  AppState.dgSessions.forEach(s => Object.keys(s.items || {}).forEach(name => names.add(name)));
+  AppState.dgSessions.forEach(s => Object.keys(s.items || {}).forEach(name => {
+    if (!isExcludedGearItem(name)) names.add(name);
+  }));
   return [...names].sort();
 }
 
@@ -132,9 +137,14 @@ export function findDungeonDrops(dungeonId) {
   const sessionsWithRuns = sessions.filter(s => (s.runs || 0) > 0);
   const totalRuns = sessionsWithRuns.reduce((sum, s) => sum + s.runs, 0);
 
+  // Equipamento genérico (sapatilha, luvas, e o resto da lista de exclusão) fica de fora: cada
+  // variação vira uma linha e a tabela do "o que dropa" fica impossível de ler, escondendo os
+  // itens que você de fato está caçando. As sessões guardam esses nomes no registro — sessões
+  // antigas inclusive — então o filtro tem que ser aqui, na leitura.
   const byItem = {};
   sessions.forEach(s => {
     Object.entries(s.items || {}).forEach(([name, qty]) => {
+      if (isExcludedGearItem(name)) return;
       const agg = byItem[name] || (byItem[name] = { name, qty: 0, qtyWithRuns: 0, lastDate: '' });
       agg.qty += qty;
       if (s.date > agg.lastDate) agg.lastDate = s.date;
@@ -142,6 +152,7 @@ export function findDungeonDrops(dungeonId) {
   });
   sessionsWithRuns.forEach(s => {
     Object.entries(s.items || {}).forEach(([name, qty]) => {
+      if (!byItem[name]) return;
       byItem[name].qtyWithRuns += qty;
     });
   });
