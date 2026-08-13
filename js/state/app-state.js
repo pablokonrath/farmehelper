@@ -116,6 +116,9 @@ export const AppState = {
   drops: [],
   manualDrops: [],
   isManualDropsOpen: false,
+  // "Qual DG rende mais" na Visão geral — recolhido por padrão: é tabela longa e a página já é
+  // a mais densa do app. Não persiste; começar fechado a cada visita é o certo.
+  isDgComparisonOpen: false,
   itemPrices: {},
   editingItemPriceName: null,
   // UI da tabela "Itens cadastrados" em Cálculo de farme — busca e ordenação. Não persiste (mesmo

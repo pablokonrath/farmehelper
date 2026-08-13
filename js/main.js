@@ -7,7 +7,7 @@ import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from '
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
 import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession, recoverDropWindow, applyUnclaimedWindow } from './features/dg-session.js';
-import { setSessionsHistoryDate, setDgComparisonMode, setDgComparisonPeriod, fillSuggestedRunMinutes } from './pages/sessions-page.js';
+import { setSessionsHistoryDate, fillSuggestedRunMinutes } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
@@ -35,7 +35,7 @@ import {
   bulkAssignPersonalCategoryByKeyword,
 } from './features/admin.js';
 
-import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod, toggleDgComparison, setDgComparisonMode, setDgComparisonPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, toggleDropSourceGear, toggleDropSourceGearClass, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
@@ -259,6 +259,7 @@ Object.assign(window, {
   applyUnclaimedWindow,
   setSessionsHistoryDate,
   fillSuggestedRunMinutes,
+  toggleDgComparison,
   setDgComparisonMode,
   setDgComparisonPeriod,
   setSalesDateFrom,
