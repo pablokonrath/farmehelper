@@ -188,7 +188,7 @@ ${!routeYield.length ? '' : `
           <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
           <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
         </tr>`).join('')}
-        ${gearGroupRows(reverseResult.gear)}
+        ${reverseResult.groups.map(g => gearGroupRows(g)).join('')}
         </tbody></table>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
@@ -208,25 +208,27 @@ ${renderItemDungeonSourcesCard()}`;
 // veio ver — mas quando é, está a um clique.
 function gearGroupRows(gear) {
   if (!gear) return '';
-  const aberto = AppState.dropSourceGearOpen;
-  return `<tr style="cursor:pointer" onclick="toggleDropSourceGear()" title="${aberto ? 'Recolher' : 'Ver item por item'}">
+  const aberto = AppState.dropSourceGearOpen === gear.key;
+  return `<tr style="cursor:pointer" onclick="toggleDropSourceGear('${escAttr(gear.key)}')" title="${aberto ? 'Recolher' : 'Ver por classe'}">
       <td class="rank"><i class="ti ti-chevron-${aberto ? 'down' : 'right'}" style="color:var(--muted)"></i></td>
-      <td style="font-weight:500;color:var(--muted)"><i class="ti ti-shirt"></i> Equipamentos <span style="font-size:11px">(${gear.count} tipo${gear.count > 1 ? 's' : ''})</span></td>
+      <td style="font-weight:500;color:var(--muted)"><i class="ti ${gear.icon}"></i> ${esc(gear.label)} <span style="font-size:11px">(${gear.count} tipo${gear.count > 1 ? 's' : ''})</span></td>
       <td style="color:var(--muted)">${gear.qty.toLocaleString('pt-BR')}×</td>
       <td style="color:var(--muted)">${rateWithConfidence(gear)}</td>
       ${/* Preço fica vazio de propósito: cada peça tem o seu, e uma média não significaria nada. */''}
       <td><span style="color:var(--muted)">varia</span></td>
       <td style="color:var(--muted);font-weight:700">${gear.expectedAlzPerRun ? renderAlzValue(Math.round(gear.expectedAlzPerRun)) : '<span style="font-weight:400">—</span>'}</td>
     </tr>
-    ${!aberto ? '' : gear.classes.map(c => gearClassRows(c)).join('')}`;
+    ${!aberto ? '' : gear.classes.map(c => gearClassRows(gear.key, c)).join('')}`;
 }
 
-// Segundo nível: uma linha por classe (GU, GA, DU...). A sigla que define se a peça é equipamento
-// é a mesma que agrupa, então isso responde "o que essa DG larga pra cada classe" sem custo
-// nenhum. Abre pra ver as peças daquela classe.
-function gearClassRows(c) {
-  const aberta = AppState.dropSourceGearClass === c.code;
-  return `<tr style="background:var(--surf2);cursor:pointer" onclick="toggleDropSourceGearClass('${escAttr(c.code)}')" title="${aberta ? 'Recolher' : `Ver as peças de ${c.code}`}">
+// Segundo nível, pelo MESMO sinal que classificou o item: armadura por sigla de classe (GU, GA...),
+// arma por material (Mithril, Demonite...). Sai de graça, já que a classificação precisou dessa
+// informação de qualquer jeito — e responde "o que essa DG larga pra cada classe" e "de que
+// material sai arma aqui". Abre pra ver as peças.
+function gearClassRows(groupKey, c) {
+  const chave = `${groupKey}:${c.code}`;
+  const aberta = AppState.dropSourceGearClass === chave;
+  return `<tr style="background:var(--surf2);cursor:pointer" onclick="toggleDropSourceGearClass('${escAttr(chave)}')" title="${aberta ? 'Recolher' : `Ver as peças de ${c.code}`}">
       <td class="rank"><i class="ti ti-chevron-${aberta ? 'down' : 'right'}" style="color:var(--muted)"></i></td>
       <td style="padding-left:26px;font-weight:600">${esc(c.code)} <span style="font-size:11px;font-weight:400;color:var(--muted)">${c.count} tipo${c.count > 1 ? 's' : ''}</span></td>
       <td>${c.qty.toLocaleString('pt-BR')}×</td>

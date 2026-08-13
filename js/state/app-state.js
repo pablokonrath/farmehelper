@@ -185,11 +185,9 @@ export const AppState = {
   dateTo: '',
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
-  // Grupo "Equipamentos" da tabela "O que uma DG dropa". Só de tela, não persiste — o certo é
-  // começar recolhido a cada visita.
-  dropSourceGearOpen: false,
-  // Classe aberta dentro do grupo de equipamentos (uma por vez — abrir todas devolveria a lista
-  // enorme que o agrupamento veio resolver).
+  // Qual grupo ("armadura"/"arma") e qual classe estão abertos na tabela "O que uma DG dropa".
+  // Só de tela, não persiste — o certo é começar tudo recolhido a cada visita.
+  dropSourceGearOpen: null,
   dropSourceGearClass: null,
   dropSourceTargetQty: '',
   // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma

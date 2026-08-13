@@ -1,20 +1,21 @@
 import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { getItemPrice, isExcludedGearItem, getGearClass } from './drops.js';
+import { getItemPrice, isExcludedGearItem, getGearKind } from './drops.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { renderPage, navigateTo } from '../router.js';
 
 // Estado só de tela — não persiste de propósito: começar recolhido a cada visita é o certo,
-// já que o normal é você vir aqui olhar os drops que importam.
-export function toggleDropSourceGear() {
-  AppState.dropSourceGearOpen = !AppState.dropSourceGearOpen;
+// já que o normal é você vir aqui olhar os drops que importam. Um grupo aberto por vez, e uma
+// classe por vez dentro dele: abrir tudo devolveria exatamente a lista enorme que o agrupamento
+// veio resolver. Clicar no que já está aberto fecha.
+export function toggleDropSourceGear(key) {
+  AppState.dropSourceGearOpen = AppState.dropSourceGearOpen === key ? null : key;
+  AppState.dropSourceGearClass = null; // fechar o grupo não pode deixar uma classe aberta órfã
   renderPage();
 }
 
-// Uma classe aberta por vez: abrir todas devolveria exatamente a lista enorme que o agrupamento
-// veio resolver. Clicar na que já está aberta fecha.
-export function toggleDropSourceGearClass(code) {
-  AppState.dropSourceGearClass = AppState.dropSourceGearClass === code ? null : code;
+export function toggleDropSourceGearClass(key) {
+  AppState.dropSourceGearClass = AppState.dropSourceGearClass === key ? null : key;
   renderPage();
 }
 
@@ -176,7 +177,6 @@ export function findDungeonDrops(dungeonId) {
   // itens que você está de fato caçando — que é a única razão de abrir essa tela. Some da lista,
   // mas não do app: o grupo abre e mostra tudo, com os mesmos números.
   const items = todos.filter(i => !isExcludedGearItem(i.name));
-  const gearItems = todos.filter(i => isExcludedGearItem(i.name));
 
   // O resumo do grupo é a soma real, não uma média de médias: quantidade somada, taxa recalculada
   // sobre o mesmo total de runs, e Alz/run somado item a item (cada um tem preço próprio, então
@@ -190,23 +190,37 @@ export function findDungeonDrops(dungeonId) {
     items: lista,
   });
 
-  // Dentro do grupo, uma camada por classe (GU, GA, DU...). É a sigla que já decide se a peça é
-  // equipamento, então agrupar por ela sai de graça — e responde "o que essa DG larga pra cada
-  // classe", que é a pergunta real de quem olha esse bloco (vender pra quem, ou o que reciclar).
-  const porClasse = new Map();
-  gearItems.forEach(i => {
-    const classe = getGearClass(i.name) || '?';
-    if (!porClasse.has(classe)) porClasse.set(classe, []);
-    porClasse.get(classe).push(i);
+  // Armadura e arma são famílias separadas porque o que as identifica é diferente — sigla de
+  // classe numa, material na outra — e é assim que você pensa nelas. Cada família abre numa
+  // segunda camada por esse mesmo sinal: armadura por classe (GU, GA...), arma por material
+  // (Mithril, Demonite...). Responde "o que essa DG larga pra cada classe" e "de que material sai
+  // arma aqui" sem custo nenhum, já que a classificação precisou dessa informação de qualquer jeito.
+  const familias = { armadura: new Map(), arma: new Map() };
+  todos.forEach(i => {
+    const kind = getGearKind(i.name);
+    if (!kind) return;
+    const mapa = familias[kind.familia];
+    if (!mapa.has(kind.grupo)) mapa.set(kind.grupo, []);
+    mapa.get(kind.grupo).push(i);
   });
 
-  const gear = !gearItems.length ? null : {
-    ...resumoGrupo('Equipamentos', gearItems),
-    classes: [...porClasse].map(([code, lista]) => ({ code, ...resumoGrupo(code, lista) }))
-      .sort((a, b) => b.qty - a.qty),
+  const montarFamilia = (key, label, icon, mapa) => {
+    const lista = [...mapa.values()].flat();
+    if (!lista.length) return null;
+    return {
+      key, label, icon,
+      ...resumoGrupo(label, lista),
+      classes: [...mapa].map(([code, itens]) => ({ code, ...resumoGrupo(code, itens) }))
+        .sort((a, b) => b.qty - a.qty),
+    };
   };
 
-  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items, gear };
+  const groups = [
+    montarFamilia('armadura', 'Equipamentos', 'ti-shirt', familias.armadura),
+    montarFamilia('arma', 'Armas', 'ti-sword', familias.arma),
+  ].filter(Boolean);
+
+  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items, groups };
 }
 
 // Rendimento esperado do item buscado, por ROTA salva (não por DG isolada) — soma repetições ×

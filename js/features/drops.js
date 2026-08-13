@@ -113,21 +113,46 @@ export function isFixedPriceItem(itemName) {
 // Peças de equipamento genéricas (armadura/arma básica por classe) — caem aos montes em toda
 // DG, não têm valor de venda e só incham "o que caiu" em cada sessão. Excluídas de vez, não
 // precisam aparecer em lugar nenhum do app (pedido explícito do jogador).
-const EXCLUDED_ITEM_KEYWORDS = [
+// São duas famílias com regras diferentes, e a diferença importa: em nenhum dos casos a palavra
+// sozinha basta. "Cristal da Terra" e "Disco" sumiam do app inteiro só por carregarem uma palavra
+// que também nomeia arma — o pior tipo de erro aqui, porque some calado e você só descobre indo
+// procurar. Cada família tem um segundo sinal obrigatório.
+
+// 1) Peça de armadura: exige a SIGLA DA CLASSE no nome ("Armadura GU").
+const ARMOR_KEYWORDS = [
   'greva', 'manopla', 'armadura', 'elmo', 'punho', 'luva', 'quimono', 'traje', 'coturno',
-  'sapatilha', 'sapato', 'mascara', 'visor', 'montante', 'espada', 'katana', 'orb', 'cristal',
-  'disco', 'chakram',
+  'sapatilha', 'sapato', 'mascara', 'visor',
 ].map(kw => normalizeForSearch(kw));
 
-// A palavra sozinha não basta: peça de equipamento vem com a sigla da classe no nome. Sem essa
-// segunda condição, "Cristal da Terra" e "Disco" caíam na exclusão só por carregarem uma palavra
-// que também nomeia arma de classe — e sumiam do app inteiro, que é o pior tipo de erro aqui
-// (some calado, e você só descobre se for procurar).
-//
 // A sigla é casada como PALAVRA INTEIRA, nunca como pedaço. São siglas de duas letras: procurar
 // por trecho faria "ma" casar dentro de "arMAdura", "at" dentro de "chAkram" e por aí vai —
 // qualquer nome viraria equipamento.
-const GEAR_CLASS_TOKENS = /(^|[^a-z0-9])(gu|ga|du|ea|gl|ma|mn|aa|at)([^a-z0-9]|$)/;
+const ARMOR_CLASS_TOKENS = /(^|[^a-z0-9])(gu|ga|du|ea|gl|ma|mn|aa|at)([^a-z0-9]|$)/;
+
+// 2) Arma: exige o MATERIAL no nome ("Katana de Mithril"). Arma não traz sigla de classe — o
+// próprio tipo já diz a classe —, então o sinal aqui é outro.
+const WEAPON_KEYWORDS = [
+  'montante', 'espada', 'daikatana', 'katana', 'orb', 'cristal', 'chakram', 'chakran', 'disco',
+].map(kw => normalizeForSearch(kw));
+
+const WEAPON_MATERIALS = [
+  'paladio', 'demonite', 'mithril', 'osmio', 'orichalcon', 'oricalco',
+].map(kw => normalizeForSearch(kw));
+
+// A que família o item pertence — e por qual "família de segundo nível" ele agrupa: sigla da
+// classe pra armadura, material pra arma. Retorna null pro que não é equipamento nenhum.
+export function getGearKind(name) {
+  const normalized = normalizeForSearch(name);
+  if (ARMOR_KEYWORDS.some(kw => normalized.includes(kw))) {
+    const m = normalized.match(ARMOR_CLASS_TOKENS);
+    if (m) return { familia: 'armadura', grupo: m[2].toUpperCase() };
+  }
+  if (WEAPON_KEYWORDS.some(kw => normalized.includes(kw))) {
+    const mat = WEAPON_MATERIALS.find(x => normalized.includes(x));
+    if (mat) return { familia: 'arma', grupo: mat.charAt(0).toUpperCase() + mat.slice(1) };
+  }
+  return null;
+}
 
 // Cache nome -> é equipamento genérico? O log tem dezenas de milhares de drops mas pouquíssimos
 // nomes DISTINTOS (o mesmo item cai centenas de vezes), e essa checagem roda por drop em toda
@@ -136,18 +161,10 @@ const GEAR_CLASS_TOKENS = /(^|[^a-z0-9])(gu|ga|du|ea|gl|ma|mn|aa|at)([^a-z0-9]|$
 // vezes — medido: 15x mais lento num log de 96 mil drops.
 const excludedGearCache = new Map();
 
-// A sigla da classe no nome da peça ("Armadura GU" -> "GU"), ou null. Mesma regra de casamento
-// do isExcludedGearItem — a sigla que decide se é equipamento é a que serve pra agrupar.
-export function getGearClass(name) {
-  const m = normalizeForSearch(name).match(GEAR_CLASS_TOKENS);
-  return m ? m[2].toUpperCase() : null;
-}
-
 export function isExcludedGearItem(name) {
   let cached = excludedGearCache.get(name);
   if (cached === undefined) {
-    const normalized = normalizeForSearch(name);
-    cached = EXCLUDED_ITEM_KEYWORDS.some(kw => normalized.includes(kw)) && GEAR_CLASS_TOKENS.test(normalized);
+    cached = !!getGearKind(name);
     excludedGearCache.set(name, cached);
   }
   return cached;
