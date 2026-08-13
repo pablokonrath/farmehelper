@@ -38,7 +38,7 @@ import {
 import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
-import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
+import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, toggleDropSourceGear, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
 import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, setRarityMaxPercent, dismissRarity, restoreRarity } from './features/item-dungeon-sources.js';
 import {
   setRushCartDate,
@@ -124,6 +124,7 @@ Object.assign(window, {
   searchDropSource,
   setDropSourceTargetQty,
   setDropSourceDungeon,
+  toggleDropSourceGear,
   setDropSourceCompare,
   goFarmDungeon,
   clearPendingSessionDungeon,

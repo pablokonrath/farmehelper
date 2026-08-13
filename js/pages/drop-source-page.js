@@ -188,6 +188,7 @@ ${!routeYield.length ? '' : `
           <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
           <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
         </tr>`).join('')}
+        ${gearGroupRows(reverseResult.gear, reverseResult.items.length)}
         </tbody></table>
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
@@ -201,6 +202,32 @@ ${renderItemDungeonSourcesCard()}`;
 // Metas de item. Mora aqui, e não na Visão geral junto das metas de Alz, por dois motivos: é aqui
 // que vive a maquinaria de taxa de drop que responde "quantos runs faltam e em qual DG" — e a
 // Visão geral já é a página mais densa do app, não precisa de mais um cartão permanente.
+// Equipamento genérico como UM grupo que abre, em vez de dezenas de linhas soltas. Some do
+// caminho sem sumir do app: os números do grupo são os mesmos da soma das partes, e abrir mostra
+// item por item. Recolhido é o padrão porque, na esmagadora maioria das vezes, não é o que você
+// veio ver — mas quando é, está a um clique.
+function gearGroupRows(gear, offset) {
+  if (!gear) return '';
+  const aberto = AppState.dropSourceGearOpen;
+  return `<tr style="cursor:pointer" onclick="toggleDropSourceGear()" title="${aberto ? 'Recolher' : 'Ver item por item'}">
+      <td class="rank"><i class="ti ti-chevron-${aberto ? 'down' : 'right'}" style="color:var(--muted)"></i></td>
+      <td style="font-weight:500;color:var(--muted)"><i class="ti ti-shirt"></i> Equipamentos <span style="font-size:11px">(${gear.count} tipo${gear.count > 1 ? 's' : ''})</span></td>
+      <td style="color:var(--muted)">${gear.qty.toLocaleString('pt-BR')}×</td>
+      <td style="color:var(--muted)">${rateWithConfidence(gear)}</td>
+      ${/* Preço fica vazio de propósito: cada peça tem o seu, e uma média não significaria nada. */''}
+      <td><span style="color:var(--muted)">varia</span></td>
+      <td style="color:var(--muted);font-weight:700">${gear.expectedAlzPerRun ? renderAlzValue(Math.round(gear.expectedAlzPerRun)) : '<span style="font-weight:400">—</span>'}</td>
+    </tr>
+    ${!aberto ? '' : gear.items.map((i, idx) => `<tr style="background:var(--surf2)">
+      <td class="rank" style="color:var(--muted)">${offset + idx + 1}</td>
+      <td style="padding-left:26px">${esc(i.name)}</td>
+      <td>${i.qty.toLocaleString('pt-BR')}×</td>
+      <td>${rateWithConfidence(i)}</td>
+      <td>${i.price ? renderAlzValue(i.price) : '<span style="color:var(--muted)">sem preço</span>'}</td>
+      <td style="color:var(--gold);font-weight:700">${i.expectedAlzPerRun ? renderAlzValue(Math.round(i.expectedAlzPerRun)) : '<span style="color:var(--muted);font-weight:400">—</span>'}</td>
+    </tr>`).join('')}`;
+}
+
 function renderItemGoalsCard() {
   const metas = computeItemGoalsProgress();
   const sugestoes = getKnownSessionItemNames();

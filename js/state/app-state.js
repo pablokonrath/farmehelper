@@ -185,6 +185,9 @@ export const AppState = {
   dateTo: '',
   // Busca da página "Onde dropa" — ver drop-source.js.
   dropSourceQuery: '',
+  // Grupo "Equipamentos" da tabela "O que uma DG dropa". Só de tela, não persiste — o certo é
+  // começar recolhido a cada visita.
+  dropSourceGearOpen: false,
   dropSourceTargetQty: '',
   // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma
   // página, ferramenta independente. Não persiste, mesmo espírito das outras duas acima.

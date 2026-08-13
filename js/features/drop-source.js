@@ -4,6 +4,13 @@ import { getItemPrice, isExcludedGearItem } from './drops.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { renderPage, navigateTo } from '../router.js';
 
+// Estado só de tela — não persiste de propósito: começar recolhido a cada visita é o certo,
+// já que o normal é você vir aqui olhar os drops que importam.
+export function toggleDropSourceGear() {
+  AppState.dropSourceGearOpen = !AppState.dropSourceGearOpen;
+  renderPage();
+}
+
 export function setDropSourceQuery(value) {
   AppState.dropSourceQuery = value;
   renderPage();
@@ -137,14 +144,9 @@ export function findDungeonDrops(dungeonId) {
   const sessionsWithRuns = sessions.filter(s => (s.runs || 0) > 0);
   const totalRuns = sessionsWithRuns.reduce((sum, s) => sum + s.runs, 0);
 
-  // Equipamento genérico (sapatilha, luvas, e o resto da lista de exclusão) fica de fora: cada
-  // variação vira uma linha e a tabela do "o que dropa" fica impossível de ler, escondendo os
-  // itens que você de fato está caçando. As sessões guardam esses nomes no registro — sessões
-  // antigas inclusive — então o filtro tem que ser aqui, na leitura.
   const byItem = {};
   sessions.forEach(s => {
     Object.entries(s.items || {}).forEach(([name, qty]) => {
-      if (isExcludedGearItem(name)) return;
       const agg = byItem[name] || (byItem[name] = { name, qty: 0, qtyWithRuns: 0, lastDate: '' });
       agg.qty += qty;
       if (s.date > agg.lastDate) agg.lastDate = s.date;
@@ -152,18 +154,36 @@ export function findDungeonDrops(dungeonId) {
   });
   sessionsWithRuns.forEach(s => {
     Object.entries(s.items || {}).forEach(([name, qty]) => {
-      if (!byItem[name]) return;
       byItem[name].qtyWithRuns += qty;
     });
   });
 
-  const items = Object.values(byItem).map(agg => {
+  const todos = Object.values(byItem).map(agg => {
     const rate = summarizeRate(agg.qtyWithRuns, totalRuns);
     const price = getItemPrice(agg.name);
     return { ...agg, ...rate, price, expectedAlzPerRun: rate.dropRate != null ? rate.dropRate * price : null };
   }).sort((a, b) => (b.expectedAlzPerRun ?? -1) - (a.expectedAlzPerRun ?? -1));
 
-  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items };
+  // Equipamento genérico (sapatilha, luvas, e o resto da lista de exclusão) sai da lista principal
+  // e vira UM grupo. Cada variação virava uma linha, e a tabela ficava tão longa que escondia os
+  // itens que você está de fato caçando — que é a única razão de abrir essa tela. Some da lista,
+  // mas não do app: o grupo abre e mostra tudo, com os mesmos números.
+  const items = todos.filter(i => !isExcludedGearItem(i.name));
+  const gearItems = todos.filter(i => isExcludedGearItem(i.name));
+
+  // O resumo do grupo é a soma real, não uma média de médias: quantidade somada, taxa recalculada
+  // sobre o mesmo total de runs, e Alz/run somado item a item (cada um tem preço próprio, então
+  // um "preço do grupo" não significaria nada — a coluna fica vazia de propósito).
+  const gear = !gearItems.length ? null : {
+    name: 'Equipamentos',
+    count: gearItems.length,
+    qty: gearItems.reduce((s, i) => s + i.qty, 0),
+    ...summarizeRate(gearItems.reduce((s, i) => s + i.qtyWithRuns, 0), totalRuns),
+    expectedAlzPerRun: gearItems.reduce((s, i) => s + (i.expectedAlzPerRun || 0), 0) || null,
+    items: gearItems,
+  };
+
+  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items, gear };
 }
 
 // Rendimento esperado do item buscado, por ROTA salva (não por DG isolada) — soma repetições ×
