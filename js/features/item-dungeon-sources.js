@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { saveItemDungeonSources, saveRarityThreshold, saveRarityDismissed } from '../state/persistence.js';
-import { isExcludedGearItem } from './drops.js';
+import { isExcludedGearItem, isEventItem } from './drops.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
@@ -190,5 +190,14 @@ export function getExpectedItemNamesForDungeon(dungeonId) {
 
   for (const name of getStatisticalRareItemNames(dungeonId)) names.add(name);
   for (const name of AppState.rarityDismissed || []) names.delete(name);
+
+  // Rede de segurança: equipamento e item de evento NUNCA são raridade, venham de onde vierem.
+  // getStatisticalRareItemNames já filtra na origem, mas o cadastro manual não filtrava nada, e
+  // sessões antigas guardam esses nomes no registro. Um furo em qualquer um desses caminhos enche
+  // "Raros na mira" de arma — foi o que aconteceu com as armas de Orichalcum. Filtrar na saída
+  // custa uma passada e fecha os três de uma vez.
+  for (const name of [...names]) {
+    if (isExcludedGearItem(name) || isEventItem(name)) names.delete(name);
+  }
   return names;
 }

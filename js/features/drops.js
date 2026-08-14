@@ -205,8 +205,17 @@ const WEAPON_KEYWORDS = [
   'montante', 'espada', 'daikatana', 'katana', 'orb', 'cristal', 'chakram', 'chakran',
 ].map(kw => normalizeForSearch(kw));
 
+// O nome no jogo é "Orichalcum" — "orichalcon" era erro de digitação meu, e como a regra exige
+// palavra E material, o erro fazia TODA arma de Orichalcum escapar do filtro e ainda entrar como
+// raridade das DGs (ver getStatisticalRareItemNames: o que não é equipamento e cai pouco vira
+// "raro"). Aquamarina veio do log. As variações erradas ficam como apelido: não custam nada e
+// evitam que um nome antigo pare de casar.
+//
+// Esta lista é o ponto fraco da regra — material que não estiver aqui deixa a arma passar. Se
+// aparecer arma na lista de raros de novo, é aqui que se acrescenta.
 const WEAPON_MATERIALS = [
-  'paladio', 'demonite', 'mithril', 'osmio', 'orichalcon', 'oricalco',
+  'orichalcum', 'aquamarina', 'paladio', 'demonite', 'mithril', 'osmio',
+  'orichalcon', 'oricalco',
 ].map(kw => normalizeForSearch(kw));
 
 // A que família o item pertence — e por qual "família de segundo nível" ele agrupa: sigla da
