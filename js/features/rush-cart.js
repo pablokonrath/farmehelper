@@ -498,11 +498,18 @@ export function computeRushVsDone(dateISO) {
 
   const linhas = rush.items.map(item => {
     const feitas = computeRunsDoneOn(item.name, dateISO);
+    // Farmou essa DG no dia, mas nenhuma sessão dela tem "Runs feitas" preenchido. Zero runs
+    // registradas NÃO é a mesma coisa que zero runs feitas — e a diferença aqui é dinheiro:
+    // tratar como não feita apagaria o custo inteiro de um farme que aconteceu, calado. Sem
+    // saber quantas foram, o seguro é manter o planejado e pedir pra você preencher.
+    const temSessaoSemRuns = feitas === 0 && AppState.dgSessions.some(s => s.date === dateISO && s.dungeonName === item.name);
     // Teto no planejado: fazer MAIS runs que o plano não vira custo extra aqui — aquele farme a
     // mais está fora deste rush, e o carrinho é que teria de ser corrigido, não a cobrança.
-    const cobradas = Math.min(item.repetitions, feitas);
-    return { ...item, planejadas: item.repetitions, feitas, cobradas };
+    const cobradas = temSessaoSemRuns ? item.repetitions : Math.min(item.repetitions, feitas);
+    return { ...item, planejadas: item.repetitions, feitas, cobradas, temSessaoSemRuns };
   });
+
+  const semRuns = linhas.filter(l => l.temSessaoSemRuns).map(l => l.name);
 
   const itensSoFeitos = linhas
     .filter(l => l.cobradas > 0)
@@ -517,6 +524,7 @@ export function computeRushVsDone(dateISO) {
   return {
     linhas,
     naoFeitas,
+    semRuns,
     totalPlanejado: rush.total || 0,
     totalSeSoOFeito,
     diferenca: (rush.total || 0) - totalSeSoOFeito,

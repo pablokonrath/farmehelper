@@ -431,6 +431,7 @@ export function renderRushPage() {
     <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
       ${rushVsDone.linhas.filter(l => l.cobradas < l.planejadas).map(l => `<span class="badge badge-muted" title="${l.cobradas} de ${l.planejadas} runs feitas">${esc(l.name)}: ${l.cobradas}/${l.planejadas}</span>`).join('')}
     </div>
+    ${!rushVsDone.semRuns.length ? '' : `<div style="font-size:11px;color:var(--warn);margin-bottom:8px"><i class="ti ti-alert-triangle"></i> <strong>${rushVsDone.semRuns.map(esc).join(', ')}</strong>: você farmou, mas nenhuma sessão dessas DGs tem "Runs feitas" preenchido. Como não dá pra saber quantas foram, mantive o planejado — preencha as runs no histórico de Sessões e volte aqui pra cobrança ficar exata.</div>`}
     <button class="btn btn-p btn-xs" onclick="chargeOnlyDoneRuns('${AppState.rushCartDate}')"><i class="ti ti-adjustments-check"></i>Cobrar só o que eu fiz</button>
   </div>`}
   ${!cartUnsaved ? '' : `<div style="margin-top:10px;padding:8px 12px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:12px;color:var(--warn)"><i class="ti ti-alert-triangle"></i> ${!rushSalvoDoDia
