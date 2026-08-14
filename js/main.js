@@ -74,6 +74,7 @@ import {
   setWorldbossNotificationsEnabled,
   setTelegramDropRelayEnabled,
   setTelegramWatchdogRelayEnabled,
+  setTelegramSessionRelayEnabled,
 } from './features/alerts.js';
 import {
   addDungeonToCart,
@@ -239,6 +240,7 @@ Object.assign(window, {
   unlinkTelegram,
   setTelegramDropRelayEnabled,
   setTelegramWatchdogRelayEnabled,
+  setTelegramSessionRelayEnabled,
   setDailyGoal,
   setWeeklyGoal,
   setMonthlyGoal,

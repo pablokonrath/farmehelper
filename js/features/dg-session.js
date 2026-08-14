@@ -5,7 +5,8 @@ import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessio
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
-import { setWatchdogEnabled, showInfoToast } from './alerts.js';
+import { setWatchdogEnabled, showInfoToast, showGoalToast } from './alerts.js';
+import { relaySessionToTelegram } from './telegram.js';
 import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
 import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
@@ -332,6 +333,7 @@ export function setActiveSessionRuns(value) {
     s.runsManuallySet = true;
   }
   saveActiveDgSession();
+  checkDailyRunLimitReached(s.dungeonName);
   renderPage();
 }
 
@@ -353,6 +355,55 @@ export function computeRunsDoneToday(dungeonName) {
 // Runs feitas numa DG numa data qualquer. Generalização de computeRunsDoneToday, que era o único
 // jeito de saber isso e só respondia sobre hoje — a reconciliação do rush (cobrar só o que foi
 // feito) precisa perguntar sobre qualquer dia salvo.
+// DGs que já avisamos hoje que bateram o limite. Em memória, e semeada na PRIMEIRA checagem de
+// cada DG: se ela já estava no limite quando a página abriu, marca sem avisar. Sem isso, todo
+// reload de página mandaria a mensagem de novo — e recarregar durante o farme é rotina.
+const limiteAvisado = new Set();
+
+// Avisa (tela + Telegram) quando uma DG completa as runs do dia. É o momento em que você tem que
+// TROCAR DE DG, e é justamente quando você não está olhando a tela — está no jogo. Um aviso que
+// chega no celular resolve; um toast que some em 5s não.
+//
+// Manda o resumo junto porque o número sozinho não fecha nada: o que interessa saber ali é se
+// aquelas 20 entradas valeram o que costumam valer.
+export function checkDailyRunLimitReached(dungeonName) {
+  if (!dungeonName) return;
+  const chave = `${todayISODate()}|${dungeonName}`;
+  if (limiteAvisado.has(chave)) return;
+
+  const runs = computeRunsDoneOn(dungeonName, todayISODate());
+  if (runs < DAILY_RUN_LIMIT) return;
+
+  limiteAvisado.add(chave);
+  // Semeadura: já estava no limite antes desta sessão de navegador começar. Marca e não avisa —
+  // o aviso é sobre o momento de completar, não sobre o estado.
+  if (!AppState.activeDgSession || AppState.activeDgSession.dungeonName !== dungeonName) return;
+
+  const doDia = AppState.dgSessions.filter(s => s.date === todayISODate() && s.dungeonName === dungeonName);
+  const alz = doDia.reduce((sum, s) => sum + sessionRealizedAlz(s), 0) + (getActiveSessionSummary()?.totalAlz || 0);
+  const drops = doDia.reduce((sum, s) => sum + (s.dropCount || 0), 0) + (getActiveSessionSummary()?.dropCount || 0);
+  const ativo = doDia.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0) + (getActiveSessionSummary()?.activeMs || 0);
+
+  const linhas = [
+    `✅ ${dungeonName} — ${DAILY_RUN_LIMIT}/${DAILY_RUN_LIMIT} runs do dia`,
+    `Farmado: ${formatAlzGamer(alz)}`,
+    `Por run: ${formatAlzGamer(alz / DAILY_RUN_LIMIT)}`,
+    `Drops: ${drops}`,
+    `Tempo: ${Math.round(ativo / 60000)}min`,
+  ];
+  // Compara com o que essa DG costuma render — é o que transforma o número em informação.
+  const hist = computeDgComparison().find(c => c.dungeonName === dungeonName);
+  if (hist?.alzPerRun) {
+    const diff = Math.round(((alz / DAILY_RUN_LIMIT) / hist.alzPerRun - 1) * 100);
+    linhas.push(`Contra a média dessa DG (${formatAlzGamer(hist.alzPerRun)}/run): ${diff >= 0 ? '+' : ''}${diff}%`);
+  }
+  linhas.push('Limite diário batido — hora de trocar de DG (ou resetar por gemas).');
+
+  const texto = linhas.join('\n');
+  relaySessionToTelegram(texto);
+  showGoalToast('✅ DG concluída', texto.split('\n').slice(1).join(' · '));
+}
+
 export function computeRunsDoneOn(dungeonName, dateISO) {
   let runs = AppState.dgSessions
     .filter(s => s.date === dateISO && s.dungeonName === dungeonName)
@@ -1213,6 +1264,7 @@ export function startDgSessionTicker() {
       if (computedRuns > session.runs) {
         session.runs = computedRuns;
         saveActiveDgSession();
+        checkDailyRunLimitReached(session.dungeonName);
         const runsInput = document.getElementById('dgRunsInput');
         if (runsInput && document.activeElement !== runsInput) runsInput.value = computedRuns;
       }

@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { getFilteredAlertHistory } from '../features/alerts.js';
 import { countKeywordMatches, suggestUntrackedValuableItems } from '../features/keywords.js';
 import { getAllDrops, summarizeDropsByItem } from '../features/drops.js';
+import { DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { collapsibleCard } from '../features/ui-toggles.js';
 import { formatDateTimeBR, renderAlzValue } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
@@ -233,6 +234,7 @@ export function renderAlertsPage() {
           <button class="btn btn-d btn-xs" onclick="unlinkTelegram()"><i class="ti ti-unlink"></i>Desvincular</button>
         </div>
         ${toggleRow('Enviar drops rastreados pro Telegram', 'Quando um item rastreado cair, chega no Telegram. Só com o FarmHub aberto (mesmo minimizado).', s.telegramDropRelayEnabled, 'setTelegramDropRelayEnabled(this.checked)', { extra: ';padding-top:14px' })}
+        ${toggleRow('Avisar quando a DG acabar ou a sessão fechar', `Chega no Telegram quando uma DG completa as ${DAILY_RUN_LIMIT} runs do dia — com o resumo dela e a comparação com a média — e quando uma sessão é encerrada sozinha por falta de drop, que quase sempre quer dizer que travou. São os dois momentos em que você precisa voltar pro jogo, e justamente quando não está olhando a tela.`, s.telegramSessionRelayEnabled, 'setTelegramSessionRelayEnabled(this.checked)', { extra: ';border-top:1px solid var(--border);margin-top:12px;padding-top:12px' })}
         <div style="font-size:11px;color:var(--muted);margin-top:10px">No Telegram, mande <strong>/drop</strong> pra ver os drops rastreados de hoje, ou <strong>/drop nome</strong> pra o total de um item.</div>`
       : `<button class="btn btn-d btn-xs" onclick="generateTelegramLinkCode()"><i class="ti ti-brand-telegram"></i>Gerar código de vínculo</button>
         ${AppState.telegramLinkCode ? `

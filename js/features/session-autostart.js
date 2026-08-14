@@ -2,6 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
 import { getExpectedItemNamesForDungeon, getManualExpectedItemNames } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
+import { relaySessionToTelegram } from './telegram.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
 import { stripEnhancementSuffix, normalizeForSearch } from '../utils/parsing.js';
 import { formatAlzGamer } from '../utils/formatting.js';
@@ -260,6 +261,16 @@ export function checkAutoEndSession() {
   }
 
   endDgSession({ endAt: referencia });
+
+  // Vai pro Telegram também: "parou de dropar" quase sempre significa que o helper travou, você
+  // morreu ou a run acabou sem você perceber — e é a hora em que saber rápido vale mais, porque
+  // cada minuto parado é entrada do dia que não vai ser usada. Na tela, você já não está olhando.
+  relaySessionToTelegram(
+    `⏹️ Sessão encerrada — ${nome || 'sem DG'}\n`
+    + `Ficou ${formatMinutos(limite)} sem drop nenhum.\n`
+    + `Farmado na sessão: ${formatAlzGamer(total)}${summary?.dropCount ? ` em ${summary.dropCount} drops` : ''}.\n`
+    + 'Se você não parou de propósito, provavelmente travou.'
+  );
 
   showGoalToast(
     '⏹️ Sessão encerrada sozinha',

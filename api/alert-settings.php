@@ -23,6 +23,7 @@ if ($method === 'GET') {
       'telegramChatId' => null,
       'telegramDropRelayEnabled' => false,
       'telegramWatchdogRelayEnabled' => false,
+      'telegramSessionRelayEnabled' => false,
     ]);
   }
   json_response([
@@ -40,6 +41,7 @@ if ($method === 'GET') {
     'telegramChatId' => $row['telegram_chat_id'],
     'telegramDropRelayEnabled' => (bool) $row['telegram_drop_relay_enabled'],
     'telegramWatchdogRelayEnabled' => (bool) $row['telegram_watchdog_relay_enabled'],
+    'telegramSessionRelayEnabled' => (bool) $row['telegram_session_relay_enabled'],
   ]);
 }
 
@@ -48,8 +50,8 @@ if ($method === 'PUT') {
   // telegram_chat_id de propósito NÃO entra aqui — só telegram-webhook.php grava isso, senão
   // qualquer cliente podia mandar um chat_id arbitrário e "roubar" o vínculo de outra pessoa.
   $stmt = $db->prepare('INSERT INTO alert_settings
-    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds, no_drop_threshold_minutes, item_silence_threshold_minutes, watchdog_enabled, tg_notifications_enabled, worldboss_notifications_enabled, telegram_drop_relay_enabled, telegram_watchdog_relay_enabled)
-    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds, :noDropThresholdMinutes, :itemSilenceThresholdMinutes, :watchdogEnabled, :tgNotificationsEnabled, :worldbossNotificationsEnabled, :telegramDropRelayEnabled, :telegramWatchdogRelayEnabled)
+    (user_id, enabled, sound_enabled, repeat_sound_while_open, volume, popup_duration_seconds, grouping_window_seconds, no_drop_threshold_minutes, item_silence_threshold_minutes, watchdog_enabled, tg_notifications_enabled, worldboss_notifications_enabled, telegram_drop_relay_enabled, telegram_watchdog_relay_enabled, telegram_session_relay_enabled)
+    VALUES (:uid, :enabled, :soundEnabled, :repeatSoundWhileOpen, :volume, :popupDurationSeconds, :groupingWindowSeconds, :noDropThresholdMinutes, :itemSilenceThresholdMinutes, :watchdogEnabled, :tgNotificationsEnabled, :worldbossNotificationsEnabled, :telegramDropRelayEnabled, :telegramWatchdogRelayEnabled, :telegramSessionRelayEnabled)
     ON DUPLICATE KEY UPDATE
       enabled = VALUES(enabled), sound_enabled = VALUES(sound_enabled),
       repeat_sound_while_open = VALUES(repeat_sound_while_open), volume = VALUES(volume),
@@ -58,7 +60,8 @@ if ($method === 'PUT') {
       watchdog_enabled = VALUES(watchdog_enabled), tg_notifications_enabled = VALUES(tg_notifications_enabled),
       worldboss_notifications_enabled = VALUES(worldboss_notifications_enabled),
       telegram_drop_relay_enabled = VALUES(telegram_drop_relay_enabled),
-      telegram_watchdog_relay_enabled = VALUES(telegram_watchdog_relay_enabled)');
+      telegram_watchdog_relay_enabled = VALUES(telegram_watchdog_relay_enabled),
+      telegram_session_relay_enabled = VALUES(telegram_session_relay_enabled)');
   $stmt->execute([
     'uid' => $uid,
     'enabled' => !empty($body['enabled']) ? 1 : 0,
@@ -74,6 +77,7 @@ if ($method === 'PUT') {
     'worldbossNotificationsEnabled' => !empty($body['worldbossNotificationsEnabled']) ? 1 : 0,
     'telegramDropRelayEnabled' => !empty($body['telegramDropRelayEnabled']) ? 1 : 0,
     'telegramWatchdogRelayEnabled' => !empty($body['telegramWatchdogRelayEnabled']) ? 1 : 0,
+    'telegramSessionRelayEnabled' => !empty($body['telegramSessionRelayEnabled']) ? 1 : 0,
   ]);
   json_response(['ok' => true]);
 }

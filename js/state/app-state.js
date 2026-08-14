@@ -81,6 +81,9 @@ export const DEFAULT_ALERT_SETTINGS = {
   // Manda o alerta do watchdog (helper travado / item sumiu) pro Telegram — pra saber que travou
   // mesmo longe do PC. Opt-in, desligado. Só com o FarmHub aberto (quem detecta é a aba).
   telegramWatchdogRelayEnabled: false,
+  // Avisos da rotina de farme (DG completou as runs do dia, sessão encerrada por falta de drop).
+  // Opt-in, desligado. Separado do watchdog: aquilo é alerta de problema, isto é acompanhamento.
+  telegramSessionRelayEnabled: false,
 };
 
 // Créditos de macro: dá 1h de uso de macro cada, usável em qualquer DG (não é por-DG como

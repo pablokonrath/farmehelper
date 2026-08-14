@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS alert_settings (
   -- Manda o alerta do watchdog (helper travado / item sumido) pro Telegram — ver
   -- api/telegram-relay-watchdog.php. Só com o FarmHub aberto. Opt-in, desligado por padrão.
   telegram_watchdog_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  telegram_session_relay_enabled TINYINT(1) NOT NULL DEFAULT 0,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

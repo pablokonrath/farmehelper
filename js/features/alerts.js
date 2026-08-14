@@ -472,6 +472,15 @@ export function setTelegramWatchdogRelayEnabled(checked) {
   renderPage();
 }
 
+// Avisos da rotina de farme: DG completou as runs do dia, sessão encerrada por falta de drop.
+// Toggle separado do watchdog de propósito — aquilo é alerta de problema, isto é acompanhamento,
+// e quem quer um pode muito bem não querer o outro.
+export function setTelegramSessionRelayEnabled(checked) {
+  AppState.alertSettings.telegramSessionRelayEnabled = checked;
+  saveAlertSettings();
+  renderPage();
+}
+
 export function setAlertSoundEnabled(checked) {
   AppState.alertSettings.soundEnabled = checked;
   saveAlertSettings();

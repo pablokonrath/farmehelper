@@ -82,6 +82,19 @@ export function relayWatchdogToTelegram(message) {
   }).catch(err => console.error('Falha ao enviar watchdog pro Telegram:', err));
 }
 
+// Avisos da rotina de farme: DG que bateu o limite diário e sessão encerrada sozinha por falta de
+// drop. Relay próprio (não o do watchdog) porque a natureza é outra — aquilo é alerta de problema,
+// isto é acompanhamento —, e quem quer um pode não querer o outro.
+export function relaySessionToTelegram(message) {
+  if (!AppState.alertSettings.telegramSessionRelayEnabled || !AppState.alertSettings.telegramChatId) return;
+  fetch(`${API_BASE}/telegram-relay-session.php`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message }),
+  }).catch(err => console.error('Falha ao enviar aviso de sessão pro Telegram:', err));
+}
+
 export async function unlinkTelegram() {
   if (!confirm('Desvincular o Telegram? Você vai parar de receber avisos por lá.')) return;
   stopLinkPolling();
