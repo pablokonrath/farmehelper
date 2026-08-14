@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getFilteredDrops, getAllDrops, getItemPrice, isExcludedGearItem, matchesTrackedKeywordFilter } from './drops.js';
+import { getFilteredDrops, getAllDrops, getItemPrice, getItemPriceOn, isExcludedGearItem, matchesTrackedKeywordFilter } from './drops.js';
 import { saveDropSnapshot } from '../state/persistence.js';
 import { stripEnhancementSuffix } from '../utils/parsing.js';
 
@@ -72,8 +72,16 @@ export function getHistoricalSummary(from, to, { respeitarFiltrosDaPagina = true
   let dropCount = 0;
   const add = (name, date, qty) => {
     const key = stripEnhancementSuffix(name);
-    qtyByItem.set(key, (qtyByItem.get(key) || 0) + qty);
-    alzByDate.set(date, (alzByDate.get(date) || 0) + getItemPrice(key) * qty);
+    // Preço da ÉPOCA: este total é dinheiro que você ganhou, não uma reavaliação do passado.
+    const valor = getItemPriceOn(key, date).price * qty;
+    const acc = qtyByItem.get(key) || { qty: 0, total: 0 };
+    acc.qty += qty;
+    // Acumula o valor item a item na hora, com a data em mãos. Somar depois (qty × preço) daria um
+    // total diferente do total por dia logo abaixo, e a tabela de itens não fecharia com o
+    // cabeçalho do período — divergência que pareceria bug e minaria a confiança nos dois números.
+    acc.total += valor;
+    qtyByItem.set(key, acc);
+    alzByDate.set(date, (alzByDate.get(date) || 0) + valor);
     dropCount += qty;
   };
 
@@ -93,7 +101,9 @@ export function getHistoricalSummary(from, to, { respeitarFiltrosDaPagina = true
   }
 
   const items = [...qtyByItem.entries()]
-    .map(([name, qty]) => ({ name, qty, price: getItemPrice(name), total: getItemPrice(name) * qty }))
+    // price = preço de HOJE (é o que você usaria pra vender agora); total = o que aquilo rendeu na
+    // época. São coisas diferentes de propósito, e por isso total nem sempre é qty × price.
+    .map(([name, acc]) => ({ name, qty: acc.qty, price: getItemPrice(name), total: acc.total }))
     .sort((a, b) => b.total - a.total);
 
   return {
@@ -145,7 +155,10 @@ export function getPeriodTrend(blockDays, blocks = 3) {
   const somar = (name, date, qty) => {
     const b = blocoDe(date);
     if (b < 0) return;
-    alzPorDia[b].set(date, (alzPorDia[b].get(date) || 0) + getItemPrice(stripEnhancementSuffix(name)) * qty);
+    // Preco da epoca aqui tambem — e o que faz a tendencia enxergar QUEDA DE MERCADO. Com precos
+    // de hoje os dois blocos comparados mudam juntos e a erosao de preco fica invisivel (e o mesmo
+    // motivo pelo qual o alerta de "DG esfriando" nao consegue ver preco, ver computeDgComparison).
+    alzPorDia[b].set(date, (alzPorDia[b].get(date) || 0) + getItemPriceOn(stripEnhancementSuffix(name), date).price * qty);
     dropsPorBloco[b] += qty;
   };
 

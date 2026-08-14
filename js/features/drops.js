@@ -19,6 +19,33 @@ export function getItemPrice(itemName) {
     ?? 0;
 }
 
+// Quanto o item valia NUMA DATA, pelo histórico de preços (recordPriceChange grava 1 ponto por
+// dia sempre que você muda um preço — é uma função degrau, exatamente o que se precisa aqui).
+//
+// Existe porque o app tinha uma inconsistência de contabilidade: o "líquido do dia" subtraía um
+// custo HISTÓRICO (o rush salvo daquele dia, congelado) de uma receita reavaliada aos preços de
+// HOJE. Se um item dobrou de preço, o líquido de um dia antigo subia sozinho, sem o custo daquele
+// dia mexer — o dia passava a parecer melhor do que foi, e o total do mês herdava isso.
+//
+// Devolve { price, exact }. exact=false quando não há ponto histórico até aquela data (item
+// precificado depois, ou antes do histórico existir): aí cai no preço atual, mas AVISADO — número
+// estimado apresentado como fato é pior que número faltando.
+export function getItemPriceOn(itemName, dateISO) {
+  const base = stripEnhancementSuffix(itemName);
+  const hist = AppState.priceHistory?.[itemName] || AppState.priceHistory?.[base];
+  if (hist?.length && dateISO) {
+    let encontrado = null;
+    // A lista é cronológica (recordPriceChange sempre empurra no fim) — o último ponto com data
+    // menor ou igual é o preço que estava valendo naquele dia.
+    for (const ponto of hist) {
+      if (ponto.date <= dateISO) encontrado = ponto.price;
+      else break;
+    }
+    if (encontrado !== null) return { price: encontrado, exact: true };
+  }
+  return { price: getItemPrice(itemName), exact: false };
+}
+
 export function getReferencePrice(itemName) {
   const ref = AppState.referenceItemPrices;
   return (ref[itemName] ?? ref[stripEnhancementSuffix(itemName)])?.price ?? null;

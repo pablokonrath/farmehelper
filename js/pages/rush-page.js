@@ -1,6 +1,6 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
 import { calculateRushCartCost, getCostPerGem, getTicketCraftCost, setTicketCraft, toggleTicketCraft, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
-import { computeResetWorth, computeDgComparison, sessionTotalAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
+import { computeResetWorth, computeDgComparison, sessionRealizedAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday, suggestRouteForTime, buildGeneratedRoute } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
@@ -76,7 +76,10 @@ export function toggleRushRouteItems(routeId) {
 function computeRushOutcomes() {
   const alzByDate = {};
   AppState.dgSessions.forEach(s => {
-    alzByDate[s.date] = (alzByDate[s.date] || 0) + sessionTotalAlz(s);
+    // Realizado (preço da época): o custo subtraído logo abaixo é o rush salvo daquele dia, que é
+    // histórico congelado. Receita a preços de hoje contra custo da época dava um "resultado" que
+    // não foi o de nenhum dia — mudava sozinho quando o mercado mexia.
+    alzByDate[s.date] = (alzByDate[s.date] || 0) + sessionRealizedAlz(s);
   });
   const out = {};
   Object.entries(AppState.rushHistory).forEach(([date, rush]) => {

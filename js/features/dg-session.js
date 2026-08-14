@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
+import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
 import { getCostPerGem, getTicketPrice } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
@@ -397,7 +397,7 @@ export function deleteSession(startAt) {
   saveDeletedSessions().catch(err => console.error('Falha ao salvar lixeira de sessões:', err));
   renderPage();
 
-  actWithUndo(`Sessão removida: ${sessao.dungeonName} (${formatAlzGamer(sessionTotalAlz(sessao))})`, () => {
+  actWithUndo(`Sessão removida: ${sessao.dungeonName} (${formatAlzGamer(sessionRealizedAlz(sessao))})`, () => {
     restoreDeletedSession(sessao.startAt);
   });
 }
@@ -432,7 +432,14 @@ export function purgeDeletedSession(startAt) {
 // pra ser fotografada. Só junta números que já existem espalhados; nenhuma conta nova.
 export function computeDaySummary(dateISO = todayISODate()) {
   const sessions = AppState.dgSessions.filter(s => s.date === dateISO);
-  const farmed = sessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0);
+  // REALIZADO: preço do dia, não de hoje. O gasto abaixo é histórico (o rush salvo daquele dia,
+  // congelado); misturar receita a preços de hoje com custo da época fazia o líquido de um dia
+  // antigo mudar sozinho quando o mercado mexia, sem o custo dele acompanhar.
+  const realizados = sessions.map(s => sessionRealizedAlzInfo(s));
+  const farmed = realizados.reduce((sum, r) => sum + r.total, 0);
+  // Algum item entrou pelo preço de hoje por falta de histórico — a tela avisa em vez de
+  // apresentar estimativa como fato.
+  const farmedExact = realizados.every(r => r.exact);
   const spent = AppState.rushHistory[dateISO]?.total || 0;
   const runs = sessions.reduce((sum, s) => sum + (s.runs || 0), 0);
   const activeMs = sessions.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0);
@@ -444,18 +451,19 @@ export function computeDaySummary(dateISO = todayISODate()) {
   let bestItem = null;
   sessions.forEach(s => Object.keys(s.items || {}).forEach(name => {
     if (isExcludedGearItem(name)) return;
-    const price = getItemPrice(name);
+    // Melhor drop pelo preco DAQUELE dia — o resumo e um retrato do dia, nao uma reavaliacao.
+    const price = getItemPriceOn(name, dateISO).price;
     if (price > 0 && (!bestItem || price > bestItem.price)) bestItem = { name, price };
   }));
 
   // DG que mais rendeu no dia — o "MVP" da partida.
   const byDg = {};
-  sessions.forEach(s => { byDg[s.dungeonName] = (byDg[s.dungeonName] || 0) + sessionTotalAlz(s); });
+  sessions.forEach((s, i) => { byDg[s.dungeonName] = (byDg[s.dungeonName] || 0) + realizados[i].total; });
   const topDg = Object.entries(byDg).sort((a, b) => b[1] - a[1])[0] || null;
 
   return {
     date: dateISO,
-    farmed, spent, net: farmed - spent, sold, runs, activeMs,
+    farmed, farmedExact, spent, net: farmed - spent, sold, runs, activeMs,
     sessionCount: sessions.length,
     bestItem,
     topDg: topDg ? { name: topDg[0], alz: topDg[1] } : null,
@@ -838,6 +846,39 @@ export function recoverForgottenSession(dungeonId, startTimeInput) {
 // a preço velho com outro a preço novo não responde nada.
 //
 // Cai de volta no valor congelado quando a sessão não tem o mapa de itens (registro antigo).
+// Quanto a sessão REALMENTE rendeu: cada item pelo preço que valia no dia dela.
+//
+// Par de sessionTotalAlz, e a diferença entre os dois é a diferença entre duas perguntas:
+//
+//   sessionRealizedAlz  → "quanto eu ganhei naquele dia?"    (contabilidade)
+//   sessionTotalAlz     → "quanto isso valeria hoje?"        (comparação entre DGs)
+//
+// As duas estão certas, cada uma pra sua pergunta. O erro era usar uma no lugar da outra: o
+// resultado do dia subtraía um custo histórico de uma receita a preços de hoje, e o passado
+// mudava sozinho quando o mercado mexia.
+//
+// Preços de hoje continuam certos pra DECIDIR (Qual DG rende mais, rotas, reset, gerador): sem
+// isso não dá pra comparar uma DG farmada em julho com uma de agosto — a diferença seria do
+// mercado, não da DG.
+//
+// exact=false em algum item significa que faltou histórico e aquele item entrou pelo preço atual.
+export function sessionRealizedAlzInfo(session) {
+  if (!session.items) return { total: session.totalAlz || 0, exact: true };
+  let total = 0;
+  let exact = true;
+  for (const [name, qty] of Object.entries(session.items)) {
+    if (isExcludedGearItem(name)) continue;
+    const p = getItemPriceOn(name, session.date);
+    if (!p.exact) exact = false;
+    total += p.price * qty;
+  }
+  return { total, exact };
+}
+
+export function sessionRealizedAlz(session) {
+  return sessionRealizedAlzInfo(session).total;
+}
+
 export function sessionTotalAlz(session) {
   if (!session.items) return session.totalAlz || 0;
   let total = 0;
@@ -1030,8 +1071,11 @@ export function computePersonalBests() {
   if (!AppState.dgSessions.length) return null;
   const byDate = {};
   let bestSession = null;
+  // Recorde é sobre o que ACONTECEU, então vale o preço da época. Com preços de hoje, um item que
+  // valorizou promoveria retroativamente um dia antigo a "melhor dia" — e o recorde mudaria
+  // sozinho sem você ter farmado nada, que é o oposto do que um recorde significa.
   AppState.dgSessions.forEach(s => {
-    const valor = sessionTotalAlz(s);
+    const valor = sessionRealizedAlz(s);
     byDate[s.date] = (byDate[s.date] || 0) + valor;
     if (!bestSession || valor > bestSession.valor) bestSession = { ...s, valor };
   });

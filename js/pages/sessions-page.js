@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, sessionRealizedAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { getCostPerGem, getTicketPrice, getTicketCraftCost } from '../features/rush-cart.js';
@@ -97,7 +97,7 @@ function sessionItemsRow(s) {
     .filter(([name]) => !isExcludedGearItem(name))
     .map(([name, qty]) => ({ name, qty, value: getItemPrice(name) * qty, expected: expectedNames.has(name) }))
     .sort((a, b) => b.value - a.value);
-  const alzPerRun = s.runs > 0 ? sessionTotalAlz(s) / s.runs : null;
+  const alzPerRun = s.runs > 0 ? sessionRealizedAlz(s) / s.runs : null;
   const activeMs = s.activeDurationMs ?? s.durationMs;
   return `<tr class="t-detail"><td colspan="10" style="background:var(--surf2);padding:14px 16px">
     <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:10px">
@@ -167,8 +167,8 @@ function sessionHistoryRow(s) {
         <td data-label="Duração" title="Relógio total: ${formatDuration(s.durationMs)}">${formatDuration(s.activeDurationMs ?? s.durationMs)}</td>
         <td data-label="Runs"><input class="inp" style="width:60px;padding:4px 6px" type="number" min="0" value="${s.runs || 0}" onchange="setSessionRuns(${s.startAt}, this.value)"></td>
         <td data-label="Drops">${s.dropCount.toLocaleString('pt-BR')}<span style="color:var(--muted)"> · ${s.uniqueItems} un.</span></td>
-        <td data-label="Alz" style="color:${getAlzTierColor(sessionTotalAlz(s))};font-weight:600" title="${formatNumber(sessionTotalAlz(s))} Alz">${formatAlzGamer(sessionTotalAlz(s))}</td>
-        <td data-label="Alz / run" style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(sessionTotalAlz(s) / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
+        <td data-label="Alz" style="color:${getAlzTierColor(sessionRealizedAlz(s))};font-weight:600" title="${formatNumber(sessionRealizedAlz(s))} Alz">${formatAlzGamer(sessionRealizedAlz(s))}</td>
+        <td data-label="Alz / run" style="color:var(--gold);font-weight:600">${s.runs > 0 ? formatAlzGamer(sessionRealizedAlz(s) / s.runs) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
         <td data-label="Anotação">${sessionNoteCell(s)}</td>
         <td><div style="display:flex;gap:10px;align-items:center">
           <button aria-label="${expanded ? 'Esconder' : 'Ver'} itens desta sessão" title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i> <span style="font-size:11px">itens</span></button>
@@ -178,7 +178,7 @@ function sessionHistoryRow(s) {
 }
 
 function sessionHistoryGroupHeader(label, sessions, isRoute) {
-  const totalAlz = sessions.reduce((sum, s) => sum + sessionTotalAlz(s), 0);
+  const totalAlz = sessions.reduce((sum, s) => sum + sessionRealizedAlz(s), 0);
   return `<tr class="t-group"><td colspan="10" style="background:${isRoute ? 'var(--gold-bg)' : 'var(--surf2)'};padding:7px 16px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:${isRoute ? 'var(--gold)' : 'var(--muted)'}">
     ${isRoute ? '<i class="ti ti-route"></i> ' : ''}${esc(label)} <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.85">— ${sessions.length} sessão${sessions.length > 1 ? 'ões' : ''}${totalAlz ? ', ' + formatAlzGamer(totalAlz) : ''}</span>
   </td></tr>`;
@@ -227,7 +227,7 @@ function renderDeletedSessionsBin() {
     <div style="display:flex;flex-direction:column;gap:6px">
       ${lixeira.map(s => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-size:12px">
         <span style="font-weight:600">${esc(s.dungeonName || "Sem DG")}</span>
-        <span style="color:var(--muted)">${formatDateBR(s.date)} · ${timeHM(s.startAt)}–${timeHM(s.endAt)} · ${s.dropCount} drops · ${formatAlzGamer(sessionTotalAlz(s))}</span>
+        <span style="color:var(--muted)">${formatDateBR(s.date)} · ${timeHM(s.startAt)}–${timeHM(s.endAt)} · ${s.dropCount} drops · ${formatAlzGamer(sessionRealizedAlz(s))}</span>
         <span style="margin-left:auto;display:flex;gap:6px">
           <button class="btn btn-d btn-xs" onclick="restoreDeletedSession(${s.startAt})"><i class="ti ti-arrow-back-up"></i>Restaurar</button>
           <button class="btn btn-xs" style="background:var(--err-bg);color:var(--err);border:none" title="Apagar definitivamente" onclick="purgeDeletedSession(${s.startAt})"><i class="ti ti-trash"></i></button>
@@ -461,7 +461,7 @@ export function renderSessionsPage() {
       ${renderDateInputBR({ id: 'sessHistDate', value: historyDate, onChange: 'setSessionsHistoryDate' })}
     </div>
   </div>
-  ${infoToggle('sessions-history', 'Mostra só o dia selecionado, agrupado por rota quando você iniciou a sessão com uma aplicada no carrinho (farme avulso fica junto em "Avulsas"). A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens. Sessão errada (ex: ficou aberta por horas sem farmar) distorce a média de tempo daquele DG pra sempre — exclua pela lixeira.')}
+  ${infoToggle('sessions-history', 'Mostra só o dia selecionado, agrupado por rota quando você iniciou a sessão com uma aplicada no carrinho (farme avulso fica junto em "Avulsas"). A <strong>Duração</strong> é o tempo <strong>ativo</strong> de farme — descontamos os intervalos longos sem drop (ex: o rush parou e você demorou a encerrar). Passe o mouse pra ver o relógio total. Marcou a DG errada? Troque direto no seletor da linha — os itens continuam os mesmos, só a etiqueta muda. Informe as runs e clique na seta pra ver os itens. Sessão errada (ex: ficou aberta por horas sem farmar) distorce a média de tempo daquele DG pra sempre — exclua pela lixeira.<br><br>O <strong>Alz</strong> aqui é o que a sessão <strong>de fato rendeu</strong>, cada item pelo preço que valia naquele dia. Por isso ele pode não bater com "Qual DG rende mais" na Visão geral, que reavalia todo o histórico pelos preços de HOJE de propósito — só assim dá pra comparar uma DG farmada em julho com uma de agosto sem a diferença ser do mercado. Um número é contabilidade, o outro é comparação.')}
   ${!history.length
     ? `<div class="empty">Nenhuma sessão de DG encerrada em ${formatDateBR(historyDate)}.</div>`
     : `<table class="t-cards"><thead><tr><th>Dia</th><th>DG</th><th>Horário</th><th>Duração</th><th>Runs</th><th>Drops</th><th>Alz</th><th>Alz / run</th><th>Anotação</th><th style="width:80px"></th></tr></thead><tbody>
