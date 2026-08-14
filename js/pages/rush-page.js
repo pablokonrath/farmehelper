@@ -248,15 +248,15 @@ export function renderRushPage() {
   const ticketCraftBlock = `
   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
     <div style="font-size:12px;font-weight:600;margin-bottom:8px"><i class="ti ti-tools"></i> Eu fabrico meus tickets</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Diga a receita e o custo do ticket passa a ser o valor do que você gasta, não o preço de mercado. O item continua contando como farme (ele caiu, tem valor) e sai como custo aqui — por isso <strong>não</strong> se desconta ele do farme do dia também, senão o mesmo item seria contado duas vezes.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">É a <strong>receita de um lote</strong>, não o que você gastou hoje: preencha uma vez e não mexe mais, mesmo fazendo três lotes num dia ou nenhum no outro. O custo do ticket sai da proporção entre os dois campos e acompanha sozinho o preço do item em Cálculo de farme.<br>O item continua contando como farme (ele caiu, tem valor) e sai como custo aqui — por isso <strong>não</strong> se desconta ele do farme do dia também, senão o mesmo item seria contado duas vezes.</div>
     <div class="row" style="align-items:flex-end;flex-wrap:wrap">
       <div style="flex:1;min-width:200px"><label class="lbl">Item consumido</label>
         <input class="inp inp-sm" id="tcItem" list="tcItens" placeholder="Ex: Set de Aprimoramento Altíssimo" value="${esc(tc.itemName || '')}">
         <datalist id="tcItens">${itensComPreco.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
-      <div style="width:110px"><label class="lbl">Quantidade</label>
-        <input class="inp inp-sm" id="tcQty" type="number" min="0" step="1" placeholder="16" value="${tc.itemQty || ''}"></div>
-      <div style="width:130px"><label class="lbl">Tickets que saem</label>
-        <input class="inp inp-sm" id="tcOut" type="number" min="0" step="1" placeholder="32" value="${tc.ticketsProduced || ''}"></div>
+      <div style="width:150px"><label class="lbl">Gasta por lote</label>
+        <input class="inp inp-sm" id="tcQty" type="number" min="0" step="1" placeholder="16" value="${tc.itemQty || ''}" title="Quantas unidades do item um lote consome — não o total que você já gastou"></div>
+      <div style="width:160px"><label class="lbl">Tickets por lote</label>
+        <input class="inp inp-sm" id="tcOut" type="number" min="0" step="1" placeholder="30" value="${tc.ticketsProduced || ''}" title="Quantos tickets saem de um lote. Se varia (ex: 30 a 35), use o MENOR — o custo por ticket fica um pouco maior e o lucro estimado não vira promessa otimista."></div>
       <div><label class="lbl">&nbsp;</label>
         <button class="btn btn-p btn-sm" onclick="setTicketCraft(document.getElementById('tcItem').value, document.getElementById('tcQty').value, document.getElementById('tcOut').value)"><i class="ti ti-check"></i>Salvar receita</button></div>
       ${craft ? `<div><label class="lbl">&nbsp;</label><button class="btn btn-d btn-sm" onclick="clearTicketCraft()" title="Voltar a usar o preço de mercado">Comprar em vez de fabricar</button></div>` : ''}
