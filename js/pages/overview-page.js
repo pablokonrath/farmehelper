@@ -89,7 +89,7 @@ function buildDgComparisonCard() {
   return `
 <div class="card" style="padding:0;overflow:hidden">
   <div style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleDgComparison()">
-    <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px"><i class="ti ti-trophy" style="color:var(--gold)"></i>Qual DG rende mais <span style="font-size:11px;font-weight:400;color:var(--muted)">${comparison.length} DGs com histórico</span></div>
+    <div class="ctitle" style="margin:0"><i class="ti ti-trophy" style="color:var(--gold)"></i>Qual DG rende mais <span style="font-size:12px;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:4px">${comparison.length} DGs com histórico</span></div>
     <i class="ti ti-chevron-${aberto ? 'up' : 'down'}" style="color:var(--muted)"></i>
   </div>
   ${!aberto ? '' : `<div style="border-top:1px solid var(--border);padding:14px 16px">

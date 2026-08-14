@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
-import { saveRushHistory, saveRushCredits, saveRushCreditItemNames, saveAppliedRoutes } from '../state/persistence.js';
+import { saveRushHistory, saveRushCredits, saveRushCreditItemNames, saveAppliedRoutes, saveTicketCraft } from '../state/persistence.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate, normalizeForSearch } from '../utils/parsing.js';
 import { updateBalanceSidebar, getItemPrice } from './drops.js';
@@ -8,6 +8,54 @@ import { getDungeonDifficulty } from './dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
 import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
+
+// Ticket FABRICADO custa o que os itens gastos pra fazê-lo valiam, não o preço de mercado.
+//
+// Quem faz os próprios tickets não paga o preço de mercado por eles — paga em item farmado. Usar o
+// preço de mercado superestima o custo de toda DG que consome ticket (e há DG de 2 e 3 por run),
+// e isso contamina o Alz líquido, a comparação entre DGs, a rota e o "vale resetar".
+//
+// Por que NÃO descontar os itens do farme do dia, que seria o caminho intuitivo: as duas coisas
+// juntas seriam contagem dupla, e escolhendo uma, esta é a melhor. Descontar do farme faria o
+// ticket sair de graça — e aí DG que come 3 tickets por run pareceria tão barata quanto uma que
+// não usa nenhum, arruinando exatamente a comparação que o app existe pra fazer. Aqui o item
+// entra como farme (ele caiu, tem valor) e sai como custo do ticket. Fecha, e o custo aparece na
+// DG que de fato o consome.
+export function getTicketCraftCost() {
+  const c = AppState.ticketCraft;
+  if (!c?.itemName || !(c.itemQty > 0) || !(c.ticketsProduced > 0)) return null;
+  const precoItem = getItemPrice(c.itemName);
+  if (!(precoItem > 0)) return null;
+  return {
+    unit: (c.itemQty * precoItem) / c.ticketsProduced,
+    precoItem,
+    itemName: c.itemName,
+    itemQty: c.itemQty,
+    ticketsProduced: c.ticketsProduced,
+  };
+}
+
+// Preço a usar em toda conta que consome ticket: o de fabricação quando você fabrica, senão o de
+// mercado que você digitou. Ponto único — antes cada lugar lia AppState.rushTicketPrice direto.
+export function getTicketPrice() {
+  return getTicketCraftCost()?.unit ?? (+AppState.rushTicketPrice || 0);
+}
+
+export function setTicketCraft(itemName, itemQty, ticketsProduced) {
+  AppState.ticketCraft = {
+    itemName: (itemName || '').trim(),
+    itemQty: Math.max(0, parseFloat(String(itemQty).replace(',', '.')) || 0),
+    ticketsProduced: Math.max(0, parseFloat(String(ticketsProduced).replace(',', '.')) || 0),
+  };
+  saveTicketCraft().catch(err => console.error('Falha ao salvar fabricação de ticket:', err));
+  renderPage();
+}
+
+export function clearTicketCraft() {
+  AppState.ticketCraft = { itemName: '', itemQty: 0, ticketsProduced: 0 };
+  saveTicketCraft().catch(err => console.error('Falha ao salvar fabricação de ticket:', err));
+  renderPage();
+}
 
 // 1.000 Cash custam AppState.rushCardCashPrice Alz, e 1 gema de reset custa o equivalente a 1 Cash.
 export function getCostPerGem() {
@@ -22,7 +70,7 @@ export function getCostPerGem() {
 // nada errado").
 export function missingCostConfigFor(dungeon) {
   const missing = [];
-  if ((dungeon.ticketsPerRun || 0) > 0 && !(+AppState.rushTicketPrice > 0)) missing.push('o preço do ticket');
+  if ((dungeon.ticketsPerRun || 0) > 0 && !(getTicketPrice() > 0)) missing.push('o preço do ticket');
   if ((dungeon.gemsPerRun || 0) > 0 && !(getCostPerGem() > 0)) missing.push('o preço do Card Cash (gema)');
   return missing;
 }
@@ -56,7 +104,7 @@ export function getCreditItemPrice(categoryId) {
 // tickets usam o mesmo preço de ticket já cadastrado em "Parâmetros do dia", não um campo à parte.
 export function getCreditUnitCost(categoryId) {
   const fixed = CREDIT_TIER_COSTS[categoryId];
-  const ticketPrice = +AppState.rushTicketPrice || 0;
+  const ticketPrice = getTicketPrice();
   return fixed.fixedAlz + fixed.fixedTickets * ticketPrice + getCreditItemPrice(categoryId).price;
 }
 
@@ -127,7 +175,7 @@ export function applySuggestedCreditQuantities() {
 // mão, só pra mostrar o custo linha a linha. Duas cópias da mesma conta com risco real de
 // divergir se a fórmula mudar um dia e só uma cópia for atualizada.
 export function calculateRushCartCost(cart = AppState.rushCart) {
-  const ticketPrice = +AppState.rushTicketPrice || 0;
+  const ticketPrice = getTicketPrice();
   const costPerGem = getCostPerGem();
   let alzFromDungeons = 0;
   let ticketCount = 0;
@@ -340,7 +388,7 @@ export function updateCartPreview() {
 
   const repetitions = parseInt(document.getElementById('dgRp')?.value) || 1;
   const usedReset = document.getElementById('dgReset')?.checked || false;
-  const ticketPrice = +AppState.rushTicketPrice || 0;
+  const ticketPrice = getTicketPrice();
   const gemQuantity = usedReset ? (parseInt(document.getElementById('dgGemQty')?.value) || 0) : 0;
   const gemUnitPrice = usedReset ? parseAlzInput(document.getElementById('dgGemPrice')?.value) : 0;
 
@@ -420,7 +468,7 @@ export function updateResetCostPreview() {
 function findMissingCostInCart(cart) {
   const missing = new Set();
   cart.forEach(item => {
-    if ((item.ticketsPerRun || 0) > 0 && !(+AppState.rushTicketPrice > 0)) missing.add('o preço do ticket');
+    if ((item.ticketsPerRun || 0) > 0 && !(getTicketPrice() > 0)) missing.add('o preço do ticket');
     if ((item.gemsPerRun || 0) > 0 && !(getCostPerGem() > 0)) missing.add('o preço do Card Cash (gema)');
     if (item.usedReset && (item.resetGemQuantity || 0) > 0 && !((item.resetGemUnitPrice || 0) > 0)) {
       missing.add(`o valor da gema de reset de "${item.name}"`);

@@ -2,8 +2,7 @@ import { AppState } from '../state/app-state.js';
 import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
-
-import { getCostPerGem } from '../features/rush-cart.js';
+import { getCostPerGem, getTicketPrice, getTicketCraftCost } from '../features/rush-cart.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
@@ -479,7 +478,7 @@ export function renderSessionsPage() {
   ${infoToggle('sessions-reset-worth', 'Resetar o limite do DG custa gemas. Só compensa se o líquido por run (Alz do drop menos o custo de entrada) superar o custo do reset rateado por run. Valor da gema e do ticket vêm de Parâmetros do dia — os mesmos que o carrinho de rush usa de verdade pra cobrar de você, não um valor à parte só pra esta conta.')}
   <div class="g4" style="margin-bottom:14px">
     <div><label class="lbl">Valor da gema (Alz)</label><div class="inp" style="display:flex;align-items:center;color:var(--muted)">${getCostPerGem() ? formatAlzGamer(getCostPerGem()) : '—'}</div></div>
-    <div><label class="lbl">Valor do ticket (Alz)</label><div class="inp" style="display:flex;align-items:center;color:var(--muted)">${(+AppState.rushTicketPrice || 0) ? formatAlzGamer(+AppState.rushTicketPrice) : '—'}</div></div>
+    <div><label class="lbl">Valor do ticket (Alz)</label><div class="inp" style="display:flex;align-items:center;color:var(--muted)" title="${getTicketCraftCost() ? 'Custo de fabricação — você faz seus próprios tickets (configurado em Planejamento de Rush)' : 'Preço de mercado, de Parâmetros do dia'}">${getTicketPrice() ? formatAlzGamer(getTicketPrice()) : '—'}</div></div>
     <div><label class="lbl">Custo do reset (gemas)</label><input class="inp" type="number" min="0" value="${rc.resetCostGems}" onchange="setResetConfig('resetCostGems', this.value)"></div>
     <div><label class="lbl">Runs por reset</label><input class="inp" type="number" min="1" value="${rc.runsPerReset}" onchange="setResetConfig('runsPerReset', this.value)"></div>
   </div>

@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
-import { calculateRushCartCost, getCostPerGem, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
+import { calculateRushCartCost, getCostPerGem, getTicketCraftCost, setTicketCraft, clearTicketCraft, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
 import { computeResetWorth, computeDgComparison, sessionTotalAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday, suggestRouteForTime, buildGeneratedRoute } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
@@ -236,6 +236,35 @@ export function renderRushPage() {
         </div>`}
 </div>`;
 
+  // Quem fabrica os próprios tickets não paga o preço de mercado por eles — paga em item farmado.
+  // Sem isso, toda DG que consome ticket (e tem DG de 2 e 3 por run) aparecia com um custo que
+  // você nunca teve, afundando o líquido dela e distorcendo a comparação entre DGs.
+  //
+  // Guarda a RECEITA, não o preço: o custo por ticket é recalculado do preço atual do item em
+  // Cálculo de farme, então quando o mercado mexe no item, o ticket acompanha sozinho.
+  const craft = getTicketCraftCost();
+  const tc = AppState.ticketCraft || {};
+  const itensComPreco = [...new Set([...Object.keys(AppState.itemPrices), ...Object.keys(AppState.referenceItemPrices || {})])].sort();
+  const ticketCraftBlock = `
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+    <div style="font-size:12px;font-weight:600;margin-bottom:8px"><i class="ti ti-tools"></i> Eu fabrico meus tickets</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Diga a receita e o custo do ticket passa a ser o valor do que você gasta, não o preço de mercado. O item continua contando como farme (ele caiu, tem valor) e sai como custo aqui — por isso <strong>não</strong> se desconta ele do farme do dia também, senão o mesmo item seria contado duas vezes.</div>
+    <div class="row" style="align-items:flex-end;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px"><label class="lbl">Item consumido</label>
+        <input class="inp inp-sm" id="tcItem" list="tcItens" placeholder="Ex: Set de Aprimoramento Altíssimo" value="${esc(tc.itemName || '')}">
+        <datalist id="tcItens">${itensComPreco.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
+      <div style="width:110px"><label class="lbl">Quantidade</label>
+        <input class="inp inp-sm" id="tcQty" type="number" min="0" step="1" placeholder="16" value="${tc.itemQty || ''}"></div>
+      <div style="width:130px"><label class="lbl">Tickets que saem</label>
+        <input class="inp inp-sm" id="tcOut" type="number" min="0" step="1" placeholder="32" value="${tc.ticketsProduced || ''}"></div>
+      <div><label class="lbl">&nbsp;</label>
+        <button class="btn btn-p btn-sm" onclick="setTicketCraft(document.getElementById('tcItem').value, document.getElementById('tcQty').value, document.getElementById('tcOut').value)"><i class="ti ti-check"></i>Salvar receita</button></div>
+      ${craft ? `<div><label class="lbl">&nbsp;</label><button class="btn btn-d btn-sm" onclick="clearTicketCraft()" title="Voltar a usar o preço de mercado">Comprar em vez de fabricar</button></div>` : ''}
+    </div>
+    ${!craft ? (tc.itemName && !itensComPreco.length ? '' : (tc.itemName ? `<div style="font-size:11px;color:var(--warn);margin-top:8px"><i class="ti ti-alert-triangle"></i> <strong>${esc(tc.itemName)}</strong> ainda não tem preço cadastrado em Cálculo de farme — sem ele não dá pra calcular o custo do ticket, e o preço de mercado continua valendo.</div>` : ''))
+      : `<div style="font-size:11px;color:var(--ok);margin-top:8px"><i class="ti ti-calculator"></i> ${craft.itemQty} × ${esc(craft.itemName)} (${formatAlzGamer(craft.precoItem)} cada) ÷ ${craft.ticketsProduced} tickets = <strong>${formatAlzGamer(craft.unit)} por ticket</strong>. Esse é o valor usado em todas as contas — custo de DG, rota, crédito de macro e "vale a pena resetar".</div>`}
+  </div>`;
+
   const paramsCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-calendar"></i>Parâmetros do dia</div>
@@ -243,13 +272,16 @@ export function renderRushPage() {
     <div><label class="lbl">Data do rush</label>${renderDateInputBR({ value: AppState.rushCartDate, onChange: 'setRushCartDate' })}</div>
     <div><label class="lbl">Valor unitário do ticket (Alz)</label>
       <input class="inp" id="tkp" type="text" inputmode="numeric" value="${AppState.rushTicketPrice ? formatNumber(AppState.rushTicketPrice) : ''}" placeholder="Ex: 1.000.000"
-        oninput="maskAlzInputLive(this)" onblur="setRushTicketPrice(this.value)">
-      <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).</div></div>
+        oninput="maskAlzInputLive(this)" onblur="setRushTicketPrice(this.value)" ${craft ? 'disabled style="opacity:.5"' : ''}>
+      <div class="hint">${craft
+        ? `<span style="color:var(--ok)"><i class="ti ti-tools"></i> Usando o custo de fabricação: <strong>${formatAlzGamer(craft.unit)}</strong> por ticket.</span> O preço de mercado fica de fora enquanto você fabrica.`
+        : 'Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).'}</div></div>
     <div><label class="lbl">Card Cash (1.000 Cash em Alz)</label>
       <input class="inp" id="ccp" type="text" inputmode="numeric" value="${AppState.rushCardCashPrice ? formatNumber(AppState.rushCardCashPrice) : ''}" placeholder="Ex: 550.000.000"
         oninput="maskAlzInputLive(this)" onblur="setRushCardCashPrice(this.value)">
       <div class="hint">Preencha exatamente como no jogo, respeitando a unidade de medida (Alz).<br>Custo por gema: <strong id="gemaHint">${formatAlzGamer(getCostPerGem())}</strong></div></div>
   </div>
+  ${ticketCraftBlock}
   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
     <div class="row" style="align-items:flex-end;flex-wrap:wrap">
       <div style="width:190px"><label class="lbl">Teto de rush no mês (Alz)</label>

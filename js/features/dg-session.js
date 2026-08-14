@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
-import { getCostPerGem } from './rush-cart.js';
+import { getCostPerGem, getTicketPrice } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
 import { todayISODate } from '../utils/parsing.js';
@@ -885,7 +885,7 @@ export function computeDgComparison({ sinceDate } = {}) {
   // um segundo "valor da gema" digitado só pra essa conta; antes tinha (resetConfig.gemValueAlz/
   // ticketValueAlz) e podia divergir do que o carrinho realmente cobrava pela mesma DG.
   const gemValue = getCostPerGem();
-  const ticketValue = +AppState.rushTicketPrice || 0;
+  const ticketValue = getTicketPrice();
 
   const byDg = {};
   AppState.dgSessions.forEach(s => {

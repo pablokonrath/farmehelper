@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { computeDgComparison, computeRunsDoneToday, DAILY_RUN_LIMIT } from './dg-session.js';
-import { getCostPerGem } from './rush-cart.js';
+import { getCostPerGem, getTicketPrice, getTicketCraftCost } from './rush-cart.js';
 import { showInfoToast } from './alerts.js';
 
 // Exporta o seu histórico num texto que dá pra colar numa IA e pedir montagem de rota.
@@ -43,7 +43,7 @@ function linhaDaDg(c, dungeon) {
 export function buildAiRouteBriefing() {
   const comparacao = computeDgComparison().filter(c => c.alzPerRun != null && c.msPerRun != null);
   const custoGema = getCostPerGem();
-  const precoTicket = +AppState.rushTicketPrice || 0;
+  const precoTicket = getTicketPrice();
 
   const blocos = [];
 
@@ -59,7 +59,7 @@ export function buildAiRouteBriefing() {
     '',
     '## Meus preços de hoje',
     `- Custo por gema: ${num(custoGema)} Alz`,
-    `- Preço do ticket: ${precoTicket > 0 ? num(precoTicket) + ' Alz' : 'não informado'}`,
+    `- Preço do ticket: ${precoTicket > 0 ? num(precoTicket) + ' Alz' + (getTicketCraftCost() ? ' (eu FABRICO meus tickets — esse e o custo de fabricacao, nao o preco de mercado)' : '') : 'não informado'}`,
     '',
     '## Minhas DGs, medidas pelo meu próprio histórico',
     'Todos os valores por run são MÉDIAS do que eu de fato farmei, não valores oficiais do jogo.',

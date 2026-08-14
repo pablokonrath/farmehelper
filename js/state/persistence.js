@@ -136,6 +136,7 @@ export async function loadPersistedState() {
     });
   }
   AppState.rushCreditItemNames = { ...AppState.rushCreditItemNames, ...(appSettings.rushCreditItemNames || {}) };
+  AppState.ticketCraft = appSettings.ticketCraft ?? { itemName: '', itemQty: 0, ticketsProduced: 0 };
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.rushMonthlyBudgetAlz = appSettings.rushMonthlyBudgetAlz ?? 0;
@@ -239,6 +240,13 @@ export function saveSessionIdleCloseMinutes() {
 
 export function saveRushCreditItemNames() {
   return put('app-settings.php', { rushCreditItemNames: AppState.rushCreditItemNames });
+}
+
+// Receita de fabricação do ticket (item consumido, quantidade, tickets produzidos). Guarda a
+// RECEITA, nunca o preço: assim o custo do ticket acompanha sozinho o preço do item em Cálculo de
+// farme, sem você ter que lembrar de atualizar dois lugares quando o mercado muda.
+export function saveTicketCraft() {
+  return put('app-settings.php', { ticketCraft: AppState.ticketCraft });
 }
 
 // Preço do ticket e do Card Cash — parâmetros do rush que o jogador digita uma vez e valem pra
