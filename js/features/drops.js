@@ -197,26 +197,33 @@ const ARMOR_KEYWORDS = [
 // qualquer nome viraria equipamento.
 const ARMOR_CLASS_TOKENS = /(^|[^a-z0-9])(gu|ga|du|ea|gl|ma|mn|aa|at)([^a-z0-9]|$)/;
 
-// 2) Arma: exige o MATERIAL no nome ("Katana de Mithril"). Arma não traz sigla de classe — o
+// 2) Arma: "<tipo> de <material>" ("Katana de Mithril"). Arma não traz sigla de classe — o
 // próprio tipo já diz a classe —, então o sinal aqui é outro.
-// "disco" não entra: é material, não arma. Estava na lista antiga e teria voltado a esconder item
-// bom — bastaria um material com nome composto pra sumir sem aviso.
-const WEAPON_KEYWORDS = [
-  'montante', 'espada', 'daikatana', 'katana', 'orb', 'cristal', 'chakram', 'chakran',
+//
+// "disco" fica de fora dos tipos: é material, não arma.
+//
+// A regra é ESTRUTURAL, não uma lista de materiais. Arma é "<tipo> de <material>" — e o material
+// pode ser qualquer coisa: Orichalcum, SIGMetal, Mithril, Aquamarina, e o que o servidor inventar
+// no próximo patch.
+//
+// A primeira versão listava os materiais conhecidos, e isso era jogo de gato e rato: cada material
+// novo fazia todas as armas dele escaparem e virarem "raridade" da DG (o detector considera raro
+// tudo que não é equipamento e cai pouco por run). Duas rodadas de correção, dois materiais
+// faltando — o problema era o formato da regra, não a lista.
+//
+// Invertido: "<tipo> de <qualquer coisa>" É arma, EXCETO quando o que vem depois é elemento ou
+// atributo. Essa lista de exceções é curta, fechada e estável — ao contrário da de materiais, que
+// cresce com o jogo. E é o que protege os itens que dão nome a DG (Cristal de Fogo no Solo
+// Flamejante, Cristal de Terra na Tumba), que sem ela seriam confundidos com arma.
+const NOT_WEAPON_SUFFIXES = [
+  'fogo', 'terra', 'gelo', 'vento', 'ar', 'agua', 'alma', 'luz', 'trevas', 'sombra',
+  'sangue', 'caos', 'divino', 'sagrado', 'essencia', 'poder',
 ].map(kw => normalizeForSearch(kw));
 
-// O nome no jogo é "Orichalcum" — "orichalcon" era erro de digitação meu, e como a regra exige
-// palavra E material, o erro fazia TODA arma de Orichalcum escapar do filtro e ainda entrar como
-// raridade das DGs (ver getStatisticalRareItemNames: o que não é equipamento e cai pouco vira
-// "raro"). Aquamarina veio do log. As variações erradas ficam como apelido: não custam nada e
-// evitam que um nome antigo pare de casar.
-//
-// Esta lista é o ponto fraco da regra — material que não estiver aqui deixa a arma passar. Se
-// aparecer arma na lista de raros de novo, é aqui que se acrescenta.
-const WEAPON_MATERIALS = [
-  'orichalcum', 'aquamarina', 'paladio', 'demonite', 'mithril', 'osmio',
-  'orichalcon', 'oricalco',
-].map(kw => normalizeForSearch(kw));
+// <tipo de arma> + de/do/da + <palavra>. A primeira palavra depois da preposição é o que decide.
+const WEAPON_PATTERN = new RegExp(
+  `(^|[^a-z0-9])(${['montante', 'espada', 'daikatana', 'katana', 'orbe', 'orb', 'cristal', 'chakram', 'chakran'].join('|')})\\s+(?:de|do|da|dos|das)\\s+([a-z0-9]+)`
+);
 
 // A que família o item pertence — e por qual "família de segundo nível" ele agrupa: sigla da
 // classe pra armadura, material pra arma. Retorna null pro que não é equipamento nenhum.
@@ -226,9 +233,11 @@ export function getGearKind(name) {
     const m = normalized.match(ARMOR_CLASS_TOKENS);
     if (m) return { familia: 'armadura', grupo: m[2].toUpperCase() };
   }
-  if (WEAPON_KEYWORDS.some(kw => normalized.includes(kw))) {
-    const mat = WEAPON_MATERIALS.find(x => normalized.includes(x));
-    if (mat) return { familia: 'arma', grupo: mat.charAt(0).toUpperCase() + mat.slice(1) };
+  // Arma: "<tipo> de <material>", com o material lido do próprio nome — assim material novo do
+  // jogo já entra agrupado certo, sem ninguém precisar cadastrar nada.
+  const m = normalized.match(WEAPON_PATTERN);
+  if (m && !NOT_WEAPON_SUFFIXES.includes(m[3])) {
+    return { familia: 'arma', grupo: m[3].charAt(0).toUpperCase() + m[3].slice(1) };
   }
   return null;
 }
