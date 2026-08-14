@@ -137,6 +137,47 @@ export function isFixedPriceItem(itemName) {
   return FIXED_PRICE_ITEMS.has(normalizeForSearch(stripEnhancementSuffix(itemName)));
 }
 
+// Item de evento fica FORA de toda conta de Alz do app.
+//
+// O painel de evento já era separado de propósito ("evento é temporário, nada disso contamina os
+// números permanentes" — ver event-tracker.js), mas isso valia só pro painel: o item continuava
+// sendo valorizado como drop comum no Alz farmado, no Alz/run e no líquido do dia.
+//
+// Duas razões pra excluir. Primeira: ele não é Alz — é ficha de troca, e o valor só existe quando
+// você resgata a recompensa. Contar o preço dele agora e o prêmio depois seria contar duas vezes.
+// Segunda: ele estraga a comparação entre DGs. DG com multiplicador de evento sobe no ranking
+// enquanto o evento dura e afunda quando acaba — e como o histórico nunca é purgado, aquele pico
+// fica no meio da média pra sempre.
+//
+// Mesmo tratamento do equipamento genérico: continua no log e nos itens da sessão (o painel de
+// evento conta a partir deles), só não vale Alz.
+//
+// Mora aqui, e não em event-tracker.js, pra não criar ciclo de import: event-tracker depende do
+// router, e o router carrega as páginas, que dependem deste módulo. A configuração é lida direto
+// do AppState, que é o mesmo dado.
+let eventoAlvoCache = null;
+let eventoItensCache = new Map();
+
+export function isEventItem(name) {
+  const cfg = AppState.eventConfig;
+  if (!cfg?.enabled || !cfg.itemName) return false;
+  const alvo = normalizeForSearch(cfg.itemName);
+  // Trocar o item do evento (ou desligar e ligar com outro) invalida o cache — senão o app
+  // continuaria excluindo o item do evento anterior depois da configuração mudar.
+  if (alvo !== eventoAlvoCache) {
+    eventoAlvoCache = alvo;
+    eventoItensCache = new Map();
+  }
+  let hit = eventoItensCache.get(name);
+  if (hit === undefined) {
+    // "Contém" e não igualdade, mesmo critério de computeEventProgress: o log traz variações e
+    // sufixos no nome, e exigir igualdade exata faria o filtro não pegar nada, calado.
+    hit = normalizeForSearch(name).includes(alvo);
+    eventoItensCache.set(name, hit);
+  }
+  return hit;
+}
+
 // Peças de equipamento genéricas (armadura/arma básica por classe) — caem aos montes em toda
 // DG, não têm valor de venda e só incham "o que caiu" em cada sessão. Excluídas de vez, não
 // precisam aparecer em lugar nenhum do app (pedido explícito do jogador).
@@ -245,10 +286,11 @@ export function summarizeDropsByItem(drops) {
 
 // Valor total farmado HOJE (drops do log + manuais), a mesma base do "Total de farme" do
 // sidebar — usada também pela meta de farme (farm-goal.js) pra medir o progresso do dia.
+// Item de evento fica fora: é ficha de troca, não Alz farmado (ver isEventItem acima).
 export function getTodayFarmedAlz() {
   const today = todayISODate();
   return getAllDrops()
-    .filter(drop => drop.date === today)
+    .filter(drop => drop.date === today && !isEventItem(drop.name))
     .reduce((sum, drop) => sum + getItemPrice(drop.name), 0);
 }
 

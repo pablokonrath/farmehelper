@@ -392,7 +392,7 @@ function buildEventCard() {
       <div style="flex:1;min-width:200px"><label class="lbl">Item do evento</label>
         <input class="inp" list="eventItemSugg" value="${esc(cfg.itemName)}" placeholder="ex: Fragmento Prismático" onblur="setEventItemName(this.value)">
         <datalist id="eventItemSugg">${[...new Set(AppState.knownItemNames || [])].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
-        <div class="hint">Casa por trecho do nome — não precisa ser exato.</div></div>
+        <div class="hint">Casa por trecho do nome — não precisa ser exato.<br><strong style="color:var(--gold)">Este item não conta como Alz</strong> em nenhuma parte do app enquanto o evento estiver ligado: ele é ficha de troca, e o valor aparece quando você resgatar a recompensa. Isso também impede que a DG do evento suba no ranking agora e afunde quando ele acabar — o histórico não é apagado, então o pico ficaria na média pra sempre.</div></div>
       <div style="width:150px"><label class="lbl">Contar a partir de</label>
         ${renderDateInputBR({ id: 'eventSince', value: cfg.since, onChange: 'setEventSince' })}</div>
     </div>

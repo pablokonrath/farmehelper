@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem } from './drops.js';
+import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem, isEventItem } from './drops.js';
 import { getCostPerGem, getTicketPrice } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
@@ -36,11 +36,14 @@ function sessionDrops(startAt, endAt) {
     d.timestamp && d.timestamp.getTime() >= startAt && d.timestamp.getTime() <= endAt && !isExcludedGearItem(d.name));
 }
 
+// Item de evento nao vale Alz (ver isEventItem): e ficha de troca, e o valor aparece quando voce
+// resgata a recompensa — contar o preco dele agora e o premio depois seria contar duas vezes.
 function summarizeDrops(drops) {
-  const totalAlz = drops.reduce((sum, d) => sum + getItemPrice(d.name), 0);
+  const valorEm = d => (isEventItem(d.name) ? 0 : getItemPrice(d.name));
+  const totalAlz = drops.reduce((sum, d) => sum + valorEm(d), 0);
   let best = null;
   drops.forEach(d => {
-    const price = getItemPrice(d.name);
+    const price = valorEm(d);
     if (!best || price > best.price) best = { name: d.name, price };
   });
   return { totalAlz, bestItem: best && best.price > 0 ? best : null };
@@ -460,7 +463,7 @@ export function computeDaySummary(dateISO = todayISODate()) {
   // Melhor drop do dia entre todas as sessões, pelo preço unitário de hoje.
   let bestItem = null;
   sessions.forEach(s => Object.keys(s.items || {}).forEach(name => {
-    if (isExcludedGearItem(name)) return;
+    if (isExcludedGearItem(name) || isEventItem(name)) return;
     // Melhor drop pelo preco DAQUELE dia — o resumo e um retrato do dia, nao uma reavaliacao.
     const price = getItemPriceOn(name, dateISO).price;
     if (price > 0 && (!bestItem || price > bestItem.price)) bestItem = { name, price };
@@ -877,7 +880,7 @@ export function sessionRealizedAlzInfo(session) {
   let total = 0;
   let exact = true;
   for (const [name, qty] of Object.entries(session.items)) {
-    if (isExcludedGearItem(name)) continue;
+    if (isExcludedGearItem(name) || isEventItem(name)) continue;
     const p = getItemPriceOn(name, session.date);
     if (!p.exact) exact = false;
     total += p.price * qty;
@@ -893,7 +896,7 @@ export function sessionTotalAlz(session) {
   if (!session.items) return session.totalAlz || 0;
   let total = 0;
   for (const [name, qty] of Object.entries(session.items)) {
-    if (isExcludedGearItem(name)) continue;
+    if (isExcludedGearItem(name) || isEventItem(name)) continue;
     total += getItemPrice(name) * qty;
   }
   return total;

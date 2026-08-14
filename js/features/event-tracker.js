@@ -46,6 +46,7 @@ export function getEventConfig() {
   };
 }
 
+
 function salvar(patch) {
   AppState.eventConfig = { ...getEventConfig(), ...patch };
   saveEventConfig().catch(err => console.error('Falha ao salvar evento:', err));
