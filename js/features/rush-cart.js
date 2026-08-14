@@ -3,7 +3,7 @@ import { saveRushHistory, saveRushCredits, saveRushCreditItemNames, saveAppliedR
 import { formatNumber, formatAlzGamer, getAlzTierColor, formatDateBR, parseAlzInput, renderAlzValue } from '../utils/formatting.js';
 import { todayISODate, normalizeForSearch } from '../utils/parsing.js';
 import { updateBalanceSidebar, getItemPrice } from './drops.js';
-import { computeDgComparison, computeResetWorth } from './dg-session.js';
+import { computeDgComparison, computeResetWorth, computeRunsDoneOn } from './dg-session.js';
 import { getDungeonDifficulty } from './dungeon-difficulty.js';
 import { esc } from '../utils/escape.js';
 import { actWithUndo } from './undo.js';
@@ -481,6 +481,76 @@ function findMissingCostInCart(cart) {
     }
   });
   return [...missing];
+}
+
+// Compara o rush PLANEJADO de um dia com o que você de fato rodou.
+//
+// O carrinho é um plano, e o custo salvo cobra o plano inteiro. Isso está certo pra quem compra
+// as entradas todas de uma vez — mas quem compra conforme usa só gastou nas runs que fez. As runs
+// não feitas viram custo fantasma: infla o gasto do dia, afunda o líquido e contamina o resultado
+// do mês.
+//
+// Não faz nada sozinho: as duas leituras são legítimas (você pode ter comprado adiantado e sobrou
+// entrada pra amanhã), então isso só MOSTRA a diferença e deixa você decidir.
+export function computeRushVsDone(dateISO) {
+  const rush = AppState.rushHistory[dateISO];
+  if (!rush?.items?.length) return null;
+
+  const linhas = rush.items.map(item => {
+    const feitas = computeRunsDoneOn(item.name, dateISO);
+    // Teto no planejado: fazer MAIS runs que o plano não vira custo extra aqui — aquele farme a
+    // mais está fora deste rush, e o carrinho é que teria de ser corrigido, não a cobrança.
+    const cobradas = Math.min(item.repetitions, feitas);
+    return { ...item, planejadas: item.repetitions, feitas, cobradas };
+  });
+
+  const itensSoFeitos = linhas
+    .filter(l => l.cobradas > 0)
+    .map(l => buildCartItem(l.dungeonId, l.cobradas, l.usedReset ? { used: true, qty: l.resetGemQuantity, price: l.resetGemUnitPrice } : null))
+    .filter(Boolean);
+
+  // Créditos entram nos dois totais: são compra do dia, feita independente de quantas runs você
+  // rodou. Tirar eles daqui faria a comparação medir duas coisas diferentes.
+  const totalSeSoOFeito = calculateRushCartCost(itensSoFeitos).total;
+  const naoFeitas = linhas.reduce((sum, l) => sum + (l.planejadas - l.cobradas), 0);
+
+  return {
+    linhas,
+    naoFeitas,
+    totalPlanejado: rush.total || 0,
+    totalSeSoOFeito,
+    diferenca: (rush.total || 0) - totalSeSoOFeito,
+  };
+}
+
+// Reescreve o rush do dia cobrando só as runs feitas. Mexe no REGISTRO daquele dia, não no
+// carrinho de hoje: reconciliar é acertar o que já passou.
+export function chargeOnlyDoneRuns(dateISO) {
+  const cmp = computeRushVsDone(dateISO);
+  if (!cmp || cmp.naoFeitas <= 0) return;
+
+  const rush = AppState.rushHistory[dateISO];
+  const anterior = JSON.parse(JSON.stringify(rush));
+
+  const itens = cmp.linhas
+    .filter(l => l.cobradas > 0)
+    .map(l => buildCartItem(l.dungeonId, l.cobradas, l.usedReset ? { used: true, qty: l.resetGemQuantity, price: l.resetGemUnitPrice } : null))
+    .filter(Boolean);
+
+  AppState.rushHistory[dateISO] = { ...rush, items: itens, total: cmp.totalSeSoOFeito };
+  saveRushHistory();
+  updateBalanceSidebar();
+  renderPage();
+
+  actWithUndo(
+    `Rush de ${formatDateBR(dateISO)} ajustado: ${formatAlzGamer(cmp.diferenca)} a menos (${cmp.naoFeitas} run(s) não feitas)`,
+    () => {
+      AppState.rushHistory[dateISO] = anterior;
+      saveRushHistory();
+      updateBalanceSidebar();
+      renderPage();
+    }
+  );
 }
 
 export function saveRushForDay() {

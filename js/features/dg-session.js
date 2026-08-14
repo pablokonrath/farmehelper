@@ -344,11 +344,21 @@ export function bumpActiveSessionRuns() {
 // mesma DG). Usado pelo "Progresso do rush de hoje" pra não considerar uma DG planejada pra N
 // repetições como "feita" só porque existe alguma sessão dela, mesmo com poucas runs reais.
 export function computeRunsDoneToday(dungeonName) {
-  const today = todayISODate();
+  return computeRunsDoneOn(dungeonName, todayISODate());
+}
+
+// Runs feitas numa DG numa data qualquer. Generalização de computeRunsDoneToday, que era o único
+// jeito de saber isso e só respondia sobre hoje — a reconciliação do rush (cobrar só o que foi
+// feito) precisa perguntar sobre qualquer dia salvo.
+export function computeRunsDoneOn(dungeonName, dateISO) {
   let runs = AppState.dgSessions
-    .filter(s => s.date === today && s.dungeonName === dungeonName)
+    .filter(s => s.date === dateISO && s.dungeonName === dungeonName)
     .reduce((sum, s) => sum + (s.runs || 0), 0);
-  if (AppState.activeDgSession?.dungeonName === dungeonName) runs += AppState.activeDgSession.runs || 0;
+  // A sessão em andamento ainda não está no histórico, mas as runs dela já aconteceram — sem isso
+  // o número fica atrasado justamente durante o farme, que é quando você olha.
+  if (dateISO === todayISODate() && AppState.activeDgSession?.dungeonName === dungeonName) {
+    runs += AppState.activeDgSession.runs || 0;
+  }
   return runs;
 }
 

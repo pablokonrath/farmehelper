@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
-import { calculateRushCartCost, getCostPerGem, getTicketCraftCost, setTicketCraft, toggleTicketCraft, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
+import { calculateRushCartCost, getCostPerGem, getTicketCraftCost, setTicketCraft, toggleTicketCraft, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit, computeRushVsDone } from '../features/rush-cart.js';
 import { computeResetWorth, computeDgComparison, sessionRealizedAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday, suggestRouteForTime, buildGeneratedRoute } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
@@ -134,6 +134,13 @@ export function renderRushPage() {
   // salvo não é divergência, é só uma página em branco.
   const rushSalvoDoDia = AppState.rushHistory[AppState.rushCartDate];
   const cartUnsaved = AppState.rushCart.length > 0 && Math.round(cost.total) !== Math.round(rushSalvoDoDia?.total || 0);
+
+  // Runs planejadas x runs de fato feitas no dia salvo. Quem compra as entradas conforme usa não
+  // gastou nas runs que não fez — elas viram custo fantasma, inflando o gasto do dia e afundando
+  // o líquido. Só aparece quando sobrou run e o carrinho já está salvo (sem registro salvo não há
+  // o que reconciliar).
+  const rushVsDone = computeRushVsDone(AppState.rushCartDate);
+  const podeReconciliar = !cartUnsaved && rushVsDone && rushVsDone.naoFeitas > 0 && rushVsDone.diferenca > 0;
 
   // Gasto acumulado do MÊS CIVIL corrente contra o teto que o jogador definiu (0 = sem teto).
   const agora = new Date();
@@ -418,6 +425,14 @@ export function renderRushPage() {
        assim que tem que ser: rush salvo é registro, não espelho ao vivo do carrinho.
        O problema era o silêncio. As duas coisas divergiam sem nada na tela dizendo, e o gasto do
        dia no sidebar simplesmente parecia errado. */''}
+  ${!podeReconciliar ? '' : `<div style="margin-top:10px;padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;font-size:12px">
+    <div style="margin-bottom:6px"><i class="ti ti-receipt-off" style="color:var(--gold)"></i> <strong>Sobraram ${rushVsDone.naoFeitas} run(s) planejadas que você não fez.</strong></div>
+    <div style="color:var(--muted);font-size:11px;margin-bottom:8px">Se você compra as entradas conforme usa, não gastou nelas — e o gasto de ${formatDateBR(AppState.rushCartDate)} está <strong style="color:var(--warn)">${formatAlzGamer(rushVsDone.diferenca)} acima</strong> do real (${formatAlzGamer(rushVsDone.totalPlanejado)} cobrado, ${formatAlzGamer(rushVsDone.totalSeSoOFeito)} de fato usado).<br>Se você comprou tudo adiantado e a entrada sobrou pra amanhã, ignore — aí o gasto está certo.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">
+      ${rushVsDone.linhas.filter(l => l.cobradas < l.planejadas).map(l => `<span class="badge badge-muted" title="${l.cobradas} de ${l.planejadas} runs feitas">${esc(l.name)}: ${l.cobradas}/${l.planejadas}</span>`).join('')}
+    </div>
+    <button class="btn btn-p btn-xs" onclick="chargeOnlyDoneRuns('${AppState.rushCartDate}')"><i class="ti ti-adjustments-check"></i>Cobrar só o que eu fiz</button>
+  </div>`}
   ${!cartUnsaved ? '' : `<div style="margin-top:10px;padding:8px 12px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px;font-size:12px;color:var(--warn)"><i class="ti ti-alert-triangle"></i> ${!rushSalvoDoDia
     ? `Este carrinho <strong>ainda não foi salvo</strong> — o gasto de ${formatDateBR(AppState.rushCartDate)} continua zerado até você salvar.`
     : `O carrinho mudou desde que você salvou: agora dá <strong>${formatAlzGamer(cost.total)}</strong>, mas o gasto gravado em ${formatDateBR(AppState.rushCartDate)} ainda é <strong>${formatAlzGamer(rushSalvoDoDia.total || 0)}</strong>. Atualize pra bater.`}</div>`}

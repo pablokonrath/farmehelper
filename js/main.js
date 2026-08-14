@@ -92,6 +92,7 @@ import {
   applySuggestedCreditQuantities,
   setTicketCraft,
   toggleTicketCraft,
+  chargeOnlyDoneRuns,
 } from './features/rush-cart.js';
 import { createRushRouteFromCart, applyRushRoute, startEditingRushRoute, cancelEditingRushRoute, renameRushRoute, deleteRushRoute, setTimeAvailableHours, applySuggestedRoute, applyGeneratedRoute } from './features/rush-routes.js';
 import { exportDropsToCSV, exportSalesToCSV } from './features/export.js';
@@ -189,6 +190,7 @@ Object.assign(window, {
   applySuggestedCreditQuantities,
   setTicketCraft,
   toggleTicketCraft,
+  chargeOnlyDoneRuns,
   saveRushForDay,
   deleteRushForDay,
   editSavedRush,
