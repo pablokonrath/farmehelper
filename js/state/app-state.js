@@ -251,7 +251,7 @@ export const AppState = {
   // Receita de fabricação do ticket, pra quem faz os próprios em vez de comprar. Guarda a RECEITA
   // (item, quanto consome, quantos tickets sai), nunca o preço: o custo do ticket é recalculado a
   // partir do preço atual do item em Cálculo de farme, então acompanha o mercado sozinho.
-  ticketCraft: { itemName: '', itemQty: 0, ticketsProduced: 0 },
+  ticketCraft: { itemName: '', itemQty: 0, ticketsProduced: 0, enabled: true },
   rushCardCashPrice: '',
   rushCart: [],
   rushCredits: buildDefaultRushCredits(),

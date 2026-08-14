@@ -1,5 +1,5 @@
 import { AppState, CREDIT_CATEGORIES, CREDIT_TIER_COSTS, CREDIT_DAILY_LIMIT } from '../state/app-state.js';
-import { calculateRushCartCost, getCostPerGem, getTicketCraftCost, setTicketCraft, clearTicketCraft, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
+import { calculateRushCartCost, getCostPerGem, getTicketCraftCost, setTicketCraft, toggleTicketCraft, updateRushMetricsDisplay, computeCartCreditNeeds, getCreditItemPrice, getCreditUnitCost, isOverDailyCreditLimit } from '../features/rush-cart.js';
 import { computeResetWorth, computeDgComparison, sessionTotalAlz, DAILY_RUN_LIMIT } from '../features/dg-session.js';
 import { computeRouteComparison, appliedRoutesToday, suggestRouteForTime, buildGeneratedRoute } from '../features/rush-routes.js';
 import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
@@ -244,6 +244,10 @@ export function renderRushPage() {
   // Cálculo de farme, então quando o mercado mexe no item, o ticket acompanha sozinho.
   const craft = getTicketCraftCost();
   const tc = AppState.ticketCraft || {};
+  // Receita preenchida, mesmo que desligada hoje — é o que decide se o botão de ligar/desligar
+  // aparece. Sem isso ele sumiria justamente quando está desligado, deixando você sem como voltar.
+  const temReceita = !!tc.itemName && tc.itemQty > 0 && tc.ticketsProduced > 0;
+  const craftDesligada = temReceita && tc.enabled === false;
   const itensComPreco = [...new Set([...Object.keys(AppState.itemPrices), ...Object.keys(AppState.referenceItemPrices || {})])].sort();
   const ticketCraftBlock = `
   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
@@ -259,9 +263,10 @@ export function renderRushPage() {
         <input class="inp inp-sm" id="tcOut" type="number" min="0" step="1" placeholder="30" value="${tc.ticketsProduced || ''}" title="Quantos tickets saem de um lote. Se varia (ex: 30 a 35), use o MENOR — o custo por ticket fica um pouco maior e o lucro estimado não vira promessa otimista."></div>
       <div><label class="lbl">&nbsp;</label>
         <button class="btn btn-p btn-sm" onclick="setTicketCraft(document.getElementById('tcItem').value, document.getElementById('tcQty').value, document.getElementById('tcOut').value)"><i class="ti ti-check"></i>Salvar receita</button></div>
-      ${craft ? `<div><label class="lbl">&nbsp;</label><button class="btn btn-d btn-sm" onclick="clearTicketCraft()" title="Voltar a usar o preço de mercado">Comprar em vez de fabricar</button></div>` : ''}
+      ${!temReceita ? '' : `<div><label class="lbl">&nbsp;</label><button class="btn btn-d btn-sm" onclick="toggleTicketCraft()" title="${craft ? 'Passa a usar o preço de mercado. A receita fica guardada — dá pra voltar num clique.' : 'Volta a usar o custo de fabricação da receita guardada.'}"><i class="ti ti-${craft ? 'shopping-cart' : 'tools'}"></i>${craft ? 'Comprei hoje, usar preço de mercado' : 'Voltar a fabricar'}</button></div>`}
     </div>
-    ${!craft ? (tc.itemName && !itensComPreco.length ? '' : (tc.itemName ? `<div style="font-size:11px;color:var(--warn);margin-top:8px"><i class="ti ti-alert-triangle"></i> <strong>${esc(tc.itemName)}</strong> ainda não tem preço cadastrado em Cálculo de farme — sem ele não dá pra calcular o custo do ticket, e o preço de mercado continua valendo.</div>` : ''))
+    ${craftDesligada ? `<div style="font-size:11px;color:var(--muted);margin-top:8px"><i class="ti ti-shopping-cart"></i> Usando o <strong>preço de mercado</strong> hoje. Sua receita (${tc.itemQty} × ${esc(tc.itemName)} → ${tc.ticketsProduced} tickets) está guardada — é só clicar em "Voltar a fabricar".</div>`
+      : !craft ? (tc.itemName ? `<div style="font-size:11px;color:var(--warn);margin-top:8px"><i class="ti ti-alert-triangle"></i> <strong>${esc(tc.itemName)}</strong> ainda não tem preço cadastrado em Cálculo de farme — sem ele não dá pra calcular o custo do ticket, e o preço de mercado continua valendo.</div>` : '')
       : `<div style="font-size:11px;color:var(--ok);margin-top:8px"><i class="ti ti-calculator"></i> ${craft.itemQty} × ${esc(craft.itemName)} (${formatAlzGamer(craft.precoItem)} cada) ÷ ${craft.ticketsProduced} tickets = <strong>${formatAlzGamer(craft.unit)} por ticket</strong>. Esse é o valor usado em todas as contas — custo de DG, rota, crédito de macro e "vale a pena resetar".</div>`}
   </div>`;
 

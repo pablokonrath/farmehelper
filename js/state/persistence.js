@@ -136,7 +136,7 @@ export async function loadPersistedState() {
     });
   }
   AppState.rushCreditItemNames = { ...AppState.rushCreditItemNames, ...(appSettings.rushCreditItemNames || {}) };
-  AppState.ticketCraft = appSettings.ticketCraft ?? { itemName: '', itemQty: 0, ticketsProduced: 0 };
+  AppState.ticketCraft = appSettings.ticketCraft ?? { itemName: '', itemQty: 0, ticketsProduced: 0, enabled: true };
   AppState.rushTicketPrice = appSettings.rushTicketPrice ?? '';
   AppState.rushCardCashPrice = appSettings.rushCardCashPrice ?? '';
   AppState.rushMonthlyBudgetAlz = appSettings.rushMonthlyBudgetAlz ?? 0;

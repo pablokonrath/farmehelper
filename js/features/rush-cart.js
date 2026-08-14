@@ -23,6 +23,7 @@ import { renderPage } from '../router.js';
 // DG que de fato o consome.
 export function getTicketCraftCost() {
   const c = AppState.ticketCraft;
+  if (c?.enabled === false) return null; // receita guardada, só desligada por hoje
   if (!c?.itemName || !(c.itemQty > 0) || !(c.ticketsProduced > 0)) return null;
   const precoItem = getItemPrice(c.itemName);
   if (!(precoItem > 0)) return null;
@@ -46,13 +47,18 @@ export function setTicketCraft(itemName, itemQty, ticketsProduced) {
     itemName: (itemName || '').trim(),
     itemQty: Math.max(0, parseFloat(String(itemQty).replace(',', '.')) || 0),
     ticketsProduced: Math.max(0, parseFloat(String(ticketsProduced).replace(',', '.')) || 0),
+    enabled: true, // salvar a receita é o próprio ato de dizer "vou fabricar"
   };
   saveTicketCraft().catch(err => console.error('Falha ao salvar fabricação de ticket:', err));
   renderPage();
 }
 
-export function clearTicketCraft() {
-  AppState.ticketCraft = { itemName: '', itemQty: 0, ticketsProduced: 0 };
+// Liga/desliga a receita GUARDANDO ela. A primeira versão apagava tudo pra voltar ao preço de
+// mercado, o que obrigava a digitar item, quantidade e tickets de novo pra voltar a fabricar —
+// caro demais pra uma decisão que muda de um dia pro outro ("hoje acabou meu set, comprei").
+export function toggleTicketCraft() {
+  const c = AppState.ticketCraft || {};
+  AppState.ticketCraft = { ...c, enabled: c.enabled === false };
   saveTicketCraft().catch(err => console.error('Falha ao salvar fabricação de ticket:', err));
   renderPage();
 }
