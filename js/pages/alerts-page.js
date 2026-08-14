@@ -104,11 +104,26 @@ export function renderAlertsPage() {
   // isso não dava pra saber "tá tudo funcionando?" sem abrir e ler cada um. Sempre visível, não
   // depende de abrir nenhum card colapsado abaixo.
   const unseenCount = AppState.alertHistory.filter(e => !e.seen).length;
+  // Avisos que o Telegram pode entregar. Lista única aqui pra a faixa de status e o resumo do
+  // card contarem a mesma coisa — e pra que um aviso novo no futuro apareça nos dois lugares sem
+  // ninguém lembrar de atualizar contador nenhum.
+  const avisosTelegram = [
+    { ligado: s.telegramDropRelayEnabled, nome: 'drops rastreados' },
+    { ligado: s.telegramWatchdogRelayEnabled, nome: 'travamento' },
+    { ligado: s.telegramSessionRelayEnabled, nome: 'DG completa e sessão fechada' },
+  ];
+  const avisosTotal = avisosTelegram.length;
+  const avisosLigados = avisosTelegram.filter(a => a.ligado).length;
+
   const statusStrip = `
 <div class="card" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:12px 16px">
   <span class="badge ${s.enabled ? 'badge-ok' : 'badge-muted'}"><i class="ti ${s.enabled ? 'ti-bell' : 'ti-bell-off'}"></i> Alertas ${s.enabled ? 'ligados' : 'desligados'}</span>
   <span class="badge ${s.watchdogEnabled ? 'badge-ok' : 'badge-muted'}"><i class="ti ti-shield-bolt"></i> Watchdog ${s.watchdogEnabled ? 'vigiando' : 'inativo'}</span>
   <span class="badge ${linked ? 'badge-ok' : 'badge-muted'}"><i class="ti ti-brand-telegram"></i> Telegram ${linked ? 'vinculado' : 'não vinculado'}</span>
+  ${/* Quantos avisos do Telegram estão ligados, sempre à vista. A faixa existe justamente pra
+       responder "tá tudo funcionando?" sem abrir card nenhum — e sem isso um aviso novo, que nasce
+       desligado dentro de um card recolhido, não aparecia em lugar nenhum da tela. */''}
+  ${!linked ? '' : `<span class="badge ${avisosLigados < avisosTotal ? 'badge-warn' : 'badge-ok'}" title="${avisosTelegram.map(a => `${a.ligado ? '✓' : '✗'} ${a.nome}`).join('\n')}"><i class="ti ti-bell-ringing"></i> ${avisosLigados}/${avisosTotal} avisos${avisosLigados < avisosTotal ? ' — tem opção desligada' : ''}</span>`}
   ${unseenCount ? `<span class="badge badge-acc" style="margin-left:auto"><i class="ti ti-mail"></i> ${unseenCount} não visto${unseenCount > 1 ? 's' : ''}</span>` : ''}
 </div>`;
 
@@ -224,7 +239,14 @@ export function renderAlertsPage() {
     id: 'alerts-outside',
     icon: 'ti-brand-telegram',
     title: 'Fora do app (Telegram)',
-    resumo: linked ? '<span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span>' : '<span class="badge badge-muted">Não vinculado</span>',
+    // O resumo conta os avisos LIGADOS de um TOTAL. Antes dizia só "Vinculado", e um card
+    // recolhido que não revela o que tem dentro esconde opção nova: quem já tinha vinculado o
+    // Telegram nunca mais abriu esse card, e um aviso adicionado depois ficou invisível — foi
+    // exatamente o que aconteceu com o de sessão. Com a contagem, opção nova (que nasce
+    // desligada) muda o número de fora e aparece sem precisar abrir nada.
+    resumo: !linked
+      ? '<span class="badge badge-muted">Não vinculado</span>'
+      : `<span class="badge badge-ok"><i class="ti ti-check"></i> Vinculado</span> <span class="badge ${avisosLigados < avisosTotal ? 'badge-warn' : 'badge-acc'}">${avisosLigados} de ${avisosTotal} avisos ligados</span>`,
     defaultOpen: !linked,
     body: `
   <div style="font-size:12px;color:var(--muted);margin:-2px 0 10px">Receba avisos com o FarmHub fechado. TG/World Boss chega mesmo offline; alertas do seu próprio drop só com o app aberto (mesmo minimizado).</div>
