@@ -251,6 +251,9 @@ export const AppState = {
   // Evento temporário do servidor: item que vale quantidade diferente por DG. Fica isolado num
   // painel próprio pra não contaminar os números permanentes. Ver event-tracker.js.
   eventConfig: { enabled: false, itemName: '', since: '', multipliers: {} },
+  // Histórico de eventos (ver features/events.js). O eventConfig acima virou dado legado, mantido
+  // só pra migrar o evento que estava configurado antes desta lista existir.
+  events: [],
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,
