@@ -169,6 +169,7 @@ export async function loadPersistedState() {
   AppState.rarityMaxPercent = appSettings.rarityMaxPercent
     ?? (appSettings.rarityOneInRuns ? 100 / appSettings.rarityOneInRuns : AppState.rarityMaxPercent);
   AppState.rarityDismissed = appSettings.rarityDismissed ?? [];
+  AppState.rarityConfirmed = appSettings.rarityConfirmed ?? [];
   AppState.eventConfig = appSettings.eventConfig ?? AppState.eventConfig;
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
@@ -216,6 +217,10 @@ export function saveDropSnapshot(rows) {
 
 export function saveEventConfig() {
   return put('app-settings.php', { eventConfig: AppState.eventConfig });
+}
+
+export function saveRarityConfirmed() {
+  return put('app-settings.php', { rarityConfirmed: AppState.rarityConfirmed });
 }
 
 export function saveRarityDismissed() {

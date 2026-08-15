@@ -60,9 +60,12 @@ export function getRarityDroughts() {
 
   const linhas = [];
   for (const dg of AppState.dungeonList) {
-    // Só as raridades CADASTRADAS: as detectadas por estatística, por definição, caem de vez em
-    // quando — quem interessa acompanhar "há quanto tempo não vem" é o que você marcou caçar.
-    for (const name of getManualExpectedItemNames(dg.id)) {
+    // As RARIDADES da DG — detectadas pelo histórico, mais o que você confirmou, menos o que
+    // descartou. Antes lia só o cadastro manual, e isso deixou de fazer sentido quando aquele
+    // cadastro virou o de itens que IDENTIFICAM a DG: identificador é item que cai o tempo todo
+    // (é justamente por isso que ele identifica), então "há quanto tempo não dropo" respondia
+    // "hoje" pra tudo. A pergunta desta lista é sobre o que demora a vir.
+    for (const name of getExpectedItemNamesForDungeon(dg.id)) {
       const at = ultimaVez.get(dg.id + '\n' + name) || null;
       linhas.push({
         name,

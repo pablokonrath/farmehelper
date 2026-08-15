@@ -39,7 +39,7 @@ import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, 
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, toggleDropSourceGear, toggleDropSourceGearClass, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
-import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, setRarityMaxPercent, dismissRarity, restoreRarity } from './features/item-dungeon-sources.js';
+import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, setRarityMaxPercent, dismissRarity, restoreRarity, confirmRarity, unconfirmRarity } from './features/item-dungeon-sources.js';
 import {
   setRushCartDate,
   setRushTicketPrice,
@@ -139,6 +139,8 @@ Object.assign(window, {
   toggleItemDungeonSourceDg,
   setRarityMaxPercent,
   dismissRarity,
+  confirmRarity,
+  unconfirmRarity,
   restoreRarity,
   toggleFilterByKeywords,
   setPricingSearchQuery,

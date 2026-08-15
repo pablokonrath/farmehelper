@@ -4,7 +4,7 @@ import { getHistoricalSummary, countUncoveredDays, getPeriodTrend, getRushSpentI
 import { infoToggle, collapsibleCard } from '../features/ui-toggles.js';
 import { getRareDropHistory, getRarityDroughts } from '../features/rare-drops.js';
 import { getEventConfig, computeEventProgress } from '../features/event-tracker.js';
-import { getRarityMaxPercent, getMinRunsToJudgeRarity } from '../features/item-dungeon-sources.js';
+import { getRarityMaxPercent, getMinRunsToJudgeRarity, isRarityDecided, isRarityConfirmed } from '../features/item-dungeon-sources.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { summarizeManualDropBatches } from '../features/manual-drops.js';
 import { computeSalesSummary, computeLikelyUnsoldInventory } from '../features/sales.js';
@@ -730,6 +730,17 @@ function buildRareDropsCard() {
   };
 
   const descartados = AppState.rarityDismissed || [];
+  // As decisões, uma linha por ITEM — é aqui que o desfazer mora. No feed acima ele apareceria
+  // repetido em cada queda do mesmo item, que é ruído puro.
+  const confirmados = AppState.rarityConfirmed || [];
+  const listaConfirmados = !confirmados.length ? '' : `
+    <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+      <label class="lbl" style="margin-bottom:6px">Você confirmou como raro</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${confirmados.map(n => `<span class="badge" style="background:var(--epic-bg);color:var(--epic);border:1px solid var(--epic-border);display:flex;align-items:center;gap:6px"><i class="ti ti-star-filled" style="font-size:11px"></i>${esc(n)}<button aria-label="Deixar de acompanhar ${esc(n)}" title="Deixar de tratar como raro" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:0;display:flex" onclick="unconfirmRarity('${escAttr(n)}')"><i class="ti ti-arrow-back-up"></i></button></span>`).join('')}
+      </div>
+    </div>`;
+
   const listaDescartados = !descartados.length ? '' : `
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
       <label class="lbl" style="margin-bottom:6px">Você marcou como "não é raro"</label>
@@ -776,11 +787,23 @@ function buildRareDropsCard() {
         <span style="margin-left:auto;display:flex;align-items:center;gap:10px">
           ${i.value ? `<strong style="color:${getAlzTierColor(i.value)}" title="${formatNumber(i.value)} Alz">${formatAlzGamer(i.value)}</strong>` : ''}
           <span style="color:var(--muted);font-size:var(--fs-xs)">${quandoTexto(i.at)}</span>
-          <button aria-label="Não considero ${esc(i.name)} raro" title="Não considero isso raro — tira daqui e do destaque roxo" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;display:flex" onclick="dismissRarity('${escAttr(i.name)}')"><i class="ti ti-x"></i></button>
+          ${/* Duas ações, não uma — antes só existia o "não é raro", então a fila de triagem só
+               esvaziava por um lado e o que você já sabia ser raridade perguntava pra sempre.
+               Decidido é decidido, nos dois sentidos.
+
+               E depois de decidido a linha para de ter botão: este feed é HISTÓRICO, o mesmo item
+               aparece em várias quedas, e repetir um "desfazer" em cada uma enche a tela de botão
+               pra uma decisão que é do ITEM, não da queda. Desfazer mora nas listas por item, no
+               fim do card, uma vez cada. */''}
+          ${isRarityDecided(i.name)
+            ? `<i class="ti ti-${isRarityConfirmed(i.name) ? 'star-filled' : 'eye-off'}" title="${isRarityConfirmed(i.name) ? 'Você confirmou que é raro' : 'Você marcou que não é raro'}" style="font-size:13px;color:var(--muted);opacity:.7"></i>`
+            : `<button aria-label="Confirmo que ${esc(i.name)} é raro" title="É raro, quero acompanhar — para de perguntar e entra em 'o que você caça'" style="background:transparent;border:none;color:var(--epic);cursor:pointer;font-size:14px;padding:0;display:flex" onclick="confirmRarity('${escAttr(i.name)}')"><i class="ti ti-star"></i></button>
+              <button aria-label="Não considero ${esc(i.name)} raro" title="Não considero isso raro — tira daqui e do destaque roxo" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;display:flex" onclick="dismissRarity('${escAttr(i.name)}')"><i class="ti ti-x"></i></button>`}
         </span>
       </div>`).join('')}
     </div>`}
   ${listaSecas}
+  ${listaConfirmados}
   ${listaDescartados}`,
   });
 }

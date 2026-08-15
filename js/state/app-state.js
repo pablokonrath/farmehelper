@@ -234,6 +234,9 @@ export const AppState = {
   // Itens que você marcou como "não é raro pra mim", mesmo o histórico dizendo que são. Vale por
   // cima da detecção automática. Ver item-dungeon-sources.js.
   rarityDismissed: [],
+  // O outro lado da mesma decisão: itens que você confirmou serem raros. Existe pra a triagem
+  // parar de perguntar depois de decidida — só o descarte esvaziava a fila antes.
+  rarityConfirmed: [],
   // Período do card "Sua evolução" (7 ou 30 dias). Só UI, não persiste — volta pro mês ao
   // recarregar, que é a visão mais útil no dia a dia.
   trendPeriodDays: 30,

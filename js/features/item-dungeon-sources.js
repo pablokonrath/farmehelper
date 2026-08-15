@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { saveItemDungeonSources, saveRarityThreshold, saveRarityDismissed } from '../state/persistence.js';
+import { saveItemDungeonSources, saveRarityThreshold, saveRarityDismissed, saveRarityConfirmed } from '../state/persistence.js';
 import { isExcludedGearItem, isEventItem } from './drops.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
@@ -107,9 +107,46 @@ export function isRarityDismissed(itemName) {
   return (AppState.rarityDismissed || []).includes(itemName);
 }
 
+// O outro lado da mesma decisão: "sim, isso É raro". Faltava, e a falta tinha uma consequência
+// concreta — só a recusa tirava o item da fila de triagem, então o que você já tinha decidido que
+// era raro continuava perguntando pra sempre. Uma fila que só esvazia por um dos lados não é fila,
+// é lista infinita.
+//
+// Confirmar também vale por cima da estatística: item que cai um pouco acima do limiar mas que
+// você considera raridade entra no destaque e em "o que você caça" do mesmo jeito.
+export function isRarityConfirmed(itemName) {
+  return (AppState.rarityConfirmed || []).includes(itemName);
+}
+
+// Já decidido, num sentido ou no outro — é isso que a triagem usa pra parar de perguntar.
+export function isRarityDecided(itemName) {
+  return isRarityConfirmed(itemName) || isRarityDismissed(itemName);
+}
+
+export function confirmRarity(itemName) {
+  if (!AppState.rarityConfirmed) AppState.rarityConfirmed = [];
+  if (!AppState.rarityConfirmed.includes(itemName)) AppState.rarityConfirmed.push(itemName);
+  // Confirmar desfaz um descarte anterior — as duas listas são a mesma pergunta, e o item não
+  // pode estar nos dois lados dela.
+  AppState.rarityDismissed = (AppState.rarityDismissed || []).filter(n => n !== itemName);
+  saveRarityConfirmed().catch(err => console.error('Falha ao salvar confirmação de raridade:', err));
+  saveRarityDismissed().catch(err => console.error('Falha ao salvar exclusão de raridade:', err));
+  renderPage();
+}
+
+export function unconfirmRarity(itemName) {
+  AppState.rarityConfirmed = (AppState.rarityConfirmed || []).filter(n => n !== itemName);
+  saveRarityConfirmed().catch(err => console.error('Falha ao salvar confirmação de raridade:', err));
+  renderPage();
+}
+
 export function dismissRarity(itemName) {
   if (!AppState.rarityDismissed) AppState.rarityDismissed = [];
   if (!AppState.rarityDismissed.includes(itemName)) AppState.rarityDismissed.push(itemName);
+  // Simetrico do confirmRarity: descartar tira da lista de confirmados, senao o item ficaria
+  // nos dois lados da mesma pergunta e o resultado dependeria da ordem de leitura.
+  AppState.rarityConfirmed = (AppState.rarityConfirmed || []).filter(n => n !== itemName);
+  saveRarityConfirmed().catch(err => console.error("Falha ao salvar confirmacao de raridade:", err));
   saveRarityDismissed().catch(err => console.error('Falha ao salvar exclusão de raridade:', err));
   renderPage();
 }
@@ -189,6 +226,14 @@ export function getExpectedItemNamesForDungeon(dungeonId) {
   }
 
   for (const name of getStatisticalRareItemNames(dungeonId)) names.add(name);
+
+  // O que você confirmou como raro entra mesmo que a estatística discorde — curadoria ganha da
+  // estatística nos dois sentidos, igual ao descarte logo abaixo. Só entra se o item já caiu
+  // nesta DG: confirmar "é raro" é sobre o item, não sobre onde ele cai.
+  for (const name of AppState.rarityConfirmed || []) {
+    if (getItemRateInDungeon(dungeonId, name)?.qty > 0) names.add(name);
+  }
+
   for (const name of AppState.rarityDismissed || []) names.delete(name);
 
   // Rede de segurança: equipamento e item de evento NUNCA são raridade, venham de onde vierem.
