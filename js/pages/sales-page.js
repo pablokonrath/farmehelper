@@ -96,6 +96,59 @@ export function renderSalesPage() {
   const goalsProgress = computeSalesGoalsProgress();
   const totalPct = totalAllocatedPercentage();
   const todayAlloc = goalsProgress.length ? computeTodayGoalsAllocation() : null;
+  // A % sugerida, e a frase muda conforme exista prazo — porque a pergunta é outra. Com prazo é
+  // "quanto preciso"; sem prazo é "quanto dá". Mostrar as duas com o mesmo texto faria o número
+  // parecer a mesma coisa quando não é.
+  const goalSuggestion = g => {
+    const s = g.sugestao;
+    if (!s || g.complete) return '';
+    const base = 'font-size:11px;margin-top:8px;padding:8px 10px;border-radius:6px';
+    const aplicar = pct => pct === g.percentage ? '' : ` <button class="btn btn-d btn-xs" style="margin-left:6px" onclick="setGoalPercentage('${g.id}', ${pct})">Usar ${pct}%</button>`;
+
+    if (s.tipo === 'prazo-vencido') {
+      return `<div style="${base};background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn)"><i class="ti ti-clock-exclamation"></i> O prazo já passou e o cofre não encheu. Defina um prazo novo ou tire o prazo pra voltar à sugestão sustentável.</div>`;
+    }
+    if (s.tipo === 'inalcancavel') {
+      return `<div style="${base};background:var(--err-bg);border:1px solid var(--err-border);color:var(--err)"><i class="ti ti-alert-triangle"></i> <strong>Não fecha no prazo.</strong> Faltam ${s.diasRestantes} dia(s) e, mesmo guardando 100% das vendas, não dá — você vende ~${formatAlzGamer(s.vendaDiaria)}/dia e precisaria de <strong>${formatAlzGamer(s.vendaNecessariaPorDia)}/dia</strong>. Aumentar a % não resolve: ou vende mais, ou estica o prazo, ou baixa o alvo.</div>`;
+    }
+    if (s.tipo === 'prazo') {
+      return `<div style="${base};background:var(--surf);border:1px solid var(--border);color:var(--txt2)"><i class="ti ti-target-arrow" style="color:var(--gold)"></i> Pra fechar em ${s.diasRestantes} dia(s), guarde <strong style="color:var(--gold)">${s.pct}%</strong> das vendas — no seu ritmo de ~${formatAlzGamer(s.vendaDiaria)}/dia.${aplicar(s.pct)}</div>`;
+    }
+    if (s.tipo === 'sem-folga') {
+      return `<div style="${base};background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn)"><i class="ti ti-alert-triangle"></i> Suas vendas (~${formatAlzGamer(s.vendaDiaria)}/dia) mal cobrem o custo de rush (~${formatAlzGamer(s.custoRush)}/dia). Guardar qualquer coisa agora sai do capital que banca o farme — e é o caminho pra ter que retirar depois.</div>`;
+    }
+    return `<div style="${base};background:var(--surf);border:1px solid var(--border);color:var(--txt2)"><i class="ti ti-scale" style="color:var(--acc)"></i> Sem prazo, dá pra sustentar <strong style="color:var(--acc)">${s.pct}%</strong>: você vende ~${formatAlzGamer(s.vendaDiaria)}/dia e o rush come ~${formatAlzGamer(s.custoRush)}/dia, sobrando ${formatAlzGamer(s.folga)}.${s.retiradas ? ` Reduzi por causa d${s.retiradas > 1 ? 'as' : 'a'} ${s.retiradas} retirada${s.retiradas > 1 ? 's' : ''} — guardar menos e não precisar mexer vale mais que guardar muito e sacar.` : ''}${aplicar(s.pct)}</div>`;
+  };
+
+  // Retiradas: o formulário e o extrato. Fica sempre à mão, não escondido atrás de um toggle —
+  // usar a reserva é normal, e o que não pode é o cofre continuar contando dinheiro que já saiu.
+  const goalMovements = g => `
+    <div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+      ${!g.withdrawals.length ? '' : `<div style="display:flex;flex-direction:column;gap:3px;margin-bottom:8px">
+        ${g.withdrawals.map((w, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)">
+          <span style="color:var(--warn);font-weight:600">−${formatAlzGamer(w.amount)}</span>
+          <span>${formatDateBR(w.date)}</span>
+          ${w.reason ? `<span style="flex:1">${esc(w.reason)}</span>` : '<span style="flex:1"></span>'}
+          <button aria-label="Remover retirada" title="Remover esta retirada" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:12px;padding:0" onclick="removeGoalWithdrawal('${g.id}', ${i})"><i class="ti ti-x"></i></button>
+        </div>`).join('')}
+      </div>`}
+      <div class="row" style="align-items:flex-end">
+        <div style="width:130px"><label class="lbl" style="font-size:10px">Retirar (Alz)</label>
+          <input class="inp inp-sm" id="wd-${g.id}" type="text" inputmode="numeric" placeholder="Alz" oninput="maskAlzInputLive(this)"></div>
+        <div style="flex:1;min-width:120px"><label class="lbl" style="font-size:10px">Pra quê (opcional)</label>
+          <input class="inp inp-sm" id="wdr-${g.id}" placeholder="ex: comprei gema"></div>
+        <div><label class="lbl" style="font-size:10px">&nbsp;</label>
+          <button class="btn btn-d btn-sm" onclick="addGoalWithdrawal('${g.id}', document.getElementById('wd-${g.id}').value, document.getElementById('wdr-${g.id}').value)"><i class="ti ti-arrow-down"></i>Registrar retirada</button></div>
+        ${/* Campo escrito à mão em vez de renderDateInputBR: aquele monta o onchange como
+             `fn(valor)`, e aqui o handler precisa saber DE QUAL cofre é. Os mesmos helpers globais
+             de máscara e parse são usados, então o comportamento do campo é idêntico. */''}
+        <div style="width:150px"><label class="lbl" style="font-size:10px">Prazo (opcional)</label>
+          <input class="inp inp-sm" type="text" inputmode="numeric" placeholder="DD/MM/AAAA" value="${g.deadline ? formatDateBR(g.deadline) : ''}"
+            onfocus="this.value = this.value.replace(/\\D/g,'')" oninput="this.value = maskDateInputBR(this.value)"
+            onchange="setGoalDeadline('${g.id}', parseDateInputBR(this.value))"></div>
+      </div>
+    </div>`;
+
   const goalsCard = `
 <div class="card">
   <div class="ctitle"><i class="ti ti-target"></i>Cofres de Alz</div>
@@ -109,10 +162,13 @@ export function renderSalesPage() {
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div style="flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden"><div style="width:${Math.round(g.progress * 100)}%;height:100%;background:${g.complete ? 'var(--ok)' : 'var(--acc)'}"></div></div>
-        <div style="font-size:12px;font-weight:600;color:${g.complete ? 'var(--ok)' : 'var(--txt)'};white-space:nowrap" title="${formatNumber(g.accumulated)} de ${formatNumber(g.targetAlz)} Alz">${formatAlzGamer(g.accumulated)} / ${formatAlzGamer(g.targetAlz)}</div>
+        <div style="font-size:12px;font-weight:600;color:${g.complete ? 'var(--ok)' : 'var(--txt)'};white-space:nowrap" title="${formatNumber(g.saldo)} de ${formatNumber(g.targetAlz)} Alz">${formatAlzGamer(g.saldo)} / ${formatAlzGamer(g.targetAlz)}</div>
       </div>
+      ${!g.withdrawn ? '' : `<div style="font-size:11px;color:var(--muted);margin-top:6px"><i class="ti ti-arrow-down-circle" style="color:var(--warn)"></i> Entrou ${formatAlzGamer(g.accumulated)}, você retirou <strong style="color:var(--warn)">${formatAlzGamer(g.withdrawn)}</strong> em ${g.withdrawals.length} vez(es) — o saldo acima já desconta.</div>`}
       ${!g.complete && g.etaDate ? `<div style="font-size:11px;color:var(--muted);margin-top:6px"><i class="ti ti-trending-up"></i> No ritmo atual (~${formatAlzGamer(g.dailyPace)}/dia), cheio em ~${g.etaDays} dia(s) — por volta de ${formatDateBR(g.etaDate)}.</div>` : ''}
       ${!g.complete && !g.etaDate ? `<div style="font-size:11px;color:var(--muted);margin-top:6px"><i class="ti ti-minus"></i> Ainda sem venda desde a criação — sem ritmo pra prever data.</div>` : ''}
+      ${goalSuggestion(g)}
+      ${goalMovements(g)}
     </div>`).join('')}
   </div>
   <div style="font-size:11px;color:${totalPct > 100 ? 'var(--err)' : 'var(--muted)'};margin-bottom:12px">${totalPct > 100 ? `<i class="ti ti-alert-triangle"></i> Seus cofres somam ${totalPct}% — passa de 100%, ajuste algum.` : `${totalPct}% das vendas alocado, ${100 - totalPct}% livre.`}</div>

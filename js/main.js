@@ -13,7 +13,7 @@ import { addEventTime, removeEventTime, startEventScheduleChecks } from './featu
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
 import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory, updateSalePriceHint } from './features/sales.js';
-import { addSalesGoal, deleteSalesGoal } from './features/sales-goals.js';
+import { addSalesGoal, deleteSalesGoal, addGoalWithdrawal, removeGoalWithdrawal, setGoalDeadline, setGoalPercentage } from './features/sales-goals.js';
 import { addItemGoal, deleteItemGoal } from './features/item-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
 import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
@@ -283,6 +283,10 @@ Object.assign(window, {
   setPriceHistoryItem,
   addSalesGoal,
   deleteSalesGoal,
+  addGoalWithdrawal,
+  removeGoalWithdrawal,
+  setGoalDeadline,
+  setGoalPercentage,
   addItemGoal,
   deleteItemGoal,
   openQuickMode,
