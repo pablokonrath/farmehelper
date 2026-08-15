@@ -1,6 +1,7 @@
 import { AppState } from '../state/app-state.js';
+import { saveEventConfig } from '../state/persistence.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { getActiveEvent } from './events.js';
+import { renderPage } from '../router.js';
 
 // Eventos do servidor às vezes dão um item de evento em quantidade DIFERENTE por DG: o log
 // registra "caiu 1 fragmento", mas naquela DG aquele 1 vale 3, e em outra vale 5. Contar as
@@ -35,22 +36,7 @@ export function buildDefaultEventMultipliers() {
   return porId;
 }
 
-// A configuração "do evento atual" agora é uma VISTA do evento em andamento na lista (ver
-// features/events.js). Quem consome isto — o filtro de Alz (isEventItem), o painel da Visão geral
-// e a contagem — continua vendo a mesma forma de antes e não precisou saber que virou histórico.
-//
-// AppState.eventConfig segue existindo como fallback pra quem ainda não tem evento na lista: é o
-// dado antigo, e a migração acontece na primeira vez que a página de Eventos é aberta.
 export function getEventConfig() {
-  const ativo = getActiveEvent();
-  if (ativo) {
-    return {
-      enabled: true,
-      itemName: ativo.itemName || '',
-      since: ativo.inicio || '',
-      multipliers: ativo.multipliers && Object.keys(ativo.multipliers).length ? ativo.multipliers : buildDefaultEventMultipliers(),
-    };
-  }
   const c = AppState.eventConfig || {};
   return {
     enabled: !!c.enabled,
@@ -60,6 +46,24 @@ export function getEventConfig() {
   };
 }
 
+
+function salvar(patch) {
+  AppState.eventConfig = { ...getEventConfig(), ...patch };
+  saveEventConfig().catch(err => console.error('Falha ao salvar evento:', err));
+  renderPage();
+}
+
+export function setEventEnabled(enabled) { salvar({ enabled: !!enabled }); }
+export function setEventItemName(name) { salvar({ itemName: (name || '').trim() }); }
+export function setEventSince(date) { salvar({ since: date || '' }); }
+
+export function setEventMultiplier(dungeonId, value) {
+  const mult = Math.max(0, parseInt(value, 10) || 0);
+  const multipliers = { ...getEventConfig().multipliers };
+  if (mult > 0) multipliers[dungeonId] = mult;
+  else delete multipliers[dungeonId];
+  salvar({ multipliers });
+}
 
 // Conta o item do evento no histórico de sessões, aplicando o multiplicador da DG de cada uma.
 // Casa o nome por "contém" normalizado: o log costuma trazer sufixos/variações no nome do item,

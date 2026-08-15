@@ -12,7 +12,6 @@ import { renderSessionsPage, fillSuggestedRunMinutes } from './pages/sessions-pa
 import { renderQuickPage } from './pages/quick-page.js';
 import { renderTutorialPage } from './pages/tutorial-page.js';
 import { renderDropSourcePage } from './pages/drop-source-page.js';
-import { renderEventsPage } from './pages/events-page.js';
 
 export function navigateTo(page) {
   AppState.currentPage = page;
@@ -35,7 +34,6 @@ export function renderPage() {
   else if (AppState.currentPage === 'calculo') main.innerHTML = renderPricingPage();
   else if (AppState.currentPage === 'rush') main.innerHTML = renderRushPage();
   else if (AppState.currentPage === 'alertas') main.innerHTML = renderAlertsPage();
-  else if (AppState.currentPage === 'eventos') main.innerHTML = renderEventsPage();
   else if (AppState.currentPage === 'sessoes') main.innerHTML = renderSessionsPage();
   else if (AppState.currentPage === 'vendas') main.innerHTML = renderSalesPage();
   else if (AppState.currentPage === 'rapido') main.innerHTML = renderQuickPage();

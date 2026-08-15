@@ -171,7 +171,6 @@ export async function loadPersistedState() {
   AppState.rarityDismissed = appSettings.rarityDismissed ?? [];
   AppState.rarityConfirmed = appSettings.rarityConfirmed ?? [];
   AppState.eventConfig = appSettings.eventConfig ?? AppState.eventConfig;
-  AppState.events = appSettings.events ?? [];
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -216,8 +215,8 @@ export function saveDropSnapshot(rows) {
   return put('drop-snapshots.php', rows);
 }
 
-export function saveEvents() {
-  return put('app-settings.php', { events: AppState.events });
+export function saveEventConfig() {
+  return put('app-settings.php', { eventConfig: AppState.eventConfig });
 }
 
 export function saveRarityConfirmed() {

@@ -477,10 +477,29 @@ function buildEventCard() {
   const progresso = computeEventProgress();
   const aberto = cfg.enabled;
 
-  // A configuracao mora na pagina de Eventos, nao aqui. Duas telas editando o mesmo evento
-  // divergiriam, e agora existe um historico de eventos que este card nao tem como representar —
-  // ele mostra o progresso do evento em andamento, que e o que serve num painel.
-  const configuracao = !aberto ? "" : `<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Item: <strong style="color:var(--txt)">${esc(cfg.itemName)}</strong>${cfg.since ? ` desde ${formatDateBR(cfg.since)}` : ""} — <a href="#" onclick="navigateTo('eventos');return false" style="color:var(--acc);text-decoration:underline">configurar em Eventos</a></div>`;
+  const configuracao = !aberto ? '' : `
+    <div class="row" style="align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px"><label class="lbl">Item do evento</label>
+        <input class="inp" list="eventItemSugg" value="${esc(cfg.itemName)}" placeholder="ex: Fragmento Prismático" onblur="setEventItemName(this.value)">
+        <datalist id="eventItemSugg">${[...new Set(AppState.knownItemNames || [])].map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+        <div class="hint">Casa por trecho do nome — não precisa ser exato.<br><strong style="color:var(--gold)">Este item não conta como Alz</strong> em nenhuma parte do app enquanto o evento estiver ligado: ele é ficha de troca, e o valor aparece quando você resgatar a recompensa. Isso também impede que a DG do evento suba no ranking agora e afunde quando ele acabar — o histórico não é apagado, então o pico ficaria na média pra sempre.</div></div>
+      <div style="width:150px"><label class="lbl">Contar a partir de</label>
+        ${renderDateInputBR({ id: 'eventSince', value: cfg.since, onChange: 'setEventSince' })}</div>
+    </div>
+    <label class="lbl">Quanto cada DG vale por drop</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      ${AppState.dungeonList.filter(d => cfg.multipliers[d.id]).map(d => `<span style="display:flex;align-items:center;gap:6px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:var(--fs-sm)">
+        ${esc(d.name)} <span style="color:var(--muted)">×</span>
+        <input class="inp inp-sm" type="number" min="0" value="${cfg.multipliers[d.id]}" style="width:56px" onchange="setEventMultiplier('${escAttr(d.id)}', this.value)">
+      </span>`).join('')}
+    </div>
+    <div class="row" style="align-items:flex-end;margin-bottom:12px">
+      <div style="flex:1"><label class="lbl">Adicionar DG ao evento</label>
+        <select class="inp" onchange="if(this.value){setEventMultiplier(this.value, 1);this.value=''}">
+          <option value="">Escolher DG…</option>
+          ${AppState.dungeonList.filter(d => !cfg.multipliers[d.id]).map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
+        </select></div>
+    </div>`;
 
   const resultado = !progresso ? '' : !progresso.totalBruto ? `
     <div class="empty" style="padding:12px 0">Nenhum "${esc(progresso.itemName)}" registrado em sessão ainda${cfg.since ? ` desde ${formatDateBR(cfg.since)}` : ''}.</div>`
@@ -501,9 +520,10 @@ function buildEventCard() {
 
   // O liga/desliga fica DENTRO do corpo, não no cabeçalho: o cabeçalho inteiro é a área de
   // clique pra colapsar, e um toggle ali dentro capturaria/competiria com esse clique.
-  // Sem liga/desliga aqui: "ter evento ativo" agora significa "existe evento na lista sem data de
-  // fim". Ligar e criar; desligar e fechar. As duas coisas sao a pagina de Eventos.
-  const chave = "";
+  const chave = `<label class="tgl-row" style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--muted);cursor:pointer;margin-bottom:12px">
+      <label class="tgl"><input type="checkbox" aria-label="Evento ativo" ${aberto ? 'checked' : ''} onchange="setEventEnabled(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label>
+      Evento ativo
+    </label>`;
 
   return collapsibleCard({
     id: 'overview-event',
@@ -516,7 +536,7 @@ function buildEventCard() {
       : '<span class="badge badge-muted">desligado</span>',
     defaultOpen: aberto && !progresso?.totalContado,
     body: `${chave}${!aberto
-      ? `<div style="font-size:var(--fs-sm);color:var(--muted)">Nenhum evento em andamento. <a href="#" onclick="navigateTo('eventos');return false" style="color:var(--acc);text-decoration:underline">Criar em Eventos</a> — serve pra quando um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa e 5 em outra).</div>`
+      ? '<div style="font-size:var(--fs-sm);color:var(--muted)">Ligue quando houver evento em que um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa DG e 5 em outra). O FarmHub faz a conta pra você.</div>'
       : `${infoToggle('overview-event-info', 'O log do jogo registra só "caiu 1 item" — ele não sabe em qual DG. Quem sabe é o histórico de sessões, então a contagem aqui usa as sessões: um drop só entra com o multiplicador se caiu dentro de uma sessão marcada naquela DG. Como o FarmHub abre e encerra sessão sozinho, na prática cobre quase tudo — e o que ficou de fora aparece declarado abaixo, em vez de ser omitido. Fica num painel próprio porque evento é temporário: nada disso mexe no Total de farme, Top itens ou Relatório.')}
       ${configuracao}${resultado}`}`,
   });

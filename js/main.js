@@ -20,8 +20,8 @@ import { toggleInfoBox, toggleCard } from './features/ui-toggles.js';
 import { runUndo } from './features/undo.js';
 import { copyDaySummaryImage, downloadDaySummaryImage } from './features/day-summary-image.js';
 import { toggleAutoSessionStart, setSessionIdleCloseMinutes } from './features/session-autostart.js';
+import { setEventEnabled, setEventItemName, setEventSince, setEventMultiplier } from './features/event-tracker.js';
 
-import { createEvent, setEventField, setEventDgMultiplier, deleteEvent, addEventRedemption, removeEventRedemption } from './features/events.js';
 import {
   toggleCategoryManager,
   addItemCategory,
@@ -122,12 +122,10 @@ Object.assign(window, {
   setTrendPeriod,
   setTrendMode,
   setConsistencyPeriod,
-  createEvent,
-  setEventField,
-  setEventDgMultiplier,
-  deleteEvent,
-  addEventRedemption,
-  removeEventRedemption,
+  setEventEnabled,
+  setEventItemName,
+  setEventSince,
+  setEventMultiplier,
   deleteManualDropBatch,
   searchDropSource,
   setDropSourceTargetQty,
