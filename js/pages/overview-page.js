@@ -512,7 +512,7 @@ function buildEventCard() {
       : '<span class="badge badge-muted">desligado</span>',
     defaultOpen: aberto && !progresso?.totalContado,
     body: `${chave}${!aberto
-      ? '<div style="font-size:var(--fs-sm);color:var(--muted)">Nenhum evento em andamento. <a href="#" onclick="navigateTo('eventos');return false" style="color:var(--acc);text-decoration:underline">Criar em Eventos</a> — serve pra quando um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa e 5 em outra).</div>'
+      ? `<div style="font-size:var(--fs-sm);color:var(--muted)">Nenhum evento em andamento. <a href="#" onclick="navigateTo('eventos');return false" style="color:var(--acc);text-decoration:underline">Criar em Eventos</a> — serve pra quando um item vale quantidade diferente por DG (ex: fragmento que vale 3 numa e 5 em outra).</div>`
       : `${infoToggle('overview-event-info', 'O log do jogo registra só "caiu 1 item" — ele não sabe em qual DG. Quem sabe é o histórico de sessões, então a contagem aqui usa as sessões: um drop só entra com o multiplicador se caiu dentro de uma sessão marcada naquela DG. Como o FarmHub abre e encerra sessão sozinho, na prática cobre quase tudo — e o que ficou de fora aparece declarado abaixo, em vez de ser omitido. Fica num painel próprio porque evento é temporário: nada disso mexe no Total de farme, Top itens ou Relatório.')}
       ${configuracao}${resultado}`}`,
   });

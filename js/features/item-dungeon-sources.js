@@ -62,6 +62,75 @@ export function findKnownSourcesForQuery(query) {
   return [...dungeonIds].map(id => AppState.dungeonList.find(d => d.id === id)).filter(Boolean);
 }
 
+// Quantos drops um item precisa ter pra a exclusividade dele significar alguma coisa. Item que
+// caiu 1 vez numa DG não está "provado exclusivo" — você só não o viu em outro lugar ainda, que é
+// uma afirmação bem mais fraca.
+const MIN_DROPS_PARA_SUGERIR_EXCLUSIVO = 5;
+
+// Itens que, no SEU histórico, só caíram numa única DG — candidatos a identificador.
+//
+// Existe porque descobrir isso na mão é caçar agulha: são centenas de nomes espalhados por
+// dezenas de DGs, e a informação já está toda no histórico de sessões. O app cruza e entrega a
+// lista pronta; a decisão continua sendo sua, porque "nunca vi em outro lugar" não é o mesmo que
+// "não cai em outro lugar" — e essa diferença nenhum dado seu resolve.
+//
+// Por isso a sugestão vem com as DUAS medidas que sustentam (ou não) a conclusão: quantas vezes o
+// item caiu, e quantas runs você fez nas OUTRAS DGs. A segunda é a que quase ninguém pensa e é a
+// que mais importa: se você só farmou uma DG, tudo parece exclusivo dela.
+export function suggestExclusiveItems() {
+  const porItem = new Map(); // nome -> { dgs: Map(dgId -> qty), total }
+  const runsPorDg = new Map();
+
+  for (const s of AppState.dgSessions) {
+    if (!s.dungeonId) continue;
+    runsPorDg.set(s.dungeonId, (runsPorDg.get(s.dungeonId) || 0) + (s.runs || 0));
+    for (const [nome, qty] of Object.entries(s.items || {})) {
+      if (isExcludedGearItem(nome) || isEventItem(nome)) continue;
+      let reg = porItem.get(nome);
+      if (!reg) porItem.set(nome, (reg = { dgs: new Map(), total: 0 }));
+      reg.dgs.set(s.dungeonId, (reg.dgs.get(s.dungeonId) || 0) + qty);
+      reg.total += qty;
+    }
+  }
+
+  const runsTotais = [...runsPorDg.values()].reduce((a, b) => a + b, 0);
+
+  const sugestoes = [];
+  for (const [nome, reg] of porItem) {
+    if (reg.dgs.size !== 1) continue;
+    if (reg.total < MIN_DROPS_PARA_SUGERIR_EXCLUSIVO) continue;
+    // Já cadastrado (em qualquer DG) não é sugestão: ou você já decidiu, ou já está resolvido.
+    if (nome in AppState.itemDungeonSources) continue;
+
+    const [dungeonId, qty] = [...reg.dgs][0];
+    const dg = AppState.dungeonList.find(d => d.id === dungeonId);
+    if (!dg) continue;
+
+    const runsNaDg = runsPorDg.get(dungeonId) || 0;
+    sugestoes.push({
+      nome,
+      dungeonId,
+      dungeonName: dg.name,
+      qty,
+      runsNaDg,
+      // A evidência de verdade: quanto você jogou em OUTRO lugar sem ver esse item cair.
+      runsEmOutras: runsTotais - runsNaDg,
+    });
+  }
+
+  // Mais drops e mais runs fora da DG primeiro — é a ordem da confiança.
+  return sugestoes.sort((a, b) => (b.qty * Math.log1p(b.runsEmOutras)) - (a.qty * Math.log1p(a.runsEmOutras)));
+}
+
+// Cadastra o item já vinculado à DG, num passo só. Pela tela normal são dois (criar e marcar), e
+// aqui a DG já é conhecida — pedir de novo seria só atrito.
+export function addExclusiveItemForDungeon(itemName, dungeonId) {
+  if (!itemName || !dungeonId) return;
+  AppState.itemDungeonSources[itemName] = [dungeonId];
+  saveItemDungeonSources().catch(err => console.error('Falha ao salvar item x DG:', err));
+  renderPage();
+}
+
 // Raridade é medida em % de chance por run — a MESMA unidade que a página "Onde dropa" já exibe
 // ("taxa por run: 4.2%"). Antes o limiar era expresso em "1 a cada N runs", que é a mesma conta,
 // mas obrigava a converter de cabeça pra comparar as duas telas.

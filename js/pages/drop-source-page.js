@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { findDropSources, findDungeonDrops, getKnownSessionItemNames, computeRouteItemYield } from '../features/drop-source.js';
-import { findKnownSourcesForQuery } from '../features/item-dungeon-sources.js';
+import { findKnownSourcesForQuery, suggestExclusiveItems } from '../features/item-dungeon-sources.js';
 import { computeItemGoalsProgress } from '../features/item-goals.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { DAILY_RUN_LIMIT, computeDgComparison } from '../features/dg-session.js';
@@ -8,10 +8,35 @@ import { formatDateBR, renderAlzValue, formatAlzGamer, formatDuration } from '..
 import { esc, escAttr } from '../utils/escape.js';
 import { expectedCountRange } from '../utils/stats.js';
 
-// Cadastro manual (curado) de quais DGs cada item pode dropar — diferente da busca acima, que é
-// estatística. Alimenta o destaque de "item esperado" em Sessões de farme, E complementa a busca
-// desta página quando o histórico pessoal ainda não tem dado (ver findKnownSourcesForQuery). Só
-// admin mestre edita (mesmo padrão de Relatório → Gerenciar categorias).
+// Candidatos a identificador, deduzidos do próprio histórico. Achar isso na mão é caçar agulha:
+// são centenas de nomes espalhados por dezenas de DGs, e a informação já está toda nas sessões.
+//
+// Mostra as duas medidas que sustentam (ou derrubam) cada sugestão, em vez de só afirmar. A
+// segunda é a que decide e quase ninguém pensa nela: quantas runs você fez em OUTRAS DGs sem ver
+// aquele item cair. Se você só farmou uma DG, tudo parece exclusivo dela — e o número denuncia.
+function sugestoesExclusivas() {
+  const lista = suggestExclusiveItems();
+  if (!lista.length) return '';
+  const mostrar = lista.slice(0, 12);
+  return `
+  <div style="margin-bottom:14px;padding:12px;background:var(--surf2);border:1px dashed var(--border);border-radius:8px">
+    <div style="font-size:12px;margin-bottom:4px"><i class="ti ti-bulb" style="color:var(--gold)"></i> <strong>${lista.length} item(ns) que só caíram numa DG</strong> no seu histórico — candidatos a identificador.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">"Nunca vi em outro lugar" não é o mesmo que "não cai em outro lugar", então confira antes: <strong>runs fora</strong> é quanto você farmou em OUTRAS DGs sem ele aparecer — quanto maior, mais confiável a exclusividade.</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${mostrar.map(s => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;padding:6px 10px;background:var(--surf);border:1px solid var(--border);border-radius:6px">
+        <strong style="flex:1;min-width:140px">${esc(s.nome)}</strong>
+        <span style="color:var(--acc)">${esc(s.dungeonName)}</span>
+        <span style="color:var(--muted);font-size:11px">${s.qty}× caíram · ${s.runsEmOutras.toLocaleString('pt-BR')} runs fora</span>
+        <button class="btn btn-d btn-xs" onclick="addExclusiveItemForDungeon('${escAttr(s.nome)}', '${escAttr(s.dungeonId)}')"><i class="ti ti-fingerprint"></i>Cadastrar</button>
+      </div>`).join('')}
+    </div>
+    ${lista.length > mostrar.length ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">+${lista.length - mostrar.length} outros — cadastre estes e os próximos aparecem.</div>` : ''}
+  </div>`;
+}
+
+// Cadastro curado de quais itens IDENTIFICAM cada DG — é o que faz a sessão automática saber onde
+// você está no primeiro drop. Diferente da busca acima, que é estatística. Só admin mestre edita
+// (mesmo padrão de Relatório → Gerenciar categorias), porque o dado é global.
 function renderItemDungeonSourcesCard() {
   if (!AppState.isMasterAdmin) return '';
   const entries = Object.entries(AppState.itemDungeonSources).sort((a, b) => a[0].localeCompare(b[0]));
@@ -19,6 +44,7 @@ function renderItemDungeonSourcesCard() {
 <div class="card">
   <div class="ctitle" style="margin-bottom:4px"><i class="ti ti-fingerprint"></i>Itens que identificam a DG</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre aqui os itens <strong>exclusivos</strong> de uma DG — Cristal de Fogo no Solo Flamejante, Cristal de Terra na Tumba. É assim que o app sabe onde você está farmando <strong>no primeiro drop</strong>, sem você marcar nada.<br><br>Item cadastrado em <strong>duas ou mais DGs não identifica nada</strong> e é ignorado no palpite — se cai em tudo, a presença dele não diz onde você está. Também não precisa cadastrar raridade aqui: o app deduz sozinho, pelo seu histórico, o que é raro em cada DG.</div>
+  ${sugestoesExclusivas()}
   <div class="row" style="margin-bottom:14px">
     <div style="flex:1"><input class="inp" id="newItemDungeonSource" placeholder="Nome do item" list="dsSugg" onkeydown="if(event.key==='Enter')addItemDungeonSourceItem()"></div>
     <button class="btn btn-p" onclick="addItemDungeonSourceItem()"><i class="ti ti-plus"></i>Adicionar</button>

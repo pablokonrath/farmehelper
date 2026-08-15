@@ -140,6 +140,7 @@ Object.assign(window, {
   addItemDungeonSourceItem,
   removeItemDungeonSourceItem,
   toggleItemDungeonSourceDg,
+  addExclusiveItemForDungeon,
   setRarityMaxPercent,
   dismissRarity,
   confirmRarity,
