@@ -6,6 +6,7 @@ import { infoToggle } from '../features/ui-toggles.js';
 import { DAILY_RUN_LIMIT, computeDgComparison } from '../features/dg-session.js';
 import { formatDateBR, renderAlzValue, formatAlzGamer, formatDuration } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
+import { normalizeForSearch } from '../utils/parsing.js';
 import { expectedCountRange } from '../utils/stats.js';
 
 // Candidatos a identificador, deduzidos do próprio histórico. Achar isso na mão é caçar agulha:
@@ -39,44 +40,105 @@ function sugestoesExclusivas() {
 // (mesmo padrão de Relatório → Gerenciar categorias), porque o dado é global.
 function renderItemDungeonSourcesCard() {
   if (!AppState.isMasterAdmin) return '';
+
+  const busca = normalizeForSearch(AppState.dropSourceCatalogQuery || '');
+  const casa = nome => !busca || normalizeForSearch(nome).includes(busca);
   const entries = Object.entries(AppState.itemDungeonSources).sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Agrupado POR DG, não como lista de itens. A pergunta que se faz aqui não é "que itens eu
+  // cadastrei" — é "que DG eu ainda não sei identificar". A lista plana respondia a primeira,
+  // escondia a segunda, e crescia sem parar até virar rolagem infinita.
+  //
+  // Item em várias DGs não identifica nada e vai pro grupo próprio: é justamente o que precisa
+  // de limpeza, então merece ficar separado em vez de diluído entre os que funcionam.
+  const porDg = new Map();
+  const semIdentificacao = [];
+  for (const [nome, dgIds] of entries) {
+    if (dgIds.length === 1) {
+      if (!porDg.has(dgIds[0])) porDg.set(dgIds[0], []);
+      porDg.get(dgIds[0]).push(nome);
+    } else {
+      semIdentificacao.push([nome, dgIds]);
+    }
+  }
+
+  // Só DG que você de fato farma entra na cobertura. Cobrar identificador de DG nunca jogada
+  // seria uma pendência falsa, que nunca sairia da lista e ainda faria o número parecer pior.
+  const dgsFarmadas = new Set(AppState.dgSessions.filter(s => s.dungeonId).map(s => s.dungeonId));
+  const faltando = AppState.dungeonList.filter(d => dgsFarmadas.has(d.id) && !porDg.has(d.id));
+  const cobertas = AppState.dungeonList.filter(d => porDg.has(d.id)).length;
+
+  const grupos = [...porDg.entries()]
+    .map(([id, nomes]) => ({ dg: AppState.dungeonList.find(d => d.id === id), id, nomes: nomes.filter(casa) }))
+    .filter(g => g.dg && g.nomes.length)
+    .sort((a, b) => a.dg.name.localeCompare(b.dg.name));
+  const semIdFiltrado = semIdentificacao.filter(([n]) => casa(n));
+
   return `
 <div class="card">
   <div class="ctitle" style="margin-bottom:4px"><i class="ti ti-fingerprint"></i>Itens que identificam a DG</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre aqui os itens <strong>exclusivos</strong> de uma DG — Cristal de Fogo no Solo Flamejante, Cristal de Terra na Tumba. É assim que o app sabe onde você está farmando <strong>no primeiro drop</strong>, sem você marcar nada.<br><br>Item cadastrado em <strong>duas ou mais DGs não identifica nada</strong> e é ignorado no palpite — se cai em tudo, a presença dele não diz onde você está. Também não precisa cadastrar raridade aqui: o app deduz sozinho, pelo seu histórico, o que é raro em cada DG.</div>
+
+  ${/* A cobertura vem antes de tudo: é a pergunta que a tela existe pra responder. */''}
+  <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;margin-bottom:12px">
+    <div style="font-size:12px${faltando.length ? ';margin-bottom:6px' : ''}">
+      <i class="ti ti-progress-check" style="color:${faltando.length ? 'var(--warn)' : 'var(--ok)'}"></i>
+      <strong>${cobertas} de ${cobertas + faltando.length} DGs</strong> que você farma já têm identificador.
+    </div>
+    ${!faltando.length ? '' : `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Nessas o app ainda não sabe onde você está — a sessão abre sem DG até você marcar:</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${faltando.map(d => `<span class="badge badge-warn" style="font-size:10px">${esc(d.name)}</span>`).join('')}
+    </div>`}
+  </div>
+
   ${sugestoesExclusivas()}
-  <div class="row" style="margin-bottom:14px">
+
+  <div class="row" style="margin-bottom:12px">
     <div style="flex:1"><input class="inp" id="newItemDungeonSource" placeholder="Nome do item" list="dsSugg" onkeydown="if(event.key==='Enter')addItemDungeonSourceItem()"></div>
     <button class="btn btn-p" onclick="addItemDungeonSourceItem()"><i class="ti ti-plus"></i>Adicionar</button>
   </div>
+
   ${!entries.length ? '<div class="empty" style="padding:14px 0">Nenhum item cadastrado ainda.</div>' : `
-  <div style="display:flex;flex-direction:column;gap:10px">
-  ${entries.map(([itemName, dungeonIds]) => `
-    <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="flex:1;font-weight:600;font-size:13px">${esc(itemName)}</span>
-        ${/* O selo diz se a entrada cumpre o papel do cadastro. Sem ele, item em 3 DGs parece tão
-             útil quanto um exclusivo — e é justamente o que não serve pra nada aqui. */''}
-        ${dungeonIds.length === 1
-          ? '<span class="badge badge-ok" title="Cai só nessa DG — identifica o farme no primeiro drop"><i class="ti ti-fingerprint"></i> identifica</span>'
-          : dungeonIds.length === 0
-            ? '<span class="badge badge-muted" title="Sem DG marcada — não faz nada ainda">sem DG</span>'
-            : `<span class="badge badge-warn" title="Está em ${dungeonIds.length} DGs, então a presença dele não diz onde você está — é ignorado no palpite">não identifica</span>`}
-        <button aria-label="Remover ${esc(itemName)}" title="Remover item" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeItemDungeonSourceItem('${escAttr(itemName)}')"><i class="ti ti-trash"></i></button>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-        ${dungeonIds.map(id => {
-          const dg = AppState.dungeonList.find(d => d.id === id);
-          return `<span class="badge badge-acc" style="display:flex;align-items:center;gap:6px">${esc(dg ? dg.name : id)}<button aria-label="Desvincular ${esc(dg ? dg.name : id)} de ${esc(itemName)}" style="background:transparent;border:none;color:inherit;cursor:pointer;font-size:12px;padding:0;display:flex" onclick="toggleItemDungeonSourceDg('${escAttr(itemName)}', '${escAttr(id)}')"><i class="ti ti-x"></i></button></span>`;
-        }).join('')}
-        <select class="inp inp-sm" style="width:170px" onchange="if(this.value){toggleItemDungeonSourceDg('${escAttr(itemName)}', this.value);this.value=''}">
-          <option value="">+ Adicionar DG...</option>
-          ${AppState.dungeonList.filter(d => !dungeonIds.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
-        </select>
-      </div>
-    </div>`).join('')}
+  <div style="padding-top:10px;border-top:1px solid var(--border)">
+    ${/* Recolhida por padrão: são centenas de nomes, e quem abre esta tela quase sempre vem pela
+         cobertura acima, não pra reler o que já cadastrou. */''}
+    <button style="background:transparent;border:none;padding:0;cursor:pointer;color:var(--muted);font-size:11px;display:flex;align-items:center;gap:6px" onclick="toggleCatalogList()">
+      <i class="ti ti-chevron-${AppState.isCatalogListOpen ? 'down' : 'right'}"></i>
+      Ver os <strong style="color:var(--txt2)">${entries.length} itens</strong> cadastrados${semIdentificacao.length ? `, ${semIdentificacao.length} sem identificar nada` : ''}
+    </button>
+    ${!AppState.isCatalogListOpen ? '' : `
+    <div class="row" style="margin:10px 0">
+      <div style="flex:1"><input class="inp inp-sm" placeholder="Buscar item cadastrado…" value="${escAttr(AppState.dropSourceCatalogQuery || '')}" oninput="setCatalogQuery(this.value)"></div>
+    </div>
+    ${!semIdFiltrado.length ? '' : `<div style="margin-bottom:12px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px">
+      <div style="font-size:11px;color:var(--warn);margin-bottom:4px"><i class="ti ti-alert-triangle"></i> Em mais de uma DG — não identificam nada e podem sair.</div>
+      ${semIdFiltrado.map(([n, ids]) => linhaCatalogo(n, ids)).join('')}
+    </div>`}
+    ${!grupos.length && !semIdFiltrado.length ? '<div class="empty" style="padding:12px 0">Nada encontrado.</div>' : ''}
+    ${grupos.map(g => `<div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">${esc(g.dg.name)} <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">${g.nomes.length}</span></div>
+      ${g.nomes.map(n => linhaCatalogo(n, [g.id])).join('')}
+    </div>`).join('')}`}
   </div>`}
 </div>`;
+}
+
+// Uma linha do catálogo. Compacta de propósito: com centenas de itens, cada pixel de altura vira
+// rolagem. O nome da DG só aparece no grupo "não identificam" — nos outros ele é o cabeçalho.
+function linhaCatalogo(nome, dgIds) {
+  return `
+    <div style="display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap">
+      <span style="flex:1;min-width:150px;font-size:12px">${esc(nome)}</span>
+      ${dgIds.length > 1 ? dgIds.map(id => {
+        const dg = AppState.dungeonList.find(d => d.id === id);
+        return `<span class="badge badge-acc" style="display:flex;align-items:center;gap:5px;font-size:10px">${esc(dg ? dg.name : id)}<button aria-label="Desvincular ${esc(dg ? dg.name : id)}" style="background:transparent;border:none;color:inherit;cursor:pointer;padding:0;display:flex" onclick="toggleItemDungeonSourceDg('${escAttr(nome)}', '${escAttr(id)}')"><i class="ti ti-x"></i></button></span>`;
+      }).join('') : ''}
+      <select class="inp inp-sm" style="width:120px;font-size:11px" onchange="if(this.value){toggleItemDungeonSourceDg('${escAttr(nome)}', this.value);this.value=''}">
+        <option value="">+ DG…</option>
+        ${AppState.dungeonList.filter(d => !dgIds.includes(d.id)).map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}
+      </select>
+      <button aria-label="Remover ${esc(nome)}" title="Remover do cadastro" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:13px" onclick="removeItemDungeonSourceItem('${escAttr(nome)}')"><i class="ti ti-trash"></i></button>
+    </div>`;
 }
 
 // Mais casas decimais quanto menor a taxa — item raro costuma ficar abaixo de 1%, e "0%"

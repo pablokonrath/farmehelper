@@ -19,6 +19,18 @@ export function toggleDropSourceGearClass(key) {
   renderPage();
 }
 
+// Lista do catálogo de identificadores. Recolhida por padrão e sem persistir: quem abre a tela
+// quase sempre vem pela cobertura ("que DG ainda falta"), não pra reler centenas de nomes.
+export function toggleCatalogList() {
+  AppState.isCatalogListOpen = !AppState.isCatalogListOpen;
+  renderPage();
+}
+
+export function setCatalogQuery(value) {
+  AppState.dropSourceCatalogQuery = value;
+  renderPage();
+}
+
 export function setDropSourceQuery(value) {
   AppState.dropSourceQuery = value;
   renderPage();

@@ -195,6 +195,10 @@ export const AppState = {
   // Só de tela, não persiste — o certo é começar tudo recolhido a cada visita.
   dropSourceGearOpen: null,
   dropSourceGearClass: null,
+  // Lista do catálogo de identificadores: aberta/fechada e o filtro de busca. Só UI, não persiste
+  // — são centenas de nomes, e o certo é começar recolhida.
+  isCatalogListOpen: false,
+  dropSourceCatalogQuery: '',
   dropSourceTargetQty: '',
   // Direção oposta da busca acima ("o que essa DG dropa", não "onde esse item dropa") — mesma
   // página, ferramenta independente. Não persiste, mesmo espírito das outras duas acima.

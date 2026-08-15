@@ -39,7 +39,7 @@ import {
 import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod, toggleDgComparison, toggleRarityDecisions, setDgComparisonMode, setDgComparisonPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
-import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, toggleDropSourceGear, toggleDropSourceGearClass, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
+import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, toggleDropSourceGear, toggleDropSourceGearClass, toggleCatalogList, setCatalogQuery, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
 import { addItemDungeonSourceItem, removeItemDungeonSourceItem, toggleItemDungeonSourceDg, addExclusiveItemForDungeon, setRarityMaxPercent, dismissRarity, restoreRarity, confirmRarity, unconfirmRarity } from './features/item-dungeon-sources.js';
 import {
   setRushCartDate,
@@ -132,6 +132,8 @@ Object.assign(window, {
   setDropSourceDungeon,
   toggleDropSourceGear,
   toggleDropSourceGearClass,
+  toggleCatalogList,
+  setCatalogQuery,
   setDropSourceCompare,
   goFarmDungeon,
   clearPendingSessionDungeon,
