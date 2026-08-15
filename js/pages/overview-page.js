@@ -15,7 +15,7 @@ import { saveDefaultDateFrom, saveOverviewMode } from '../state/persistence.js';
 import { todayISODate } from '../utils/parsing.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
-import { getCostPerGem } from '../features/rush-cart.js';
+import { getCostPerGem, getTicketPrice } from '../features/rush-cart.js';
 
 // "Qual DG rende mais" mora aqui, e não em Sessões de farme, porque ela responde uma pergunta de
 // PANORAMA — "onde meu tempo rende melhor" —, não uma do farme que está acontecendo. E o que de
@@ -135,6 +135,86 @@ function formatHoursShort(hours) {
 // via o placar e tinha que ir procurar a decisão em outra página.
 //
 // Uma sugestão só, a mais relevante do momento, em ordem de prioridade — não uma lista de opções.
+// Primeiros passos: o que ainda falta configurar pro resto do app dizer a verdade.
+//
+// O app cresceu por partes, e cada parte assume alguma configuração feita antes dela — sem preço
+// de ticket o líquido mente, sem preço de item o Alz mente, sem log não há nada. Quem chega hoje
+// não tem como saber essa ordem, e o pior é que nada QUEBRA: os números aparecem, só errados.
+//
+// Some sozinho quando o essencial está pronto. Item opcional aparece enquanto o card existe, mas
+// não é ele que mantém o card vivo — senão quem não quer Telegram nunca se livraria da lista.
+function buildSetupCard(priceCoverage) {
+  const temLog = AppState.drops.length > 0 || AppState.dropSnapshot.length > 0;
+  const temGema = getCostPerGem() > 0;
+  const temTicket = getTicketPrice() > 0;
+  // Identificador = item cadastrado em EXATAMENTE uma DG. Item em duas ou mais não identifica
+  // nada (ver guessDungeonFromDrops), então não conta como passo cumprido.
+  const identificadores = Object.values(AppState.itemDungeonSources).filter(ids => ids.length === 1).length;
+
+  const passos = [
+    {
+      ok: temLog,
+      titulo: 'Conectar o arquivo de log do jogo',
+      texto: 'É a fonte de tudo: sem ele o app não sabe o que caiu. Use o botão no menu lateral.',
+      pagina: null,
+    },
+    {
+      ok: temGema && temTicket,
+      titulo: 'Informar o preço do ticket e do Card Cash',
+      texto: !temGema && !temTicket
+        ? 'Sem os dois, o custo de entrada de toda DG entra como zero e o "líquido" fica igual ao bruto.'
+        : !temTicket
+          ? 'Falta o do ticket — DG que consome ticket está sendo contada como se a entrada fosse de graça.'
+          : 'Falta o do Card Cash — sem ele não dá pra calcular gema, nem custo de reset.',
+      pagina: 'rush',
+      rotulo: 'Parâmetros do dia',
+    },
+    {
+      ok: priceCoverage >= 70,
+      titulo: 'Cadastrar o preço do que mais cai',
+      texto: `Hoje ${priceCoverage}% do que você dropou tem preço. O que falta está sendo contado como 0 Alz — e todo número em Alz do app depende disso.`,
+      pagina: 'calculo',
+      rotulo: 'Cálculo de farme',
+    },
+    {
+      ok: identificadores > 0,
+      titulo: 'Cadastrar um item exclusivo por DG',
+      texto: 'Item que só cai numa DG (Cristal de Fogo no Solo Flamejante, por exemplo) faz o app identificar sozinho onde você está farmando, no primeiro drop.',
+      pagina: 'origem',
+      rotulo: 'Onde dropa',
+    },
+    {
+      ok: !!AppState.alertSettings.telegramChatId,
+      opcional: true,
+      titulo: 'Vincular o Telegram',
+      texto: 'Pra saber que a DG acabou ou que o helper travou sem precisar olhar a tela.',
+      pagina: 'alertas',
+      rotulo: 'Alertas',
+    },
+  ];
+
+  const essenciaisPendentes = passos.filter(p => !p.ok && !p.opcional);
+  if (!essenciaisPendentes.length) return '';
+
+  const feitos = passos.filter(p => p.ok).length;
+  return `
+<div class="card card-featured">
+  <div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-rocket" style="color:var(--gold)"></i>Primeiros passos</div>
+    <span class="badge badge-acc">${feitos} de ${passos.length}</span></div>
+  <div style="font-size:12px;color:var(--muted);margin:-2px 0 12px">Enquanto faltar algo aqui, os números do app existem mas não são confiáveis — nada quebra, só fica errado em silêncio. Some sozinho quando o essencial estiver pronto.</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    ${passos.map(p => `<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px${p.ok ? ';opacity:.55' : ''}">
+      <i class="ti ti-${p.ok ? 'circle-check' : 'circle'}" style="font-size:17px;flex-shrink:0;margin-top:1px;color:${p.ok ? 'var(--ok)' : p.opcional ? 'var(--muted)' : 'var(--warn)'}"></i>
+      <div style="flex:1;min-width:160px">
+        <div style="font-weight:600;font-size:13px${p.ok ? ';text-decoration:line-through' : ''}">${p.titulo}${p.opcional ? ' <span style="font-weight:400;font-size:11px;color:var(--muted)">— opcional</span>' : ''}</div>
+        ${p.ok ? '' : `<div style="font-size:11px;color:var(--muted);margin-top:2px">${p.texto}</div>`}
+      </div>
+      ${p.ok || !p.pagina ? '' : `<button class="btn btn-d btn-xs" onclick="navigateTo('${p.pagina}')">${esc(p.rotulo)}</button>`}
+    </div>`).join('')}
+  </div>
+</div>`;
+}
+
 function buildNextStepCard() {
   const ativa = getActiveSessionSummary();
   if (ativa) {
@@ -851,7 +931,7 @@ export function renderOverviewPage() {
     // Tudo que vem do BANCO (sessões, vendas, histórico arquivado) continua valendo mesmo sem o
     // log conectado agora — só o que depende do arquivo do dia é que fica de fora. Todo card novo
     // que ler do banco precisa entrar aqui também, senão some sem motivo com o log desconectado.
-    return buildNextStepCard() + metaCard + daySummaryCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log</div></div>`;
+    return buildSetupCard(priceCoverage) + buildNextStepCard() + metaCard + daySummaryCard + avisoPrecoDesatualizado + buildEventCard() + buildRareDropsCard() + personalBestsCard + buildTrendCard() + buildConsistencyCard() + manualDropsCard + `<div style="text-align:center;padding:70px 0;color:var(--muted)"><i class="ti ti-chart-bar" style="font-size:52px;display:block;margin-bottom:14px;color:var(--acc)"></i><div style="font-size:18px;font-weight:600;color:var(--txt2);margin-bottom:6px">Nenhum dado carregado</div><div>Use o menu lateral para carregar seu arquivo de log</div></div>`;
   }
 
   // Painel × completo. A página tinha 13 cartões, e a maior parte das aberturas é pra ver um
@@ -869,6 +949,7 @@ export function renderOverviewPage() {
   ${botaoModoPagina(true, 'Completo', 'ti-chart-histogram')}
   <span style="font-size:11px;color:var(--muted);margin-left:4px">${completo ? 'Tudo à mostra — evolução, consistência, raridades, gráfico e top itens.' : 'Só o essencial do dia. Clique em "Completo" pra ver as análises.'}</span>
 </div>
+${buildSetupCard(priceCoverage)}
 ${buildNextStepCard()}
 ${/* Ordem pensada pra quem abre a página querendo um número, não um painel: meta de hoje ->
      filtro (que comanda tudo abaixo) -> os totais -> contexto -> ferramentas. Recorde pessoal e

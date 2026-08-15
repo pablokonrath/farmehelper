@@ -17,8 +17,8 @@ function renderItemDungeonSourcesCard() {
   const entries = Object.entries(AppState.itemDungeonSources).sort((a, b) => a[0].localeCompare(b[0]));
   return `
 <div class="card">
-  <div class="ctitle" style="margin-bottom:4px"><i class="ti ti-list-check"></i>Itens × DGs (cadastro manual)</div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre quais DGs cada item pode dropar — diferente da busca acima (que é baseada no seu histórico), isto é curado por você e serve pra destacar os itens esperados em Sessões de farme, além de complementar a busca acima quando ainda não há sessão registrada.</div>
+  <div class="ctitle" style="margin-bottom:4px"><i class="ti ti-fingerprint"></i>Itens que identificam a DG</div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Cadastre aqui os itens <strong>exclusivos</strong> de uma DG — Cristal de Fogo no Solo Flamejante, Cristal de Terra na Tumba. É assim que o app sabe onde você está farmando <strong>no primeiro drop</strong>, sem você marcar nada.<br><br>Item cadastrado em <strong>duas ou mais DGs não identifica nada</strong> e é ignorado no palpite — se cai em tudo, a presença dele não diz onde você está. Também não precisa cadastrar raridade aqui: o app deduz sozinho, pelo seu histórico, o que é raro em cada DG.</div>
   <div class="row" style="margin-bottom:14px">
     <div style="flex:1"><input class="inp" id="newItemDungeonSource" placeholder="Nome do item" list="dsSugg" onkeydown="if(event.key==='Enter')addItemDungeonSourceItem()"></div>
     <button class="btn btn-p" onclick="addItemDungeonSourceItem()"><i class="ti ti-plus"></i>Adicionar</button>
@@ -29,6 +29,13 @@ function renderItemDungeonSourcesCard() {
     <div style="padding:10px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <span style="flex:1;font-weight:600;font-size:13px">${esc(itemName)}</span>
+        ${/* O selo diz se a entrada cumpre o papel do cadastro. Sem ele, item em 3 DGs parece tão
+             útil quanto um exclusivo — e é justamente o que não serve pra nada aqui. */''}
+        ${dungeonIds.length === 1
+          ? '<span class="badge badge-ok" title="Cai só nessa DG — identifica o farme no primeiro drop"><i class="ti ti-fingerprint"></i> identifica</span>'
+          : dungeonIds.length === 0
+            ? '<span class="badge badge-muted" title="Sem DG marcada — não faz nada ainda">sem DG</span>'
+            : `<span class="badge badge-warn" title="Está em ${dungeonIds.length} DGs, então a presença dele não diz onde você está — é ignorado no palpite">não identifica</span>`}
         <button aria-label="Remover ${esc(itemName)}" title="Remover item" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="removeItemDungeonSourceItem('${escAttr(itemName)}')"><i class="ti ti-trash"></i></button>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
