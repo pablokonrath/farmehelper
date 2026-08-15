@@ -360,6 +360,24 @@ export function computeRunsDoneToday(dungeonName) {
 // reload de página mandaria a mensagem de novo — e recarregar durante o farme é rotina.
 const limiteAvisado = new Set();
 
+// Marca como "já avisado" toda DG que JÁ estava no limite quando o app abriu. Chamada uma vez,
+// depois do estado carregar.
+//
+// Antes esse papel era feito por um guard dentro do próprio aviso ("só avisa se houver sessão
+// ativa nessa DG"), e isso tinha um furo bobo: o app fechou a sessão nas 19, você conferiu no
+// jogo, viu que foram 20 e corrigiu no histórico — sem sessão ativa, a mensagem nunca saía. E
+// esse é justamente o caminho mais comum de chegar às 20, porque a última run costuma acabar
+// depois do último drop.
+//
+// Semear na abertura resolve os dois lados: quem já estava completo não recebe mensagem repetida
+// a cada reload, e qualquer edição que CRUZE o limite depois disso avisa, venha de onde vier.
+export function seedDailyLimitNotified() {
+  const hoje = todayISODate();
+  for (const dg of AppState.dungeonList) {
+    if (computeRunsDoneOn(dg.name, hoje) >= DAILY_RUN_LIMIT) limiteAvisado.add(`${hoje}|${dg.name}`);
+  }
+}
+
 // Avisa (tela + Telegram) quando uma DG completa as runs do dia. É o momento em que você tem que
 // TROCAR DE DG, e é justamente quando você não está olhando a tela — está no jogo. Um aviso que
 // chega no celular resolve; um toast que some em 5s não.
@@ -375,14 +393,14 @@ export function checkDailyRunLimitReached(dungeonName) {
   if (runs < DAILY_RUN_LIMIT) return;
 
   limiteAvisado.add(chave);
-  // Semeadura: já estava no limite antes desta sessão de navegador começar. Marca e não avisa —
-  // o aviso é sobre o momento de completar, não sobre o estado.
-  if (!AppState.activeDgSession || AppState.activeDgSession.dungeonName !== dungeonName) return;
 
   const doDia = AppState.dgSessions.filter(s => s.date === todayISODate() && s.dungeonName === dungeonName);
-  const alz = doDia.reduce((sum, s) => sum + sessionRealizedAlz(s), 0) + (getActiveSessionSummary()?.totalAlz || 0);
-  const drops = doDia.reduce((sum, s) => sum + (s.dropCount || 0), 0) + (getActiveSessionSummary()?.dropCount || 0);
-  const ativo = doDia.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0) + (getActiveSessionSummary()?.activeMs || 0);
+  // A sessão em andamento só entra se for DESTA DG. Sem a checagem, completar as runs de uma DG
+  // enquanto já se farma outra somaria o farme da outra no resumo desta.
+  const viva = AppState.activeDgSession?.dungeonName === dungeonName ? getActiveSessionSummary() : null;
+  const alz = doDia.reduce((sum, s) => sum + sessionRealizedAlz(s), 0) + (viva?.totalAlz || 0);
+  const drops = doDia.reduce((sum, s) => sum + (s.dropCount || 0), 0) + (viva?.dropCount || 0);
+  const ativo = doDia.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0) + (viva?.activeMs || 0);
 
   const linhas = [
     `✅ ${dungeonName} — ${DAILY_RUN_LIMIT}/${DAILY_RUN_LIMIT} runs do dia`,
@@ -422,6 +440,10 @@ export function setSessionRuns(startAt, value) {
   if (!s) return;
   s.runs = Math.max(0, parseInt(value, 10) || 0);
   saveDgSessions();
+  // Corrigir aqui é o caminho MAIS comum de chegar ao limite: a última run costuma acabar depois
+  // do último drop, então a sessão fecha nas 19 e você acerta pra 20 no histórico. Sem esta
+  // chamada, justamente esse caso nunca avisava.
+  if (s.date === todayISODate()) checkDailyRunLimitReached(s.dungeonName);
   renderPage();
 }
 

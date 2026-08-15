@@ -6,7 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession, recoverDropWindow, applyUnclaimedWindow } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession, recoverDropWindow, applyUnclaimedWindow, seedDailyLimitNotified } from './features/dg-session.js';
 import { setSessionsHistoryDate, fillSuggestedRunMinutes } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
@@ -316,6 +316,9 @@ if (!authenticated) {
   document.getElementById('appWrap').style.removeProperty('display');
   await loadPersistedState();
   updateBalanceSidebar();
+  // Marca as DGs que já estavam completas quando o app abriu, pra não remandar o aviso de
+  // "20/20" a cada reload. Tem que vir depois do estado carregar e antes de qualquer ticker.
+  seedDailyLimitNotified();
   initFarmGoalBaseline();
   initFileInputListener();
   renderPage();
