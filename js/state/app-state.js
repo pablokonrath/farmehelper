@@ -237,6 +237,9 @@ export const AppState = {
   // O outro lado da mesma decisão: itens que você confirmou serem raros. Existe pra a triagem
   // parar de perguntar depois de decidida — só o descarte esvaziava a fila antes.
   rarityConfirmed: [],
+  // Lista de decisões de raridade aberta/fechada. Só UI, não persiste — começar fechada é o
+  // certo: são dezenas de nomes que quase nunca se consulta.
+  isRarityDecisionsOpen: false,
   // Período do card "Sua evolução" (7 ou 30 dias). Só UI, não persiste — volta pro mês ao
   // recarregar, que é a visão mais útil no dia a dia.
   trendPeriodDays: 30,

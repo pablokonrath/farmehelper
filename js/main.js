@@ -35,7 +35,7 @@ import {
   bulkAssignPersonalCategoryByKeyword,
 } from './features/admin.js';
 
-import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod, toggleDgComparison, setDgComparisonMode, setDgComparisonPeriod } from './pages/overview-page.js';
+import { setDateFrom, setDateTo, saveCurrentDateFromAsDefault, setOverviewMode, toggleManualDropsManager, setTrendPeriod, setTrendMode, setConsistencyPeriod, toggleDgComparison, toggleRarityDecisions, setDgComparisonMode, setDgComparisonPeriod } from './pages/overview-page.js';
 import { toggleFilterByKeywords, setPricingSearchQuery, setPricingSort, togglePricingShowAllMissing } from './pages/pricing-page.js';
 import { deleteManualDropBatch } from './features/manual-drops.js';
 import { searchDropSource, setDropSourceTargetQty, setDropSourceDungeon, setDropSourceCompare, toggleDropSourceGear, toggleDropSourceGearClass, goFarmDungeon, clearPendingSessionDungeon } from './features/drop-source.js';
@@ -270,6 +270,7 @@ Object.assign(window, {
   setSessionsHistoryDate,
   fillSuggestedRunMinutes,
   toggleDgComparison,
+  toggleRarityDecisions,
   setDgComparisonMode,
   setDgComparisonPeriod,
   setSalesDateFrom,
