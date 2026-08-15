@@ -182,13 +182,17 @@ function buildSetupCard(priceCoverage) {
       pagina: 'calculo',
       rotulo: 'Cálculo de farme',
     },
-    {
+    // Só pro admin mestre: o cadastro de identificadores é dado GLOBAL, vale pra todas as contas,
+    // e a tela dele já é restrita. Pedir isso a um jogador comum seria mandá-lo fazer algo que ele
+    // não tem como fazer — e ele nem precisa: herda a curadoria pronta, o reconhecimento de DG
+    // funciona igual pra ele sem cadastrar nada.
+    ...(AppState.isMasterAdmin ? [{
       ok: identificadores > 0,
       titulo: 'Cadastrar um item exclusivo por DG',
-      texto: 'Item que só cai numa DG (Cristal de Fogo no Solo Flamejante, por exemplo) faz o app identificar sozinho onde você está farmando, no primeiro drop.',
+      texto: 'Item que só cai numa DG (Cristal de Fogo no Solo Flamejante, por exemplo) faz o app identificar sozinho onde você está farmando, no primeiro drop. Vale pra todas as contas — o FarmHub já sugere os candidatos pelo histórico.',
       pagina: 'origem',
       rotulo: 'Onde dropa',
-    },
+    }] : []),
     {
       ok: !!AppState.alertSettings.telegramChatId,
       opcional: true,
