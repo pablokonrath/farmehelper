@@ -1134,6 +1134,51 @@ export function computeDgComparison({ sinceDate } = {}) {
 // livres pra escolher e quer saber quando vale mais a pena farmar. Exige tempo ativo suficiente
 // (MIN_ACTIVE_MS_FOR_RATE) E mais de uma sessão (MIN_SESSIONS_FOR_HOUR_RANKING) — só uma dessas
 // duas coisas ainda deixa passar um dia de sorte isolado como se fosse um padrão confiável.
+// Histórico DIA A DIA de uma DG: quanto rendeu em cada dia que você a farmou.
+//
+// A comparação entre DGs já existe ("Qual DG rende mais"), mas ela responde com um número só por
+// DG — e um número só esconde a variação, que é justamente o que decide se vale insistir. Duas
+// DGs com o mesmo Alz/run médio podem ser uma constante e outra de sorte pura, e a média não
+// distingue as duas.
+//
+// Usa o REALIZADO (preço da época): a pergunta é "qual dia me deu mais Alz", e isso é dinheiro que
+// entrou, não uma reavaliação do passado. Ver sessionRealizedAlz.
+export function computeDungeonDailyHistory(dungeonId, { limite = 30 } = {}) {
+  if (!dungeonId) return [];
+  const porDia = new Map();
+
+  for (const s of AppState.dgSessions) {
+    if (s.dungeonId !== dungeonId) continue;
+    let dia = porDia.get(s.date);
+    if (!dia) porDia.set(s.date, (dia = { date: s.date, runs: 0, alz: 0, dropCount: 0, activeMs: 0, sessoes: 0 }));
+    dia.runs += s.runs || 0;
+    dia.alz += sessionRealizedAlz(s);
+    dia.dropCount += s.dropCount || 0;
+    dia.activeMs += s.activeDurationMs ?? s.durationMs ?? 0;
+    dia.sessoes++;
+  }
+
+  const dias = [...porDia.values()]
+    .map(d => ({
+      ...d,
+      alzPerRun: d.runs > 0 ? d.alz / d.runs : null,
+      alzPerHour: d.activeMs > MIN_ACTIVE_MS_FOR_RATE ? d.alz / (d.activeMs / 3600000) : null,
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  // Melhor dia pelo Alz/RUN, não pelo total: dia com mais runs rende mais por definição, e
+  // "melhor" aí seria só "joguei mais", que você já sabe. Entre dias com runs preenchidas.
+  const comRuns = dias.filter(d => d.alzPerRun != null);
+  const melhorPorRun = comRuns.length ? Math.max(...comRuns.map(d => d.alzPerRun)) : null;
+  const melhorTotal = dias.length ? Math.max(...dias.map(d => d.alz)) : null;
+
+  return dias.slice(0, limite).map(d => ({
+    ...d,
+    ehMelhorPorRun: melhorPorRun != null && d.alzPerRun === melhorPorRun,
+    ehMelhorTotal: melhorTotal != null && d.alz === melhorTotal,
+  }));
+}
+
 export function computeBestFarmingHours() {
   const buckets = {};
   AppState.dgSessions.forEach(s => {

@@ -3,7 +3,7 @@ import { findDropSources, findDungeonDrops, getKnownSessionItemNames, computeRou
 import { findKnownSourcesForQuery, suggestExclusiveItems } from '../features/item-dungeon-sources.js';
 import { computeItemGoalsProgress } from '../features/item-goals.js';
 import { infoToggle } from '../features/ui-toggles.js';
-import { DAILY_RUN_LIMIT, computeDgComparison } from '../features/dg-session.js';
+import { DAILY_RUN_LIMIT, computeDgComparison, computeDungeonDailyHistory } from '../features/dg-session.js';
 import { formatDateBR, renderAlzValue, formatAlzGamer, formatDuration } from '../utils/formatting.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { normalizeForSearch } from '../utils/parsing.js';
@@ -32,6 +32,39 @@ function sugestoesExclusivas() {
       </div>`).join('')}
     </div>
     ${lista.length > mostrar.length ? `<div style="font-size:11px;color:var(--muted);margin-top:8px">+${lista.length - mostrar.length} outros — cadastre estes e os próximos aparecem.</div>` : ''}
+  </div>`;
+}
+
+// Dia a dia da DG escolhida. "Qual DG rende mais" responde com UM número por DG, e um número só
+// esconde a variação — que é justamente o que decide se vale insistir. Duas DGs com o mesmo
+// Alz/run médio podem ser uma constante e outra de sorte pura, e a média não distingue as duas.
+//
+// O melhor dia é marcado por Alz/RUN, não pelo total: dia com mais runs rende mais por definição,
+// e "melhor" aí seria só "joguei mais", que você já sabe.
+function historicoDiarioDaDg(dungeonId) {
+  const dias = computeDungeonDailyHistory(dungeonId);
+  if (dias.length < 2) return '';
+
+  const comRuns = dias.filter(d => d.alzPerRun != null);
+  const media = comRuns.length ? comRuns.reduce((s, d) => s + d.alzPerRun, 0) / comRuns.length : null;
+
+  return `
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+    <div class="sh" style="margin-bottom:8px">
+      <label class="lbl" style="margin:0">Dia a dia — quanto rendeu em cada dia</label>
+      ${media != null ? `<span style="font-size:11px;color:var(--muted)">média ${formatAlzGamer(media)}/run em ${comRuns.length} dia(s)</span>` : ''}
+    </div>
+    <table class="t-cards"><thead><tr><th>Dia</th><th>Runs</th><th>Tempo</th><th>Alz</th><th>Alz / run</th><th>Alz / hora</th></tr></thead><tbody>
+    ${dias.map(d => `<tr${d.ehMelhorPorRun ? ' style="background:var(--ok-bg)"' : ''}>
+      <td data-label="Dia" style="font-weight:500">${formatDateBR(d.date)}${d.ehMelhorPorRun ? ' <i class="ti ti-trophy" style="color:var(--gold)" title="Seu melhor dia nessa DG, por Alz/run"></i>' : ''}</td>
+      <td data-label="Runs">${d.runs || '<span style="color:var(--muted)">—</span>'}</td>
+      <td data-label="Tempo" style="color:var(--muted)">${formatDuration(d.activeMs)}</td>
+      <td data-label="Alz"${d.ehMelhorTotal ? ' title="Maior total nessa DG"' : ''}>${formatAlzGamer(d.alz)}</td>
+      <td data-label="Alz / run" style="color:var(--gold);font-weight:700">${d.alzPerRun != null ? formatAlzGamer(d.alzPerRun) : '<span style="color:var(--muted);font-weight:400">— runs</span>'}</td>
+      <td data-label="Alz / hora">${d.alzPerHour != null ? formatAlzGamer(d.alzPerHour) + '/h' : '<span style="color:var(--muted)">—</span>'}</td>
+    </tr>`).join('')}
+    </tbody></table>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">Valores pelo preço da ÉPOCA de cada dia — é o que entrou no seu bolso naquele dia, não uma reavaliação pelos preços de hoje.</div>
   </div>`;
 }
 
@@ -317,6 +350,7 @@ ${!routeYield.length ? '' : `
         </tr>`).join('')}
         ${reverseResult.groups.map(g => gearGroupRows(g)).join('')}
         </tbody></table>
+      ${historicoDiarioDaDg(reverseDgId)}
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
         <button class="btn btn-d btn-xs" onclick="goFarmDungeon('${escAttr(reverseDgId)}')" title="Ir pra Sessões de farme com esta DG já selecionada"><i class="ti ti-player-play"></i>Ir farmar aqui</button>
       </div>`}
