@@ -333,7 +333,6 @@ export function setActiveSessionRuns(value) {
     s.runsManuallySet = true;
   }
   saveActiveDgSession();
-  checkDailyRunLimitReached(s.dungeonName);
   renderPage();
 }
 
@@ -371,9 +370,13 @@ const limiteAvisado = new Set();
 //
 // Semear na abertura resolve os dois lados: quem já estava completo não recebe mensagem repetida
 // a cada reload, e qualquer edição que CRUZE o limite depois disso avisa, venha de onde vier.
+// A DG da sessão VIVA fica de fora da semeadura: o aviso dela ainda não saiu (só sai ao encerrar),
+// então marcá-la aqui engoliria a mensagem de vez. Recarregar a página no meio do farme é rotina.
 export function seedDailyLimitNotified() {
   const hoje = todayISODate();
+  const viva = AppState.activeDgSession?.dungeonName;
   for (const dg of AppState.dungeonList) {
+    if (dg.name === viva) continue;
     if (computeRunsDoneOn(dg.name, hoje) >= DAILY_RUN_LIMIT) limiteAvisado.add(`${hoje}|${dg.name}`);
   }
 }
@@ -384,35 +387,44 @@ export function seedDailyLimitNotified() {
 //
 // Manda o resumo junto porque o número sozinho não fecha nada: o que interessa saber ali é se
 // aquelas 20 entradas valeram o que costumam valer.
+//
+// SÓ avisa com a sessão daquela DG já ENCERRADA. O contador é uma estimativa (tempo ativo ÷ tempo
+// por run), então ele bate 20 antes da vigésima run acabar de verdade no jogo. Avisando ali, a
+// mensagem chega no celular dizendo "acabou" enquanto você ainda está dentro — você sai e perde o
+// drop da run que estava rodando. Fechada a sessão, o número é fato, e o resumo também: enquanto
+// ela está viva ainda pode cair coisa que mudaria o total.
+//
+// Não marca como avisado quando segura: a intenção é adiar, não cancelar.
 export function checkDailyRunLimitReached(dungeonName) {
   if (!dungeonName) return;
   const chave = `${todayISODate()}|${dungeonName}`;
   if (limiteAvisado.has(chave)) return;
+  if (AppState.activeDgSession?.dungeonName === dungeonName) return;
 
   const runs = computeRunsDoneOn(dungeonName, todayISODate());
   if (runs < DAILY_RUN_LIMIT) return;
 
   limiteAvisado.add(chave);
 
+  // Só sessões encerradas: pelo guard acima, nenhuma desta DG está viva neste momento.
   const doDia = AppState.dgSessions.filter(s => s.date === todayISODate() && s.dungeonName === dungeonName);
-  // A sessão em andamento só entra se for DESTA DG. Sem a checagem, completar as runs de uma DG
-  // enquanto já se farma outra somaria o farme da outra no resumo desta.
-  const viva = AppState.activeDgSession?.dungeonName === dungeonName ? getActiveSessionSummary() : null;
-  const alz = doDia.reduce((sum, s) => sum + sessionRealizedAlz(s), 0) + (viva?.totalAlz || 0);
-  const drops = doDia.reduce((sum, s) => sum + (s.dropCount || 0), 0) + (viva?.dropCount || 0);
-  const ativo = doDia.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0) + (viva?.activeMs || 0);
+  const alz = doDia.reduce((sum, s) => sum + sessionRealizedAlz(s), 0);
+  const drops = doDia.reduce((sum, s) => sum + (s.dropCount || 0), 0);
+  const ativo = doDia.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0);
 
+  // Divide pelas runs REAIS, não pelo limite: corrigindo o histórico dá pra passar de 20, e aí
+  // "por run" calculado em cima de 20 mentiria pra cima.
   const linhas = [
-    `✅ ${dungeonName} — ${DAILY_RUN_LIMIT}/${DAILY_RUN_LIMIT} runs do dia`,
+    `✅ ${dungeonName} — ${runs}/${DAILY_RUN_LIMIT} runs do dia (sessão encerrada)`,
     `Farmado: ${formatAlzGamer(alz)}`,
-    `Por run: ${formatAlzGamer(alz / DAILY_RUN_LIMIT)}`,
+    `Por run: ${formatAlzGamer(alz / runs)}`,
     `Drops: ${drops}`,
     `Tempo: ${Math.round(ativo / 60000)}min`,
   ];
   // Compara com o que essa DG costuma render — é o que transforma o número em informação.
   const hist = computeDgComparison().find(c => c.dungeonName === dungeonName);
   if (hist?.alzPerRun) {
-    const diff = Math.round(((alz / DAILY_RUN_LIMIT) / hist.alzPerRun - 1) * 100);
+    const diff = Math.round(((alz / runs) / hist.alzPerRun - 1) * 100);
     linhas.push(`Contra a média dessa DG (${formatAlzGamer(hist.alzPerRun)}/run): ${diff >= 0 ? '+' : ''}${diff}%`);
   }
   linhas.push('Limite diário batido — hora de trocar de DG (ou resetar por gemas).');
@@ -727,6 +739,9 @@ export function endDgSession({ endAt } = {}) {
   // Se fomos nós que ligamos o watchdog ao iniciar, desliga junto ao encerrar. Se o jogador já o
   // desligou na mão no meio da sessão, o guard abaixo evita mexer (fica no-op).
   if (wasAutoWatchdog && AppState.alertSettings.watchdogEnabled) setWatchdogEnabled(false);
+  // Aqui, e não no contador: só agora o "20/20" é fato e o resumo está completo. Depois de limpar
+  // activeDgSession, pra que o guard lá dentro enxergue a sessão como encerrada.
+  if (registro.date === todayISODate()) checkDailyRunLimitReached(registro.dungeonName);
   renderPage();
 }
 
@@ -1331,7 +1346,6 @@ export function startDgSessionTicker() {
       if (computedRuns > session.runs) {
         session.runs = computedRuns;
         saveActiveDgSession();
-        checkDailyRunLimitReached(session.dungeonName);
         const runsInput = document.getElementById('dgRunsInput');
         if (runsInput && document.activeElement !== runsInput) runsInput.value = computedRuns;
       }

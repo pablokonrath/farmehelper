@@ -602,6 +602,35 @@ uma vez, dá pra ir subindo aos poucos. Sobe os arquivos direto pelo Gerenciador
 Hostinger (ou versiona no git, se o deploy automático estiver configurado) — não precisa mexer
 em nenhum código pra um ícone novo aparecer.
 
+## Imagem de fundo por DG (card "Farmando agora")
+
+Mesma ideia do ícone, mas é a arte grande que fica atrás do card enquanto a sessão está rolando.
+Também é só convenção de nome, dentro de `uploads/imagens/`:
+
+```
+uploads/imagens/bg-solo.jpg              ← primeira palavra do nome da DG
+uploads/imagens/bg-dx-premium-do-fogo.jpg  ← nome inteiro, quando o prefixo repete
+```
+
+O app tenta o nome inteiro primeiro, depois a primeira palavra, `.jpg` antes de `.png`, e se
+nenhum existir simplesmente não mostra fundo nenhum (ver `dgBackground` em
+`js/pages/sessions-page.js`). Ou seja: use a primeira palavra quando ela já for única
+(`bg-tumba.jpg`, `bg-terminus.jpg`) e o nome inteiro quando não for — as 4 DX Premium, os 3
+Templos, as 2 Torres.
+
+**Comprima antes de subir.** A arte costuma vir em PNG de 2 a 3 MB, e PNG guarda foto sem perda —
+o que foto não aproveita. Em JPEG a mesma imagem fica ~10x menor, e a 42% de opacidade atrás do
+card a diferença não se vê. Com 42 DGs, a pasta iria pra ~100 MB de banda em toda primeira visita.
+
+Jogue os PNGs em `uploads/imagens/` e rode, da raiz do projeto:
+
+```
+powershell -ExecutionPolicy Bypass -File tools\comprimir-imagens.ps1
+```
+
+Ele converte tudo pra JPEG qualidade 82 e move os PNGs originais pra `arte-original/` (que está
+no `.gitignore`, então não vai pro repo nem pro FTP). Depois é só subir `uploads/imagens/`.
+
 ## Rotas de DGs + comparativo de lucro
 
 Se seu banco já rodou `sql/migrate_item_dungeon_sources.sql` (ou qualquer migração mais
