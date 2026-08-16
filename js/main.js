@@ -12,7 +12,7 @@ import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
 import { uploadAlertSound, removeAlertSound, setAlertSoundVolume, testAlertSound } from './features/alert-sounds.js';
 import { generateTelegramLinkCode, unlinkTelegram } from './features/telegram.js';
-import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory, updateSalePriceHint } from './features/sales.js';
+import { addSale, deleteSale, setPriceHistoryItem, startEditingSale, cancelEditingSale, repeatLastSale, dismissUnsoldInventory, restoreUnsoldInventory, sellUnsoldInventory, updateSalePriceHint } from './features/sales.js';
 import { addSalesGoal, deleteSalesGoal, addGoalWithdrawal, removeGoalWithdrawal, setGoalDeadline, setGoalPercentage } from './features/sales-goals.js';
 import { addItemGoal, deleteItemGoal } from './features/item-goals.js';
 import { openQuickMode, quickPick, quickBackToMenu, quickBack, quickNext, quickRushAdd, quickRushRemove, openGuidedRush } from './features/quick-mode.js';
@@ -285,6 +285,7 @@ Object.assign(window, {
   cancelEditingSale,
   repeatLastSale,
   dismissUnsoldInventory,
+  sellUnsoldInventory,
   restoreUnsoldInventory,
   updateSalePriceHint,
   setPriceHistoryItem,

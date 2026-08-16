@@ -77,8 +77,20 @@ export function renderSalesPage() {
           <div style="font-size:11px;color:var(--muted)" title="${formatNumber(i.estValue)} Alz">~${formatAlzGamer(i.estValue)}</div>
           ${i.idleDays != null && i.idleDays >= 7 ? `<div style="font-size:10px;color:${i.idleDays >= 30 ? 'var(--warn)' : 'var(--muted)'}" title="Último drop desse item">parado há ${i.idleDays}d</div>` : ''}
         </div>
+        ${/* Vender daqui REGISTRA a venda, não dá baixa. "Vendido" ali do lado só marca como
+             resolvido — serve pra venda antiga que você não vai reconstituir, mas o dinheiro não
+             entra em lugar nenhum. Registrando, o item some do radar sozinho (ele é dropado menos
+             vendido), sem precisar de baixa.
+
+             A quantidade nunca vem preenchida com o estoque todo: vender parte é o normal, e um
+             campo já cheio convida a clicar sem ler. O valor em branco usa o preço cadastrado. */''}
+        <div style="display:flex;align-items:flex-end;gap:4px;flex-wrap:wrap">
+          <input class="inp inp-sm" id="vd-q-${escAttr(i.itemName)}" type="number" min="1" max="${i.unsoldQty}" placeholder="qtd" style="width:62px" title="Quantas unidades você vendeu (de ${i.unsoldQty} disponíveis)">
+          <input class="inp inp-sm" id="vd-v-${escAttr(i.itemName)}" type="text" inputmode="numeric" placeholder="${formatAlzGamer(getItemPrice(i.itemName))}/un" style="width:96px" oninput="maskAlzInputLive(this)" title="Valor TOTAL recebido. Em branco, usa o preço cadastrado × quantidade.">
+          <button class="btn btn-p btn-xs" onclick="sellUnsoldInventory('${escAttr(i.itemName)}', document.getElementById('vd-q-${escAttr(i.itemName)}').value, document.getElementById('vd-v-${escAttr(i.itemName)}').value)"><i class="ti ti-cash"></i>Vender</button>
+        </div>
         <div style="display:flex;gap:4px">
-          <button class="btn btn-d btn-xs" title="Já vendi isso, só não registrei aqui" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','vendido')">Vendido</button>
+          <button class="btn btn-d btn-xs" title="Vendi faz tempo e não vou reconstituir o valor — só tira do radar, sem entrar no faturamento" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','vendido')">Já vendi</button>
           <button class="btn btn-d btn-xs" title="Virou coleção — não pretendo vender" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','colecao')">Coleção</button>
           <button class="btn btn-d btn-xs" title="Foi usado como insumo de craft" onclick="dismissUnsoldInventory('${escAttr(i.itemName)}','craft')">Craft</button>
         </div>

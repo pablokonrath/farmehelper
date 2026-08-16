@@ -4,6 +4,7 @@ import { getItemPrice, getReferencePrice, getAllDrops, summarizeDropsByItem } fr
 import { parseAlzInput, parseDateInputBR, formatAlzGamer, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { todayISODate, stripEnhancementSuffix } from '../utils/parsing.js';
 import { actWithUndo } from './undo.js';
+import { showInfoToast } from './alerts.js';
 import { renderPage } from '../router.js';
 
 // Quantos dias sem revisar um preço cadastrado é considerado "desatualizado" — mesmo limite usado
@@ -120,6 +121,54 @@ export function computeLikelyUnsoldInventory(limit = 6) {
 // não ficar sinalizando de novo. Se cair mais desse item depois, só o excedente NOVO reaparece
 // (ver computeLikelyUnsoldInventory), então isso não é "silenciar pra sempre", é "já tratei até
 // aqui".
+// Vende direto do radar de estoque, sem passar pelo formulário.
+//
+// Antes, "vendido" ali só dava BAIXA — e isso era um buraco de contabilidade: o item sumia do
+// radar mas a venda nunca entrava no registro, então o dinheiro não aparecia em lugar nenhum do
+// app. O jeito certo era ir até Vendas e digitar item, quantidade e valor de novo, tudo que a
+// tela já sabia.
+//
+// Registrando de verdade, a baixa nem precisa existir: o radar é dropado − vendido, então a venda
+// tira o item da lista sozinha. Uma fonte de verdade em vez de duas.
+export function sellUnsoldInventory(itemName, qtdTexto, valorTexto) {
+  // Quantidade é sempre digitada e nunca vem preenchida com o estoque todo: vender parte é o caso
+  // normal, e um campo já cheio com "12" convida a clicar sem ler. O teto existe só pra impedir
+  // vender mais do que caiu.
+  const disponivel = computeLikelyUnsoldInventory(999).find(i => i.itemName === itemName)?.unsoldQty || 0;
+  const pedido = parseInt(qtdTexto, 10) || 0;
+  if (pedido < 1) {
+    alert('Informe quantas unidades você vendeu.');
+    return;
+  }
+  if (disponivel && pedido > disponivel) {
+    alert(`Você tem ${disponivel} de "${itemName}" em estoque não vendido — não dá pra registrar ${pedido}.`);
+    return;
+  }
+  const qty = pedido;
+
+  // Valor em branco = o preço cadastrado × quantidade. É o caso comum (vendeu pelo preço de
+  // sempre), e preencher na mão o que o app já sabe seria atrito à toa. Digitou, o seu vale.
+  const total = parseAlzInput(valorTexto) || getItemPrice(itemName) * qty;
+  if (!(total > 0)) {
+    alert(`"${itemName}" não tem preço cadastrado — informe o valor recebido.`);
+    return;
+  }
+  const unitPrice = Math.round(total / qty);
+
+  // As mesmas checagens do formulário: esta venda também reescreve o preço cadastrado do item
+  // (ver applyAutoItemPrice), então um erro de ordem de grandeza aqui contamina o app inteiro.
+  // Atalho não pode significar menos conferência.
+  const sanity = checkPricePlausibility(itemName, unitPrice);
+  if (sanity && !confirm(
+    `${formatAlzGamer(unitPrice)} por unidade está ${sanity.factor}× ${sanity.tooHigh ? 'ACIMA' : 'ABAIXO'} da referência (${formatAlzGamer(sanity.reference)}, ${sanity.source}).\n\n` +
+    `Confira a quantidade e o valor — essa venda também vira o preço cadastrado de "${itemName}". Confirma?`
+  )) return;
+
+  recordSale({ itemName, qty, unitPrice, date: todayISODate() });
+  renderPage();
+  showInfoToast(`Venda registrada: ${qty}× ${itemName} — ${formatAlzGamer(total)}`);
+}
+
 export function dismissUnsoldInventory(itemName, reason) {
   const droppedQty = summarizeDropsByItem(getAllDrops()).find(i => i.name === itemName)?.qty || 0;
   const soldQty = AppState.salesLog
