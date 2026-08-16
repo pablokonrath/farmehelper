@@ -41,8 +41,15 @@ function sugestoesExclusivas() {
 function renderItemDungeonSourcesCard() {
   if (!AppState.isMasterAdmin) return '';
 
+  // A busca é por DG, não por item. Como a lista é agrupada por DG, procurar o nome do item
+  // devolveria uma linha solta dentro de um grupo — resposta pior do que a pergunta natural aqui,
+  // que é "o que eu já cadastrei nesta DG".
   const busca = normalizeForSearch(AppState.dropSourceCatalogQuery || '');
-  const casa = nome => !busca || normalizeForSearch(nome).includes(busca);
+  const casaDg = dgId => {
+    if (!busca) return true;
+    const dg = AppState.dungeonList.find(d => d.id === dgId);
+    return dg ? normalizeForSearch(dg.name).includes(busca) : false;
+  };
   const entries = Object.entries(AppState.itemDungeonSources).sort((a, b) => a[0].localeCompare(b[0]));
 
   // Agrupado POR DG, não como lista de itens. A pergunta que se faz aqui não é "que itens eu
@@ -69,10 +76,13 @@ function renderItemDungeonSourcesCard() {
   const cobertas = AppState.dungeonList.filter(d => porDg.has(d.id)).length;
 
   const grupos = [...porDg.entries()]
-    .map(([id, nomes]) => ({ dg: AppState.dungeonList.find(d => d.id === id), id, nomes: nomes.filter(casa) }))
+    .filter(([id]) => casaDg(id))
+    .map(([id, nomes]) => ({ dg: AppState.dungeonList.find(d => d.id === id), id, nomes }))
     .filter(g => g.dg && g.nomes.length)
     .sort((a, b) => a.dg.name.localeCompare(b.dg.name));
-  const semIdFiltrado = semIdentificacao.filter(([n]) => casa(n));
+  // Item em várias DGs entra se QUALQUER uma delas casar — buscar por uma DG tem que revelar
+  // tudo que está pendurado nela, inclusive o que também está pendurado em outras.
+  const semIdFiltrado = semIdentificacao.filter(([, ids]) => ids.some(casaDg));
 
   return `
 <div class="card">
@@ -104,17 +114,17 @@ function renderItemDungeonSourcesCard() {
          cobertura acima, não pra reler o que já cadastrou. */''}
     <button style="background:transparent;border:none;padding:0;cursor:pointer;color:var(--muted);font-size:11px;display:flex;align-items:center;gap:6px" onclick="toggleCatalogList()">
       <i class="ti ti-chevron-${AppState.isCatalogListOpen ? 'down' : 'right'}"></i>
-      Ver os <strong style="color:var(--txt2)">${entries.length} itens</strong> cadastrados${semIdentificacao.length ? `, ${semIdentificacao.length} sem identificar nada` : ''}
+      Ver o que já está cadastrado — <strong style="color:var(--txt2)">${entries.length} itens</strong> em ${porDg.size} DGs${semIdentificacao.length ? `, ${semIdentificacao.length} sem identificar nada` : ''}
     </button>
     ${!AppState.isCatalogListOpen ? '' : `
     <div class="row" style="margin:10px 0">
-      <div style="flex:1"><input class="inp inp-sm" placeholder="Buscar item cadastrado…" value="${escAttr(AppState.dropSourceCatalogQuery || '')}" oninput="setCatalogQuery(this.value)"></div>
+      <div style="flex:1"><input class="inp inp-sm" placeholder="Buscar DG… (ex: Siena)" value="${escAttr(AppState.dropSourceCatalogQuery || '')}" oninput="setCatalogQuery(this.value)"></div>
     </div>
     ${!semIdFiltrado.length ? '' : `<div style="margin-bottom:12px;padding:8px 10px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:6px">
       <div style="font-size:11px;color:var(--warn);margin-bottom:4px"><i class="ti ti-alert-triangle"></i> Em mais de uma DG — não identificam nada e podem sair.</div>
       ${semIdFiltrado.map(([n, ids]) => linhaCatalogo(n, ids)).join('')}
     </div>`}
-    ${!grupos.length && !semIdFiltrado.length ? '<div class="empty" style="padding:12px 0">Nada encontrado.</div>' : ''}
+    ${!grupos.length && !semIdFiltrado.length ? '<div class="empty" style="padding:12px 0">Nenhuma DG com esse nome tem item cadastrado.</div>' : ''}
     ${grupos.map(g => `<div style="margin-bottom:10px">
       <div style="font-size:11px;font-weight:700;color:var(--acc);text-transform:uppercase;letter-spacing:.4px;margin-bottom:2px">${esc(g.dg.name)} <span style="font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">${g.nomes.length}</span></div>
       ${g.nomes.map(n => linhaCatalogo(n, [g.id])).join('')}
