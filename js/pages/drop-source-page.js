@@ -349,6 +349,7 @@ ${!routeYield.length ? '' : `
           ${expectedAlzCell(i)}
         </tr>`).join('')}
         ${reverseResult.groups.map(g => gearGroupRows(g)).join('')}
+        ${semPrecoRows(reverseResult.semPreco)}
         </tbody></table>
       ${historicoDiarioDaDg(reverseDgId)}
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
@@ -367,6 +368,28 @@ ${renderItemDungeonSourcesCard()}`;
 // caminho sem sumir do app: os números do grupo são os mesmos da soma das partes, e abrir mostra
 // item por item. Recolhido é o padrão porque, na esmagadora maioria das vezes, não é o que você
 // veio ver — mas quando é, está a um clique.
+// Itens sem preço cadastrado, recolhidos numa linha. A tabela existe pra responder "o que rende
+// mais aqui", e item sem preço não responde nada — fica no fim como 0 Alz, empurrando pra baixo o
+// que interessa. Escondido, mas CONTADO e abrível: sumir calado seria pior que a lista longa, e a
+// contagem ainda vira lembrete de que tem preço faltando.
+function semPrecoRows(semPreco) {
+  if (!semPreco?.length) return '';
+  const aberto = AppState.dropSourceGearOpen === 'sem-preco';
+  return `<tr style="cursor:pointer" onclick="toggleDropSourceGear('sem-preco')" title="${aberto ? 'Recolher' : 'Ver quais são'}">
+      <td class="rank"><i class="ti ti-chevron-${aberto ? 'down' : 'right'}" style="color:var(--muted)"></i></td>
+      <td style="color:var(--muted)"><i class="ti ti-tag-off"></i> Sem preço cadastrado <span style="font-size:11px">(${semPreco.length})</span></td>
+      <td style="color:var(--muted)">${semPreco.reduce((s, i) => s + i.qty, 0).toLocaleString('pt-BR')}×</td>
+      <td colspan="3" style="color:var(--muted);font-size:11px">Contam como 0 Alz até você cadastrar o preço em Cálculo de farme.</td>
+    </tr>
+    ${!aberto ? '' : semPreco.map(i => `<tr style="background:var(--surf2)">
+      <td></td>
+      <td style="padding-left:26px;color:var(--muted)">${esc(i.name)}</td>
+      <td>${i.qty.toLocaleString('pt-BR')}×</td>
+      <td>${rateWithConfidence(i)}</td>
+      <td colspan="2"><span style="color:var(--muted)">sem preço</span></td>
+    </tr>`).join('')}`;
+}
+
 function gearGroupRows(gear) {
   if (!gear) return '';
   const aberto = AppState.dropSourceGearOpen === gear.key;

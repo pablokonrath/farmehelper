@@ -137,6 +137,43 @@ export function isFixedPriceItem(itemName) {
   return FIXED_PRICE_ITEMS.has(normalizeForSearch(stripEnhancementSuffix(itemName)));
 }
 
+// MATERIAL: insumo de craft/aprimoramento. Diferente de equipamento e arma, material NÃO sai das
+// contas — ele vale Alz e você vende. Isto aqui é só AGRUPAMENTO na tabela "o que uma DG dropa",
+// que estava virando uma lista longa demais pra ler.
+//
+// A regra principal é estrutural: nome terminando em marcador de nível — "Disco de Fogo (Nv 4)",
+// "Cartucho (Nv. 4)". Pega disco e cartucho de uma vez e continua pegando o que o jogo lançar com
+// o mesmo formato, sem ninguém cadastrar nada. Mesma lição das armas: listar nome conhecido é
+// jogo de gato e rato, e cada nome novo escapa em silêncio.
+const NIVEL_NO_FIM = /\(\s*n[íi]?v\.?\s*\d+\s*\)\s*$/;
+
+// Complemento pro material que não traz o marcador de nível. Cresce conforme forem aparecendo —
+// é só acrescentar aqui.
+//
+// Frases inteiras, não palavras soltas, e isso importa: "nucleo" sozinho arrastaria Núcleo Arcano,
+// Núcleo Effector e Núcleo do Material junto; "casca" arrastaria Casca de Besouro. O nome composto
+// pega o item certo e só ele.
+const MATERIAL_KEYWORDS = [
+  'cartucho',
+  'coral',
+  'casca dura',
+  'pedra reflexiva', 'pedra refletiva',
+  'nucleo poderoso',
+].map(kw => normalizeForSearch(kw));
+
+// Devolve o grupo do material (o tipo base, sem o nível) ou null. "Disco de Fogo (Nv 4)" e
+// "Disco do Ar (Nv 4)" caem juntos em "Disco" — é assim que a tabela encolhe de verdade.
+export function getMaterialGroup(name) {
+  const normalized = normalizeForSearch(name);
+  const temNivel = NIVEL_NO_FIM.test(normalized);
+  const porPalavra = MATERIAL_KEYWORDS.find(kw => normalized.includes(kw));
+  if (!temNivel && !porPalavra) return null;
+  // Primeira palavra do nome é o tipo: Disco, Cartucho, Pedra... Suficiente pra agrupar, e não
+  // depende de conhecer a lista de tipos que existem.
+  const primeira = normalized.replace(NIVEL_NO_FIM, '').trim().split(/\s+/)[0] || 'Material';
+  return primeira.charAt(0).toUpperCase() + primeira.slice(1);
+}
+
 // Item de evento fica FORA de toda conta de Alz do app.
 //
 // O painel de evento já era separado de propósito ("evento é temporário, nada disso contamina os

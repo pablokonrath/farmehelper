@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { getItemPrice, isExcludedGearItem, getGearKind } from './drops.js';
+import { getItemPrice, isExcludedGearItem, getGearKind, getMaterialGroup } from './drops.js';
 import { dropRateRange, rateConfidence } from '../utils/stats.js';
 import { renderPage, navigateTo } from '../router.js';
 
@@ -188,7 +188,12 @@ export function findDungeonDrops(dungeonId) {
   // e vira UM grupo. Cada variação virava uma linha, e a tabela ficava tão longa que escondia os
   // itens que você está de fato caçando — que é a única razão de abrir essa tela. Some da lista,
   // mas não do app: o grupo abre e mostra tudo, com os mesmos números.
-  const items = todos.filter(i => !isExcludedGearItem(i.name));
+  // Sem preço cadastrado não dá pra dizer quanto rende, e a tabela existe pra responder isso —
+  // então esses ficam escondidos por padrão, com a contagem à vista pra você poder mostrar. Some
+  // da lista, não do app: escondido em silêncio seria pior que a lista longa.
+  const semPreco = todos.filter(i => !isExcludedGearItem(i.name) && !getMaterialGroup(i.name) && !(i.price > 0));
+
+  const items = todos.filter(i => !isExcludedGearItem(i.name) && !getMaterialGroup(i.name) && i.price > 0);
 
   // O resumo do grupo é a soma real, não uma média de médias: quantidade somada, taxa recalculada
   // sobre o mesmo total de runs, e Alz/run somado item a item (cada um tem preço próprio, então
@@ -207,13 +212,21 @@ export function findDungeonDrops(dungeonId) {
   // segunda camada por esse mesmo sinal: armadura por classe (GU, GA...), arma por material
   // (Mithril, Demonite...). Responde "o que essa DG larga pra cada classe" e "de que material sai
   // arma aqui" sem custo nenhum, já que a classificação precisou dessa informação de qualquer jeito.
-  const familias = { armadura: new Map(), arma: new Map() };
+  const familias = { armadura: new Map(), arma: new Map(), material: new Map() };
   todos.forEach(i => {
+    // Equipamento e arma primeiro: eles já saem de todas as contas do app, e material é só
+    // agrupamento. Um nome que caia nos dois critérios é equipamento, não material.
     const kind = getGearKind(i.name);
-    if (!kind) return;
-    const mapa = familias[kind.familia];
-    if (!mapa.has(kind.grupo)) mapa.set(kind.grupo, []);
-    mapa.get(kind.grupo).push(i);
+    if (kind) {
+      const mapa = familias[kind.familia];
+      if (!mapa.has(kind.grupo)) mapa.set(kind.grupo, []);
+      mapa.get(kind.grupo).push(i);
+      return;
+    }
+    const material = getMaterialGroup(i.name);
+    if (!material) return;
+    if (!familias.material.has(material)) familias.material.set(material, []);
+    familias.material.get(material).push(i);
   });
 
   const montarFamilia = (key, label, icon, mapa) => {
@@ -230,9 +243,10 @@ export function findDungeonDrops(dungeonId) {
   const groups = [
     montarFamilia('armadura', 'Equipamentos', 'ti-shirt', familias.armadura),
     montarFamilia('arma', 'Armas', 'ti-sword', familias.arma),
+    montarFamilia('material', 'Materiais', 'ti-packages', familias.material),
   ].filter(Boolean);
 
-  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items, groups };
+  return { dungeonName: dg ? dg.name : dungeonId, totalRuns, items, groups, semPreco };
 }
 
 // Rendimento esperado do item buscado, por ROTA salva (não por DG isolada) — soma repetições ×
