@@ -26,3 +26,8 @@ uploads/sounds/*
 
 # Memória/plans locais do Claude Code (específico desta máquina, não faz sentido versionar)
 .claude/
+
+# Arte original das imagens de fundo das DGs (PNG pesado, ~2,5 MB cada). O que vai pro ar é o
+# .jpg comprimido em uploads/imagens/ — 10× menor com o mesmo visual a 42% de opacidade. Os
+# originais ficam aqui só pra poder reencodar depois; não vão pro repo nem pro servidor.
+arte-original/

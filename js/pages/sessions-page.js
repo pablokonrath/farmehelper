@@ -82,25 +82,32 @@ function timeHM(ms) {
 // é o único que representa ONDE você está, e é onde a ambientação tem função — nos outros seria
 // enfeite competindo com número.
 //
-// Dois nomes possíveis, tentados em ordem pelo onerror, mesma técnica do dgIcon (nada de checar
-// existência no servidor antes):
-//   1. bg-<nome-completo>.png  — "bg-dx-premium-do-fogo.png"
-//   2. bg-<primeira-palavra>.png — "bg-solo.png"
+// Tenta os nomes em ordem, caindo pro próximo no onerror — mesma técnica do dgIcon, sem precisar
+// checar existência no servidor antes:
 //
-// O segundo é o formato curto que já existe e resolve a maioria. O primeiro existe porque o curto
-// é AMBÍGUO em boa parte do catálogo: as 4 DX Premium viram todas "bg-dx", os 3 Templos viram
-// "bg-templo", as 2 Torres viram "bg-torre". Quando isso incomodar, é só nomear o arquivo com o
-// nome inteiro que ele passa a ter prioridade.
+//   bg-<nome-completo>.jpg/.png   "bg-dx-premium-do-fogo.jpg"
+//   bg-<primeira-palavra>.jpg/.png "bg-solo.jpg"
 //
-// Sem arquivo nenhum, o <img> se remove e o card fica exatamente como era.
+// O nome CURTO resolve a maioria e é o mais prático de nomear. O completo existe porque o curto é
+// AMBÍGUO em boa parte do catálogo: as 4 DX Premium virariam todas "bg-dx", os 3 Templos
+// "bg-templo", as 2 Torres "bg-torre" — nesses casos é só usar o nome inteiro, que tem prioridade.
+//
+// .jpg antes de .png porque foto em PNG pesa ~10× o mesmo visual (medido: 2,4 MB contra 230 KB no
+// mesmo 1536×1024). O .png continua na lista pra arte com transparência, que aí sim precisa dele.
+//
+// Sem nenhum arquivo, imagem e véu se removem e o card fica exatamente como era.
 function dgBackground(dungeonName) {
   if (!dungeonName) return '';
   const slug = normalizeForSearch(dungeonName).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  const curto = slug.split('-')[0];
   if (!slug) return '';
+  const curto = slug.split('-')[0];
+  const candidatos = [...new Set([slug, curto])]
+    .flatMap(n => [`uploads/imagens/bg-${n}.jpg`, `uploads/imagens/bg-${n}.png`]);
+
   // O véu some junto com a imagem: sem arte por trás, ele viraria um retângulo escuro sem motivo.
-  return `<img class="dg-bg" src="uploads/imagens/bg-${slug}.png" alt="" aria-hidden="true"
-    onerror="if(this.dataset.tentou){this.nextElementSibling?.remove();this.remove()}else{this.dataset.tentou='1';this.src='uploads/imagens/bg-${curto}.png'}"><div class="dg-bg-veil"></div>`;
+  return `<img class="dg-bg" src="${candidatos[0]}" alt="" aria-hidden="true"
+    data-tentativas='${JSON.stringify(candidatos.slice(1))}'
+    onerror="var r=JSON.parse(this.dataset.tentativas||'[]');if(r.length){this.dataset.tentativas=JSON.stringify(r.slice(1));this.src=r[0]}else{this.nextElementSibling?.remove();this.remove()}"><div class="dg-bg-veil"></div>`;
 }
 
 // Ícone da DG, se existir um arquivo icons/dungeons/<id>.png (o dono sobe manualmente, DG por
