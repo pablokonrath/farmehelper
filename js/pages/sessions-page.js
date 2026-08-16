@@ -366,6 +366,18 @@ export function renderSessionsPage() {
   // se falam: você tinha que sair daqui, rolar até o card de reset lá embaixo e fazer a conta de
   // cabeça bem na hora em que ela importa (perto do limite diário). Só aparece quando faltam
   // poucas runs E resetar de fato compensa pelo histórico — não é um lembrete genérico.
+  // Contador em 20/20 com a sessão ainda aberta. O aviso do Telegram foi movido pro encerramento
+  // de propósito (ver checkDailyRunLimitReached): ele bate 20 antes da vigésima run acabar de
+  // verdade no jogo, e uma mensagem no celular dizendo "acabou" fazia sair cedo e perder o drop.
+  // Mas quem está na tela não pode ficar sem sinal nenhum — só que aqui ele é passivo, e diz que
+  // é estimativa em vez de mandar parar.
+  const limiteNaTela = (() => {
+    if (!active || !AppState.activeDgSession.dungeonId) return '';
+    const feitas = computeRunsDoneToday(active.dungeonName);
+    if (feitas < DAILY_RUN_LIMIT) return '';
+    return `<div style="margin-top:12px;padding:10px 12px;background:var(--warn-bg);border:1px solid var(--warn-border);border-radius:8px;font-size:12px;color:var(--warn)"><i class="ti ti-hourglass-high"></i> Contador em <strong>${feitas}/${DAILY_RUN_LIMIT}</strong> — mas isso é <strong>estimativa</strong> pelo tempo, não contagem do jogo. Confira as entradas restantes no inventário: se ainda tem run, siga (e corrija o número aqui). Se acabou mesmo, <strong>encerre a sessão</strong> — é o encerramento que fecha o dia dessa DG e manda o resumo pro Telegram.</div>`;
+  })();
+
   const resetNudge = (() => {
     if (!active) return '';
     // Sessão ainda sem DG não tem limite diário pra comparar — e computeRunsDoneToday casaria
@@ -441,7 +453,7 @@ export function renderSessionsPage() {
         <label class="lbl" style="margin-bottom:6px">Itens caindo agora</label>
         <div id="dgLiveItemsBox" style="display:flex;flex-wrap:wrap;gap:6px"></div>
       </div>
-      ${resetNudge}`
+      ${limiteNaTela}${resetNudge}`
     : `<div class="row" style="align-items:flex-end">
         <div style="flex:1"><label class="lbl">DG que vou farmar</label>
           <select class="inp" id="dgSessionSelect" onchange="fillSuggestedRunMinutes()">
