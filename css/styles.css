@@ -175,17 +175,24 @@ tbody tr:hover{background:var(--surf2)}
 /* A imagem em si: cobre o card inteiro, atrás de tudo. z-index negativo em vez de mexer no
    z-index de todo o conteúdo — assim nenhum filho precisa saber que existe um fundo. */
 .card-dg-bg>.dg-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
-  /* Baixa opacidade + dessaturação parcial: é AMBIENTAÇÃO, não ilustração. Uma arte em cores
-     cheias atrás de números destrói o contraste e o card deixa de ser legível — que é o risco
-     real dessa ideia e o único jeito de errar nela. */
-  opacity:.22;filter:saturate(.6)}
-/* Véu por cima da imagem: garante piso de contraste mesmo se a arte for clara ou muito ocupada.
-   Mais forte na esquerda, onde ficam o nome da DG e os números.
+  /* É AMBIENTAÇÃO, não ilustração: arte em cores cheias atrás de números destrói o contraste e o
+     card deixa de ser legível — o único jeito de errar nesta ideia.
 
-   É um ELEMENTO próprio, não um ::after do card: .card::before/::after já são os ornamentos de
-   canto, e sobrescrevê-los aqui apagaria a decoração justamente no card em destaque. */
+     Mas o primeiro ajuste errou pro outro lado. Com opacidade muito baixa, arte ESCURA (a da
+     Tumba) simplesmente somia no fundo escuro do card: preto sobre preto não aparece por mais
+     que se aumente a opacidade. O que resolve é clarear a imagem, não só mostrá-la mais —
+     brightness levanta o que é escuro e deixa quase intacto o que já é claro, então serve pras
+     duas pontas sem precisar de ajuste por DG. */
+  opacity:.42;filter:saturate(.75) brightness(1.35) contrast(.95)}
+/* Véu por cima da imagem. É um ELEMENTO próprio, não um ::after do card: .card::before e ::after
+   já são os ornamentos de canto, e sobrescrevê-los aqui apagaria a decoração justamente no card
+   em destaque.
+
+   Ele protege a ESQUERDA, onde ficam o nome da DG, o contador e os botões. À direita quase some —
+   ali não há texto, e é o espaço onde a arte pode de fato aparecer. Sem essa assimetria, ou o
+   texto fica ilegível ou a imagem fica invisível: não dá pra ter os dois com um véu uniforme. */
 .card-dg-bg>.dg-bg-veil{position:absolute;inset:0;z-index:-1;pointer-events:none;
-  background:linear-gradient(100deg,var(--surf) 12%,rgba(0,0,0,.72) 48%,rgba(0,0,0,.45) 100%)}
+  background:linear-gradient(100deg,var(--surf) 8%,rgba(10,8,6,.82) 34%,rgba(10,8,6,.42) 68%,rgba(10,8,6,.12) 100%)}
 @media (prefers-reduced-motion:no-preference){
   .card-dg-bg>.dg-bg{transition:opacity .35s ease}
 }
