@@ -1,10 +1,10 @@
 import { AppState } from '../state/app-state.js';
-import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes } from './dg-session.js';
+import { startDgSession, endDgSession, discardActiveDgSession, resumeDgSession, setActiveSessionDungeon, getActiveSessionSummary, unclaimedDropsSince, burstStartAt, suggestRunMinutes, computeRunsDoneOn, DAILY_RUN_LIMIT } from './dg-session.js';
 import { getExpectedItemNamesForDungeon, getManualExpectedItemNames } from './item-dungeon-sources.js';
 import { showGoalToast } from './alerts.js';
 import { relaySessionToTelegram } from './telegram.js';
 import { saveAutoSessionEnabled, saveSessionIdleCloseMinutes } from '../state/persistence.js';
-import { stripEnhancementSuffix, normalizeForSearch } from '../utils/parsing.js';
+import { stripEnhancementSuffix, normalizeForSearch, todayISODate } from '../utils/parsing.js';
 import { formatAlzGamer } from '../utils/formatting.js';
 import { renderPage } from '../router.js';
 
@@ -156,7 +156,21 @@ function recentlyClosedSession() {
     if (!ultima || (s.endAt || 0) > (ultima.endAt || 0)) ultima = s;
   }
   if (!ultima?.endAt) return null;
-  return Date.now() - ultima.endAt <= janela ? ultima : null;
+  if (Date.now() - ultima.endAt > janela) return null;
+
+  // DG que já bateu o limite diário NÃO pode ser retomada. Isso não é palpite: sem reset, o jogo
+  // não deixa entrar de novo, então drop chegando agora é de OUTRA DG por definição.
+  //
+  // Foi um bug real e caro: uma DG completa foi retomada e os drops de 1SS entraram como DX da
+  // Terra — corrompe o Alz/run das duas, o "o que essa DG dropa" das duas, e some no meio do
+  // histórico sem nada denunciando.
+  //
+  // Quem resetou por gemas de fato pode continuar, e nesse caso perde a retomada: abre sessão
+  // nova e você corrige a DG num clique. É a troca certa — a assimetria de sempre, fragmentar é
+  // chato e reversível, misturar duas DGs corrompe dado.
+  if (computeRunsDoneOn(ultima.dungeonName, todayISODate()) >= DAILY_RUN_LIMIT) return null;
+
+  return ultima;
 }
 
 // Chamada a cada lote de drops novos do log (ver file-source.js). Barata: sai logo de cara no
