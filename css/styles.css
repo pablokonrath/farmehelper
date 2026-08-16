@@ -168,6 +168,28 @@ tbody tr:hover{background:var(--surf2)}
 .card-featured{border-color:var(--gold-border);box-shadow:0 0 24px rgba(217,164,65,.16),0 8px 24px rgba(0,0,0,.25);background-image:var(--texture-grain),linear-gradient(160deg,rgba(217,164,65,.07),transparent 55%);background-size:180px 180px,auto}
 .card-featured::before,.card-featured::after{border-color:var(--gold)}
 
+/* Fundo da DG no card "Farmando agora" (ver dgBackground em sessions-page.js).
+   O card fica com position:relative e overflow escondido pra imagem não vazar pelas bordas
+   arredondadas. */
+.card-dg-bg{position:relative;overflow:hidden;isolation:isolate}
+/* A imagem em si: cobre o card inteiro, atrás de tudo. z-index negativo em vez de mexer no
+   z-index de todo o conteúdo — assim nenhum filho precisa saber que existe um fundo. */
+.card-dg-bg>.dg-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;
+  /* Baixa opacidade + dessaturação parcial: é AMBIENTAÇÃO, não ilustração. Uma arte em cores
+     cheias atrás de números destrói o contraste e o card deixa de ser legível — que é o risco
+     real dessa ideia e o único jeito de errar nela. */
+  opacity:.22;filter:saturate(.6)}
+/* Véu por cima da imagem: garante piso de contraste mesmo se a arte for clara ou muito ocupada.
+   Mais forte na esquerda, onde ficam o nome da DG e os números.
+
+   É um ELEMENTO próprio, não um ::after do card: .card::before/::after já são os ornamentos de
+   canto, e sobrescrevê-los aqui apagaria a decoração justamente no card em destaque. */
+.card-dg-bg>.dg-bg-veil{position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(100deg,var(--surf) 12%,rgba(0,0,0,.72) 48%,rgba(0,0,0,.45) 100%)}
+@media (prefers-reduced-motion:no-preference){
+  .card-dg-bg>.dg-bg{transition:opacity .35s ease}
+}
+
 /* Botão de menu (hambúrguer) e overlay — só aparecem no celular (ver media query abaixo). */
 .mmenu-btn{display:none;position:fixed;top:10px;left:10px;z-index:60;width:40px;height:40px;align-items:center;justify-content:center;background:var(--surf2);color:var(--acc);border:1px solid var(--border);border-radius:10px;font-size:var(--fs-2xl);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.4)}
 .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:45}

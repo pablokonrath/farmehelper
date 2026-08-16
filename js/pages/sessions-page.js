@@ -7,7 +7,7 @@ import { renderDungeonOptionsGrouped } from '../features/dungeon-difficulty.js';
 import { infoToggle } from '../features/ui-toggles.js';
 import { formatNumber, formatAlzGamer, getAlzTierColor, renderAlzValue, formatDateBR, formatDuration, timeBreakdownTooltip } from '../utils/formatting.js';
 import { renderDateInputBR } from '../utils/date-input.js';
-import { todayISODate } from '../utils/parsing.js';
+import { todayISODate, normalizeForSearch } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
@@ -76,6 +76,31 @@ function renderRushProgressCard(comparisonByDgId, comparisonAllTime) {
 function timeHM(ms) {
   const d = new Date(ms);
   return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+}
+
+// Imagem de fundo da DG que está sendo farmada, de uploads/imagens/. Só no card "Farmando agora":
+// é o único que representa ONDE você está, e é onde a ambientação tem função — nos outros seria
+// enfeite competindo com número.
+//
+// Dois nomes possíveis, tentados em ordem pelo onerror, mesma técnica do dgIcon (nada de checar
+// existência no servidor antes):
+//   1. bg-<nome-completo>.png  — "bg-dx-premium-do-fogo.png"
+//   2. bg-<primeira-palavra>.png — "bg-solo.png"
+//
+// O segundo é o formato curto que já existe e resolve a maioria. O primeiro existe porque o curto
+// é AMBÍGUO em boa parte do catálogo: as 4 DX Premium viram todas "bg-dx", os 3 Templos viram
+// "bg-templo", as 2 Torres viram "bg-torre". Quando isso incomodar, é só nomear o arquivo com o
+// nome inteiro que ele passa a ter prioridade.
+//
+// Sem arquivo nenhum, o <img> se remove e o card fica exatamente como era.
+function dgBackground(dungeonName) {
+  if (!dungeonName) return '';
+  const slug = normalizeForSearch(dungeonName).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const curto = slug.split('-')[0];
+  if (!slug) return '';
+  // O véu some junto com a imagem: sem arte por trás, ele viraria um retângulo escuro sem motivo.
+  return `<img class="dg-bg" src="uploads/imagens/bg-${slug}.png" alt="" aria-hidden="true"
+    onerror="if(this.dataset.tentou){this.nextElementSibling?.remove();this.remove()}else{this.dataset.tentou='1';this.src='uploads/imagens/bg-${curto}.png'}"><div class="dg-bg-veil"></div>`;
 }
 
 // Ícone da DG, se existir um arquivo icons/dungeons/<id>.png (o dono sobe manualmente, DG por
@@ -347,7 +372,8 @@ export function renderSessionsPage() {
   })();
 
   const nowFarmingCard = `
-<div class="card card-featured">
+<div class="card card-featured${active && AppState.activeDgSession.dungeonId ? ' card-dg-bg' : ''}">
+  ${dgBackground(AppState.activeDgSession?.dungeonName)}
   <div class="ctitle"><i class="ti ti-crosshair" style="color:var(--gold)"></i>Farmando agora</div>
   <div style="font-size:12px;color:var(--muted);margin-bottom:12px"><i class="ti ti-info-circle"></i> Opcional — marque o DG antes de começar e os drops que caírem entram no histórico daquele DG. Se não marcar, o FarmHub abre uma sessão sozinho assim que os drops começam a cair — e encerra sozinho quando eles param, no horário do último drop (dá pra desligar abaixo).</div>
   ${active
