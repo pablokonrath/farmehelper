@@ -369,6 +369,10 @@ export const AppState = {
   openCards: {},
   // Painel de "recuperar sessão esquecida" (Sessões de farme) aberto ou não — só UI, não persiste.
   forgottenSessionRecoveryOpen: false,
+  // Rascunho da divisão de uma sessão que virou duas DGs (encadeou sem encerrar no meio):
+  // { startAt, splitAt, firstDgId, secondDgId }. Só UI, não persiste — nada muda no histórico até
+  // você confirmar. Ver splitSession em dg-session.js.
+  sessionSplitDraft: null,
   // Parâmetros do cálculo "vale a pena resetar?" (guardados em app_settings): só o custo do reset
   // em si (gemas) e quantas runs cada reset devolve. Valor da gema/ticket em Alz NÃO mora aqui —
   // vem de rushCardCashPrice/rushTicketPrice (Parâmetros do dia), a mesma fonte que o carrinho de

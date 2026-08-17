@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, sessionRealizedAlz, suggestRunMinutes, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
+import { getActiveSessionSummary, computeDgComparison, computeResetWorth, computeRunsDoneToday, suggestForgottenSessionWindow, findUnclaimedDropWindows, computeBestFarmingHours, sessionTotalAlz, sessionRealizedAlz, suggestRunMinutes, suggestSessionSplit, previewSessionSplit, DAILY_RUN_LIMIT, RECENT_SESSIONS_FOR_TREND } from '../features/dg-session.js';
 import { getItemPrice, isExcludedGearItem } from '../features/drops.js';
 import { getExpectedItemNamesForDungeon } from '../features/item-dungeon-sources.js';
 import { getCostPerGem, getTicketPrice, getTicketCraftCost } from '../features/rush-cart.js';
@@ -174,6 +174,70 @@ export function fillSuggestedRunMinutes() {
     : `<span style="color:var(--muted)"><i class="ti ti-info-circle"></i> Sem histórico com runs preenchidas nessa DG ainda — preencha as runs ao encerrar e da próxima vez ele já sugere o tempo sozinho.</span>`;
 }
 
+// Painel de divisão de sessão (ver splitSession em dg-session.js): a sessão pegou duas DGs porque
+// você encadeou sem encerrar no meio. Mostra o corte sugerido, POR QUE ele foi sugerido, e as duas
+// metades já prontas — dividir errado dá o mesmo trabalho que o erro original, então nada acontece
+// até você conferir e confirmar.
+function sessionSplitRow(s) {
+  const d = AppState.sessionSplitDraft;
+  const sug = suggestSessionSplit(s.startAt, d.firstDgId || s.dungeonId);
+  const pre = previewSessionSplit(s.startAt, d.splitAt);
+  if (!pre) return '';
+
+  const selo = { 'identificadores': ['var(--epic)', 'ti-star', 'Pelos identificadores'], 'tempo de 20 runs': ['var(--gold)', 'ti-clock', 'Pelo tempo de 20 runs'], 'maior pausa': ['var(--warn)', 'ti-player-pause', 'Pela maior pausa'] }[sug?.motivo] || ['var(--muted)', 'ti-cut', 'Corte'];
+  // Depois que você move o corte, o selo passaria a explicar um corte que não é mais o escolhido.
+  const movido = sug && sug.splitAt !== d.splitAt;
+
+  // Só os maiores intervalos: com dezenas de drops, listar todo espaço entre dois seria uma lista
+  // inútil. A troca de DG deixou um buraco — é entre os maiores que ele está. O corte atual entra
+  // sempre, mesmo fora dos maiores, senão o select mostraria um horário e o painel cortaria outro.
+  const top = (sug?.gaps || []).slice(0, 8);
+  const opcoes = (top.some(g => g.at === d.splitAt) ? top : [...top, { at: d.splitAt, gapMs: 0 }])
+    .sort((a, b) => a.at - b.at);
+
+  const metade = (lado, titulo, dgSel, qual) => `
+    <div style="flex:1;min-width:230px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:12px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:700;margin-bottom:8px">${titulo}</div>
+      <select class="inp inp-sm" style="width:100%;margin-bottom:8px${dgSel ? '' : ';border-color:var(--warn);color:var(--warn)'}" onchange="setSessionSplitDungeon('${qual}', this.value)">
+        <option value=""${dgSel ? '' : ' selected'}>— qual DG? —</option>
+        ${renderDungeonOptionsGrouped(AppState.dungeonList, dg => dg.name, dgSel)}
+      </select>
+      <div style="font-size:12px;color:var(--muted);line-height:1.7">
+        ${timeHM(lado.startAt)}–${timeHM(lado.endAt)} · ${formatDuration(lado.activeMs)} ativos<br>
+        <strong style="color:var(--txt)">${lado.dropCount}</strong> drops · <strong style="color:${getAlzTierColor(lado.totalAlz)}">${formatAlzGamer(lado.totalAlz)}</strong>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">${lado.items.length ? lado.items.map(esc).join(' · ') : 'sem itens'}</div>
+    </div>`;
+
+  return `<tr class="t-detail"><td colspan="10" style="background:var(--surf2);padding:14px 16px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+      <i class="ti ti-arrows-split"></i> <strong style="color:var(--txt)">Dividir esta sessão em duas.</strong>
+      Nada muda até você confirmar. As duas metades são reconstruídas do log pelo horário, então itens, drops e Alz saem coerentes sozinhos — só as runs são estimadas (reparto pelo tempo ativo de cada lado) e ficam editáveis na tabela.
+    </div>
+    ${sug ? `<div style="font-size:12px;color:${movido ? 'var(--txt)' : selo[0]};background:var(--surf);border:1px solid var(--border);border-left:3px solid ${movido ? 'var(--acc)' : selo[0]};border-radius:6px;padding:10px 12px;margin-bottom:12px">
+      ${movido
+        ? `<i class="ti ti-hand-move"></i> <strong>Corte movido por você</strong> — vale o horário escolhido abaixo. Minha sugestão era ${timeHM(sug.splitAt)}, ${selo[2].toLowerCase()}: ${esc(sug.detalhe)}`
+        : `<i class="ti ${selo[1]}"></i> <strong>${selo[2]}</strong> — ${esc(sug.detalhe)}`}
+    </div>` : ''}
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:stretch">
+      ${metade(pre.antes, 'Primeira metade', d.firstDgId, 'primeira')}
+      <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;gap:6px;min-width:150px">
+        <label class="lbl" style="margin:0;text-align:center">Cortar às</label>
+        <select class="inp inp-sm" style="width:100%" onchange="setSessionSplitPoint(this.value)" title="Cada opção é um intervalo sem drop dentro da sessão — a troca de DG está em um deles">
+          ${opcoes.map(g => `<option value="${g.at}"${g.at === d.splitAt ? ' selected' : ''}>${timeHM(g.at)}${g.gapMs ? ` (${g.gapMs >= 60000 ? Math.round(g.gapMs / 60000) + 'min' : Math.round(g.gapMs / 1000) + 's'} parado)` : ''}</option>`).join('')}
+        </select>
+        <div style="font-size:10px;color:var(--muted);text-align:center">maiores intervalos<br>sem drop</div>
+      </div>
+      ${metade(pre.depois, 'Segunda metade', d.secondDgId, 'segunda')}
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-p" onclick="confirmSessionSplit()"${d.firstDgId && d.secondDgId ? '' : ' disabled title="Escolha a DG das duas metades"'}><i class="ti ti-arrows-split"></i>Dividir aqui</button>
+      <button class="btn btn-d" onclick="toggleSessionSplit(${s.startAt})">Cancelar</button>
+      ${d.firstDgId && d.secondDgId ? '' : '<span style="font-size:11px;color:var(--warn)"><i class="ti ti-alert-triangle"></i> Falta dizer a DG de cada metade — sem isso a sessão ficaria fora de todas as médias.</span>'}
+    </div>
+  </td></tr>`;
+}
+
 // Campo de anotação da sessão (ver setSessionNote em dg-session.js). Discreto quando vazio — é
 // exceção, não rotina: a maioria das sessões não precisa de explicação nenhuma.
 function sessionNoteCell(s) {
@@ -187,6 +251,7 @@ function sessionNoteCell(s) {
 // Uma linha do histórico (extraído pra reaproveitar dentro dos grupos por rota abaixo).
 function sessionHistoryRow(s) {
   const expanded = !!AppState.expandedDgSessions[s.startAt];
+  const splitting = AppState.sessionSplitDraft?.startAt === s.startAt;
   const dgExists = AppState.dungeonList.some(d => d.id === s.dungeonId);
   return `<tr>
         <td data-label="Dia">${formatDateBR(s.date)}</td>
@@ -204,9 +269,12 @@ function sessionHistoryRow(s) {
         <td data-label="Anotação">${sessionNoteCell(s)}</td>
         <td><div style="display:flex;gap:10px;align-items:center">
           <button aria-label="${expanded ? 'Esconder' : 'Ver'} itens desta sessão" title="Ver itens" style="background:transparent;border:none;color:var(--acc);cursor:pointer;font-size:15px" onclick="toggleSessionItems(${s.startAt})"><i class="ti ti-chevron-${expanded ? 'up' : 'down'}"></i> <span style="font-size:11px">itens</span></button>
+          ${/* Encadear duas DGs sem encerrar no meio junta o farme das duas num registro só, e aí
+               as duas médias mentem. Dividir conserta sem perder nada — ver splitSession. */''}
+          <button aria-label="Dividir esta sessão em duas" title="Dividir em duas — use quando você encadeou duas DGs sem encerrar a sessão no meio" style="background:transparent;border:none;color:var(--gold);cursor:pointer;font-size:14px" onclick="toggleSessionSplit(${s.startAt})"><i class="ti ti-arrows-split"></i></button>
           <button aria-label="Remover esta sessão" title="Remover esta sessão (ex: ficou aberta por engano e distorce a média de tempo)" style="background:transparent;border:none;color:var(--err);cursor:pointer;font-size:14px" onclick="deleteSession(${s.startAt})"><i class="ti ti-trash"></i></button>
         </div></td>
-      </tr>${expanded ? sessionItemsRow(s) : ''}`;
+      </tr>${splitting ? sessionSplitRow(s) : ''}${expanded ? sessionItemsRow(s) : ''}`;
 }
 
 function sessionHistoryGroupHeader(label, sessions, isRoute) {

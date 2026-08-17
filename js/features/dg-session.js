@@ -3,11 +3,11 @@ import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem,
 import { getCostPerGem, getTicketPrice } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
-import { todayISODate } from '../utils/parsing.js';
+import { todayISODate, normalizeForSearch, stripEnhancementSuffix } from '../utils/parsing.js';
 import { esc } from '../utils/escape.js';
 import { setWatchdogEnabled, showInfoToast, showGoalToast } from './alerts.js';
 import { relaySessionToTelegram } from './telegram.js';
-import { getExpectedItemNamesForDungeon } from './item-dungeon-sources.js';
+import { getExpectedItemNamesForDungeon, getManualExpectedItemNames } from './item-dungeon-sources.js';
 import { actWithUndo } from './undo.js';
 import { renderPage } from '../router.js';
 
@@ -901,6 +901,284 @@ export function applyUnclaimedWindow(target, blockStartAt, blockEndAt) {
   if (!target) return;
   if (target.startsWith('s:')) attachDropWindowToSession(target.slice(2), blockStartAt, blockEndAt);
   else recoverDropWindow(target, blockStartAt, blockEndAt);
+}
+
+// ── Dividir uma sessão que virou duas DGs ────────────────────────────────────────────────────
+//
+// Acontece: você encadeia duas DGs e só percebe depois que nunca encerrou a sessão no meio. O
+// farme das duas fica num registro só, com o nome da primeira — e aí as duas médias mentem: a
+// primeira ganha drops que não são dela, a segunda não existe naquele dia.
+//
+// Na mão não tem conserto sem perder dado: excluir e recriar joga fora runs, anotação e o vínculo
+// com a rota. Mas como pertinência aqui é SEMPRE derivada da janela de tempo, "dividir" é só
+// escolher um instante — tudo antes fica na sessão A, tudo depois vira a sessão B, e os dois
+// registros são reconstruídos do log. Nada é somado na mão, então nada pode divergir dele.
+//
+// O difícil é achar o instante. São três evidências, e a mais forte que existir manda:
+//
+//   1. IDENTIFICADORES. Se o Cristal de Fogo (só Solo) aparece na primeira metade e o Cristal de
+//      Terra (só Tumba) na segunda, a fronteira está entre o último de um e o primeiro do outro.
+//      Isso não é palpite: é o cadastro "Onde dropa" afirmando de propósito. É de longe o melhor
+//      sinal, e ainda diz QUAIS são as duas DGs — você não precisa lembrar.
+//   2. TEMPO DE 20 RUNS. Sem identificador, e sabendo a primeira DG, o limite diário dela é o
+//      relógio: 20 × o tempo/run que o seu histórico já mediu. Conta em tempo ATIVO, não de
+//      relógio, senão uma pausa longa no meio empurraria o corte pra frente.
+//   3. MAIOR PAUSA. Último recurso. Trocar de DG exige sair, teleportar e entrar, então costuma
+//      deixar um buraco maior que o normal entre um drop e o outro.
+//
+// Nenhuma delas é infalível, e por isso o corte é SUGERIDO, não imposto: o painel mostra as duas
+// metades prontas (drops, Alz, itens) e deixa você mover o corte pelos maiores intervalos antes
+// de confirmar. Você reconhece o próprio farme melhor que qualquer heurística.
+
+const chaveItemSessao = nome => normalizeForSearch(stripEnhancementSuffix(nome));
+
+// Item → a ÚNICA DG que o cadastra, ou 'multi' quando mais de uma cadastra (aí não identifica
+// nada). Mesmo critério de exclusividade do palpite de DG na abertura automática de sessão.
+function mapaDeItensExclusivos() {
+  const porItem = new Map();
+  for (const dg of AppState.dungeonList) {
+    for (const nome of getManualExpectedItemNames(dg.id)) {
+      const k = chaveItemSessao(nome);
+      porItem.set(k, porItem.has(k) ? 'multi' : dg);
+    }
+  }
+  return porItem;
+}
+
+// Os intervalos sem drop dentro da sessão, do maior pro menor. Cada um é um corte possível: o
+// instante fica no MEIO do buraco, que é o chute mais neutro sobre quando você trocou de DG.
+function cortesCandidatos(t) {
+  const gaps = [];
+  for (let i = 1; i < t.length; i++) gaps.push({ i, gapMs: t[i] - t[i - 1], at: t[i - 1] + Math.floor((t[i] - t[i - 1]) / 2) });
+  return gaps.sort((a, b) => b.gapMs - a.gapMs);
+}
+
+// Índice do primeiro drop que já passou de `alvoMs` de tempo ATIVO desde o início. Ativo, e não
+// relógio, pelo mesmo motivo de activeDurationMs: parada longa não é farme, e contá-la aqui
+// jogaria o corte pra depois do fim da primeira DG.
+function indicePorTempoAtivo(t, alvoMs) {
+  let ativo = 0;
+  for (let i = 1; i < t.length; i++) {
+    ativo += Math.min(t[i] - t[i - 1], ACTIVE_IDLE_CAP_MS);
+    if (ativo >= alvoMs) return i;
+  }
+  return -1;
+}
+
+export function suggestSessionSplit(sessionStartAt, primeiraDgId) {
+  const s = AppState.dgSessions.find(x => x.startAt === Number(sessionStartAt));
+  if (!s) return null;
+  const drops = sessionDrops(s.startAt, s.endAt || s.startAt).slice().sort((a, b) => a.timestamp - b.timestamp);
+  // Com pouquíssimo drop não há duas DGs pra separar — e qualquer corte deixaria um lado com um
+  // drop só, que não vira sessão nenhuma.
+  if (drops.length < 4) return null;
+  const t = drops.map(d => d.timestamp.getTime());
+  const gaps = cortesCandidatos(t);
+
+  // 1) Identificadores.
+  const exclusivos = mapaDeItensExclusivos();
+  const porDg = new Map(); // dg → { primeiro, ultimo } índices
+  drops.forEach((d, i) => {
+    const dg = exclusivos.get(chaveItemSessao(d.name));
+    if (!dg || dg === 'multi') return;
+    const reg = porDg.get(dg);
+    if (reg) reg.ultimo = i;
+    else porDg.set(dg, { primeiro: i, ultimo: i });
+  });
+
+  if (porDg.size === 2) {
+    const [a, b] = [...porDg.entries()].sort((x, y) => x[1].primeiro - y[1].primeiro);
+    // Só serve se as duas DGs estiverem SEPARADAS no tempo. Intercaladas, a evidência se
+    // contradiz — pode ser cadastro errado, pode ser drop atribuído torto — e um corte inventado
+    // no meio da confusão seria pior que cair na evidência seguinte.
+    if (a[1].ultimo < b[1].primeiro) {
+      const dentro = gaps.filter(g => g.i > a[1].ultimo && g.i <= b[1].primeiro);
+      const corte = dentro[0] || { at: t[b[1].primeiro - 1] + Math.floor((t[b[1].primeiro] - t[b[1].primeiro - 1]) / 2) };
+      return {
+        splitAt: corte.at,
+        firstDgId: a[0].id,
+        secondDgId: b[0].id,
+        motivo: 'identificadores',
+        detalhe: `Os itens dizem: ${a[0].name} até aí, ${b[0].name} depois. É o cadastro "Onde dropa" falando, não estimativa.`,
+        gaps,
+      };
+    }
+  }
+
+  // 2) Tempo de 20 runs da primeira DG.
+  const dgId = primeiraDgId || s.dungeonId;
+  const porRun = dgId ? suggestRunMinutes(dgId)?.minutes || 0 : 0;
+  if (porRun > 0) {
+    const alvo = DAILY_RUN_LIMIT * porRun * 60000;
+    const idx = indicePorTempoAtivo(t, alvo);
+    if (idx > 0 && idx < t.length) {
+      // Encosta o corte no maior intervalo perto dali: a hora exata das 20 runs cai no meio de
+      // qualquer lugar, e a troca de DG deixou um buraco. O buraco é mais verdadeiro que a conta.
+      const perto = gaps.filter(g => Math.abs(g.i - idx) <= 3)[0];
+      const corte = perto || { at: t[idx - 1] + Math.floor((t[idx] - t[idx - 1]) / 2), i: idx };
+      const dgNome = AppState.dungeonList.find(d => d.id === dgId)?.name || 'a primeira DG';
+      return {
+        splitAt: corte.at,
+        firstDgId: dgId,
+        secondDgId: null,
+        motivo: 'tempo de 20 runs',
+        detalhe: `${DAILY_RUN_LIMIT} runs de ${dgNome} a ${String(porRun).replace('.', ',')}min cada dão ${Math.round(alvo / 60000)}min de farme — o corte caiu aí${perto ? ', encostado no maior intervalo sem drop por perto' : ''}. Confira as duas metades abaixo.`,
+        gaps,
+      };
+    }
+  }
+
+  // 3) Maior pausa.
+  const maior = gaps[0];
+  if (!maior) return null;
+  return {
+    splitAt: maior.at,
+    firstDgId: dgId || null,
+    secondDgId: null,
+    motivo: 'maior pausa',
+    detalhe: `Não tenho identificador nem tempo/run dessa DG pra cravar, então usei o maior intervalo sem drop (${Math.round(maior.gapMs / 60000)}min) — trocar de DG costuma deixar esse buraco. Esse é o palpite mais fraco dos três: confira as metades e mova se precisar.`,
+    gaps,
+  };
+}
+
+// Como ficam os dois lados de um corte, pra você conferir ANTES de confirmar. Sem isso a divisão
+// seria um salto no escuro — e desfazer uma divisão errada dá o mesmo trabalho que causou ela.
+export function previewSessionSplit(sessionStartAt, splitAt) {
+  const s = AppState.dgSessions.find(x => x.startAt === Number(sessionStartAt));
+  if (!s) return null;
+  const fim = s.endAt || s.startAt;
+  const lado = (a, b) => {
+    const drops = sessionDrops(a, b);
+    const porItem = summarizeDropsByItem(drops);
+    return {
+      startAt: a,
+      endAt: b,
+      dropCount: drops.length,
+      activeMs: activeDurationMs(drops),
+      // Mesma conta que sessionRealizedAlzInfo fará depois — agrupado por item e a preço da
+      // época. Somar drop a drop daria quase o mesmo número, mas "quase" num preview é veneno:
+      // ele existe justamente pra você conferir, e conferir contra um valor que muda ao confirmar
+      // é pior que não ter preview nenhum.
+      totalAlz: porItem.reduce((soma, i) => soma + (isEventItem(i.name) ? 0 : getItemPriceOn(i.name, s.date).price * i.qty), 0),
+      items: porItem.slice(0, 5).map(i => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ''}`),
+    };
+  };
+  return { antes: lado(s.startAt, splitAt), depois: lado(splitAt + 1, fim) };
+}
+
+// Executa a divisão. A sessão original é reconstruída na primeira metade e uma nova nasce da
+// segunda — as duas por buildSessionRecord, a partir do log, como qualquer outra.
+//
+// Runs: são repartidas na proporção do TEMPO ATIVO de cada lado, porque foi assim que elas
+// aconteceram. Mas é estimativa, e o toast diz isso — as duas ficam editáveis na tabela.
+export function splitSession(sessionStartAt, splitAt, firstDgId, secondDgId) {
+  const idx = AppState.dgSessions.findIndex(x => x.startAt === Number(sessionStartAt));
+  if (idx < 0) return;
+  const s = AppState.dgSessions[idx];
+  const fim = s.endAt || s.startAt;
+  splitAt = Number(splitAt);
+  if (!(splitAt > s.startAt && splitAt < fim)) {
+    alert('O ponto de corte precisa cair dentro da sessão.');
+    return;
+  }
+  const pre = previewSessionSplit(sessionStartAt, splitAt);
+  if (!pre || !pre.antes.dropCount || !pre.depois.dropCount) {
+    alert('Esse corte deixaria um dos lados sem nenhum drop — mova o ponto de divisão.');
+    return;
+  }
+
+  const dgA = AppState.dungeonList.find(d => d.id === firstDgId) || null;
+  const dgB = AppState.dungeonList.find(d => d.id === secondDgId) || null;
+
+  const totalAtivo = pre.antes.activeMs + pre.depois.activeMs;
+  const runsTotal = s.runs || 0;
+  const runsA = totalAtivo > 0 ? Math.round(runsTotal * (pre.antes.activeMs / totalAtivo)) : Math.floor(runsTotal / 2);
+  const runsB = runsTotal - runsA;
+
+  // A segunda metade herda a rota só se for a MESMA DG da rota original — trocar de DG quase
+  // sempre significa que você saiu da rota, e herdar o rótulo enfiaria farme avulso no total dela.
+  const mesmaRota = dgB && dgB.id === s.dungeonId;
+
+  const primeira = {
+    ...s,
+    ...buildSessionRecord({
+      dungeonId: dgA?.id || null,
+      dungeonName: dgA?.name || null,
+      routeId: s.routeId,
+      routeName: s.routeName,
+      startAt: s.startAt,
+      endAt: splitAt,
+      runs: runsA,
+    }),
+  };
+  const segunda = buildSessionRecord({
+    dungeonId: dgB?.id || null,
+    dungeonName: dgB?.name || null,
+    routeId: mesmaRota ? s.routeId : null,
+    routeName: mesmaRota ? s.routeName : null,
+    startAt: splitAt + 1,
+    endAt: fim,
+    runs: runsB,
+  });
+  // A anotação fica só na primeira: ela foi escrita sobre um farme que agora são dois, e copiar
+  // pros dois lados inventaria um contexto que ninguém afirmou.
+  if (s.note) primeira.note = s.note;
+
+  AppState.dgSessions.splice(idx, 1, primeira, segunda);
+  AppState.dgSessions.sort((a, b) => a.startAt - b.startAt);
+  AppState.sessionSplitDraft = null;
+  saveDgSessions();
+  renderPage();
+  showInfoToast(`Dividida: ${dgA?.name || 'sem DG'} até ${new Date(splitAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}, ${dgB?.name || 'sem DG'} depois. Reparti as ${runsTotal} runs por tempo (${runsA}/${runsB}) — confira e corrija na tabela.`);
+}
+
+// Abre/fecha o painel de divisão. Ao abrir, já vem com a sugestão pronta: o trabalho de achar o
+// corte é do app, não seu.
+export function toggleSessionSplit(sessionStartAt) {
+  const startAt = Number(sessionStartAt);
+  if (AppState.sessionSplitDraft?.startAt === startAt) {
+    AppState.sessionSplitDraft = null;
+    renderPage();
+    return;
+  }
+  const s = AppState.dgSessions.find(x => x.startAt === startAt);
+  if (!s) return;
+  const sug = suggestSessionSplit(startAt, s.dungeonId);
+  if (!sug) {
+    alert('Essa sessão tem drops de menos pra dividir — não dá pra separar duas DGs com tão pouca coisa. Se ela for mesmo de duas, o jeito é remover e recuperar cada trecho pelo painel de farme sem DG.');
+    return;
+  }
+  AppState.sessionSplitDraft = {
+    startAt,
+    splitAt: sug.splitAt,
+    firstDgId: sug.firstDgId || s.dungeonId || '',
+    secondDgId: sug.secondDgId || '',
+  };
+  renderPage();
+}
+
+export function setSessionSplitPoint(value) {
+  if (!AppState.sessionSplitDraft) return;
+  AppState.sessionSplitDraft.splitAt = Number(value);
+  renderPage();
+}
+
+export function setSessionSplitDungeon(qual, dungeonId) {
+  if (!AppState.sessionSplitDraft) return;
+  AppState.sessionSplitDraft[qual === 'segunda' ? 'secondDgId' : 'firstDgId'] = dungeonId || '';
+  // Trocar a PRIMEIRA DG muda o tempo/run que alimenta a evidência nº 2, então vale recalcular a
+  // sugestão — é exatamente o fluxo que o jogador pediu: "seleciono a DG e ele acha o corte".
+  if (qual === 'primeira') {
+    const sug = suggestSessionSplit(AppState.sessionSplitDraft.startAt, dungeonId);
+    if (sug) AppState.sessionSplitDraft.splitAt = sug.splitAt;
+  }
+  renderPage();
+}
+
+export function confirmSessionSplit() {
+  const d = AppState.sessionSplitDraft;
+  if (!d) return;
+  splitSession(d.startAt, d.splitAt, d.firstDgId, d.secondDgId);
 }
 
 export function toggleForgottenSessionRecovery() {

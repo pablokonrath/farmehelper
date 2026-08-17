@@ -6,7 +6,7 @@ import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, recon
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
-import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession, recoverDropWindow, applyUnclaimedWindow, seedDailyLimitNotified } from './features/dg-session.js';
+import { startDgSession, endDgSession, startDgSessionTicker, setActiveSessionRuns, bumpActiveSessionRuns, setSessionRuns, setSessionDungeon, setActiveSessionDungeon, setActiveSessionRunMinutes, setSessionNote, copyDaySummary, deleteSession, restoreDeletedSession, purgeDeletedSession, toggleSessionItems, setResetConfig, toggleForgottenSessionRecovery, recoverForgottenSession, recoverDropWindow, applyUnclaimedWindow, toggleSessionSplit, setSessionSplitPoint, setSessionSplitDungeon, confirmSessionSplit, seedDailyLimitNotified } from './features/dg-session.js';
 import { setSessionsHistoryDate, fillSuggestedRunMinutes } from './pages/sessions-page.js';
 import { setSalesDateFrom, setSalesDateTo } from './pages/sales-page.js';
 import { addEventTime, removeEventTime, startEventScheduleChecks } from './features/event-schedule.js';
@@ -271,6 +271,10 @@ Object.assign(window, {
   recoverForgottenSession,
   recoverDropWindow,
   applyUnclaimedWindow,
+  toggleSessionSplit,
+  setSessionSplitPoint,
+  setSessionSplitDungeon,
+  confirmSessionSplit,
   setSessionsHistoryDate,
   fillSuggestedRunMinutes,
   toggleDgComparison,
