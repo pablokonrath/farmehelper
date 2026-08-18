@@ -17,7 +17,18 @@ const LOG_FILE_DECODER = new TextDecoder('windows-1252');
 // refresh de página sem o usuário precisar reabrir o seletor de arquivo toda vez.
 const HANDLE_DB_NAME = 'droplist-live-file';
 const HANDLE_STORE = 'handles';
-const HANDLE_KEY = 'lastFile';
+
+// O handle é guardado POR USUÁRIO, e isso não é detalhe: o IndexedDB é por origem (o site
+// inteiro), não por login. Com uma chave fixa, entrar numa segunda conta no mesmo navegador
+// reconectava sozinho no arquivo de log da PRIMEIRA — e aí o farme de uma conta ia inteiro pro
+// histórico da outra, sem nada na tela indicando, porque o status só diz "Ao vivo".
+//
+// Isso é do tipo de erro que não dá pra perceber depois: os drops entram com horário plausível,
+// numa sessão plausível, e não existe de onde deduzir que eram de outro personagem. Chave por
+// usuário faz a segunda conta simplesmente nascer sem conexão — ela pede o arquivo, você aponta
+// o dela, e cada login passa a lembrar do seu.
+const HANDLE_KEY_LEGACY = 'lastFile';
+const handleKey = () => `lastFile:${AppState.currentUserId ?? 'anon'}`;
 
 function openHandleDB() {
   return new Promise((resolve, reject) => {
@@ -32,19 +43,37 @@ async function saveLiveFileHandle(handle) {
   const db = await openHandleDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(HANDLE_STORE, 'readwrite');
-    tx.objectStore(HANDLE_STORE).put(handle, HANDLE_KEY);
+    tx.objectStore(HANDLE_STORE).put(handle, handleKey());
+    // O registro antigo sem dono não serve mais pra nada e, se ficasse, voltaria a ser adotado
+    // por qualquer conta que abrisse o app sem handle próprio.
+    tx.objectStore(HANDLE_STORE).delete(HANDLE_KEY_LEGACY);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
 }
 
-async function loadSavedLiveFileHandle() {
-  const db = await openHandleDB();
+function lerChave(db, chave) {
   return new Promise((resolve, reject) => {
-    const request = db.transaction(HANDLE_STORE, 'readonly').objectStore(HANDLE_STORE).get(HANDLE_KEY);
+    const request = db.transaction(HANDLE_STORE, 'readonly').objectStore(HANDLE_STORE).get(chave);
     request.onsuccess = () => resolve(request.result || null);
     request.onerror = () => reject(request.error);
   });
+}
+
+// Handle desta conta. Se ela ainda não tem um, adota o registro antigo sem dono (de antes da
+// chave por usuário) e o regrava já com dono — o navegador que tinha um só login continua
+// reconectando sozinho, sem ninguém precisar reescolher o arquivo. A adoção acontece uma vez
+// só: depois dela o registro legado deixa de existir, então a SEGUNDA conta a abrir o app neste
+// navegador não herda nada, que é exatamente o ponto.
+async function loadSavedLiveFileHandle() {
+  const db = await openHandleDB();
+  const meu = await lerChave(db, handleKey());
+  if (meu) return meu;
+
+  const legado = await lerChave(db, HANDLE_KEY_LEGACY);
+  if (!legado) return null;
+  await saveLiveFileHandle(legado);
+  return legado;
 }
 
 function parseLogLines(rawText) {
