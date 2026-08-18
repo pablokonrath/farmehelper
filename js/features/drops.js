@@ -174,43 +174,59 @@ export function getMaterialGroup(name) {
   return primeira.charAt(0).toUpperCase() + primeira.slice(1);
 }
 
-// Item de evento fica FORA de toda conta de Alz do app.
+// Itens que você NÃO VENDE — ficha de evento, moeda, material que só se usa. Ficam FORA de toda
+// conta de Alz do app.
 //
-// O painel de evento já era separado de propósito ("evento é temporário, nada disso contamina os
-// números permanentes" — ver event-tracker.js), mas isso valia só pro painel: o item continuava
-// sendo valorizado como drop comum no Alz farmado, no Alz/run e no líquido do dia.
+// A razão é simples: Alz farmado tem que ser dinheiro que você pode receber. Item que você só
+// consome nunca vira Alz, então dar valor a ele é farme falso — infla o total do dia, o Alz/run e
+// o líquido, e a decisão de onde farmar sai errada em cima de um número que não existe.
 //
-// Duas razões pra excluir. Primeira: ele não é Alz — é ficha de troca, e o valor só existe quando
-// você resgata a recompensa. Contar o preço dele agora e o prêmio depois seria contar duas vezes.
-// Segunda: ele estraga a comparação entre DGs. DG com multiplicador de evento sobe no ranking
-// enquanto o evento dura e afunda quando acaba — e como o histórico nunca é purgado, aquele pico
-// fica no meio da média pra sempre.
+// Antes isso era amarrado a um painel de "evento" com liga/desliga, e tinha um furo grave: o
+// filtro lia a configuração ATUAL, sem nenhuma data. No dia em que o evento fosse desligado, todas
+// as sessões passadas voltavam a contar o fragmento de uma vez — retroativamente, sem aviso, e a
+// média das DGs daquele período mudava sozinha. Uma lista permanente não tem esse problema: o item
+// não vale Alz ontem, hoje nem depois, e nada é reavaliado quando alguma coisa é desligada.
 //
-// Mesmo tratamento do equipamento genérico: continua no log e nos itens da sessão (o painel de
-// evento conta a partir deles), só não vale Alz.
+// Mesmo tratamento do equipamento genérico: continua no log e nos itens da sessão (você continua
+// vendo o que caiu), só não vale Alz.
 //
-// Mora aqui, e não em event-tracker.js, pra não criar ciclo de import: event-tracker depende do
-// router, e o router carrega as páginas, que dependem deste módulo. A configuração é lida direto
-// do AppState, que é o mesmo dado.
-let eventoAlvoCache = null;
-let eventoItensCache = new Map();
+// Casa por TRECHO do nome, então "fragmento" cobre todas as variações que o log traz.
+//
+// Mora aqui, e não num módulo próprio, pra não criar ciclo de import: quem gerencia a lista
+// depende do router, e o router carrega as páginas, que dependem deste módulo. A lista é lida
+// direto do AppState, que é o mesmo dado.
+let alvosCache = null;
+let alvosCacheFonte = null;
+let itensCache = new Map();
 
-export function isEventItem(name) {
-  const cfg = AppState.eventConfig;
-  if (!cfg?.enabled || !cfg.itemName) return false;
-  const alvo = normalizeForSearch(cfg.itemName);
-  // Trocar o item do evento (ou desligar e ligar com outro) invalida o cache — senão o app
-  // continuaria excluindo o item do evento anterior depois da configuração mudar.
-  if (alvo !== eventoAlvoCache) {
-    eventoAlvoCache = alvo;
-    eventoItensCache = new Map();
+function alvos() {
+  const fonte = AppState.nonSellableItems || [];
+  // Recalcula quando a LISTA muda (compara por conteúdo, não por referência: editar um item
+  // reescreve o array e a identidade muda de qualquer jeito, mas trocar a ordem não deveria
+  // custar uma revarredura).
+  const chave = fonte.join('|');
+  if (chave !== alvosCacheFonte) {
+    alvosCacheFonte = chave;
+    // Entrada curta demais casaria com meio log por acidente ("orb" pegaria "Orbe", "Orbita"...).
+    // Três caracteres é o piso: abaixo disso a entrada é ignorada em vez de causar estrago mudo.
+    alvosCache = fonte
+      .map(n => normalizeForSearch(n || ''))
+      .filter(n => n.length >= 3);
+    itensCache = new Map();
   }
-  let hit = eventoItensCache.get(name);
+  return alvosCache;
+}
+
+export function isNonSellableItem(name) {
+  const lista = alvos();
+  if (!lista.length) return false;
+  let hit = itensCache.get(name);
   if (hit === undefined) {
-    // "Contém" e não igualdade, mesmo critério de computeEventProgress: o log traz variações e
-    // sufixos no nome, e exigir igualdade exata faria o filtro não pegar nada, calado.
-    hit = normalizeForSearch(name).includes(alvo);
-    eventoItensCache.set(name, hit);
+    // "Contém" e não igualdade: o log traz variações e sufixos no nome ("Fragmento Prismático
+    // (Evento)"), e exigir igualdade exata faria o filtro não pegar nada, calado.
+    const alvo = normalizeForSearch(name);
+    hit = lista.some(a => alvo.includes(a));
+    itensCache.set(name, hit);
   }
   return hit;
 }
@@ -341,11 +357,11 @@ export function summarizeDropsByItem(drops) {
 
 // Valor total farmado HOJE (drops do log + manuais), a mesma base do "Total de farme" do
 // sidebar — usada também pela meta de farme (farm-goal.js) pra medir o progresso do dia.
-// Item de evento fica fora: é ficha de troca, não Alz farmado (ver isEventItem acima).
+// Item de evento fica fora: é ficha de troca, não Alz farmado (ver isNonSellableItem acima).
 export function getTodayFarmedAlz() {
   const today = todayISODate();
   return getAllDrops()
-    .filter(drop => drop.date === today && !isEventItem(drop.name))
+    .filter(drop => drop.date === today && !isNonSellableItem(drop.name))
     .reduce((sum, drop) => sum + getItemPrice(drop.name), 0);
 }
 

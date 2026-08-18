@@ -252,9 +252,10 @@ export const AppState = {
   trendShowNet: false,
   // Janela do card "Sua consistência" (7 ou 30 dias). Só UI, mesmo motivo do trendPeriodDays.
   consistencyPeriodDays: 30,
-  // Evento temporário do servidor: item que vale quantidade diferente por DG. Fica isolado num
-  // painel próprio pra não contaminar os números permanentes. Ver event-tracker.js.
-  eventConfig: { enabled: false, itemName: '', since: '', multipliers: {} },
+  // Itens que você não vende, só usa (ficha de evento, moeda, material de consumo). Nunca valem
+  // Alz em conta nenhuma do app — ver isNonSellableItem em drops.js. Lista permanente e sem data:
+  // o item não vale ontem, hoje nem depois, então nada é reavaliado retroativamente.
+  nonSellableItems: [],
   liveFileHandle: null,
   liveFilePollWorker: null,
   lastReadFileSize: 0,

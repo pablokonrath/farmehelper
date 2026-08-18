@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem, isEventItem } from './drops.js';
+import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem, isNonSellableItem } from './drops.js';
 import { getCostPerGem, getTicketPrice, computeRushVsDone } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
@@ -37,10 +37,10 @@ function sessionDrops(startAt, endAt) {
     d.timestamp && d.timestamp.getTime() >= startAt && d.timestamp.getTime() <= endAt && !isExcludedGearItem(d.name));
 }
 
-// Item de evento nao vale Alz (ver isEventItem): e ficha de troca, e o valor aparece quando voce
+// Item de evento nao vale Alz (ver isNonSellableItem): e ficha de troca, e o valor aparece quando voce
 // resgata a recompensa — contar o preco dele agora e o premio depois seria contar duas vezes.
 function summarizeDrops(drops) {
-  const valorEm = d => (isEventItem(d.name) ? 0 : getItemPrice(d.name));
+  const valorEm = d => (isNonSellableItem(d.name) ? 0 : getItemPrice(d.name));
   const totalAlz = drops.reduce((sum, d) => sum + valorEm(d), 0);
   let best = null;
   drops.forEach(d => {
@@ -572,7 +572,7 @@ export function computeDaySummary(dateISO = todayISODate()) {
   // Melhor drop do dia entre todas as sessões, pelo preço unitário de hoje.
   let bestItem = null;
   sessions.forEach(s => Object.keys(s.items || {}).forEach(name => {
-    if (isExcludedGearItem(name) || isEventItem(name)) return;
+    if (isExcludedGearItem(name) || isNonSellableItem(name)) return;
     // Melhor drop pelo preco DAQUELE dia — o resumo e um retrato do dia, nao uma reavaliacao.
     const price = getItemPriceOn(name, dateISO).price;
     if (price > 0 && (!bestItem || price > bestItem.price)) bestItem = { name, price };
@@ -1090,7 +1090,7 @@ export function previewSessionSplit(sessionStartAt, splitAt) {
       // época. Somar drop a drop daria quase o mesmo número, mas "quase" num preview é veneno:
       // ele existe justamente pra você conferir, e conferir contra um valor que muda ao confirmar
       // é pior que não ter preview nenhum.
-      totalAlz: porItem.reduce((soma, i) => soma + (isEventItem(i.name) ? 0 : getItemPriceOn(i.name, s.date).price * i.qty), 0),
+      totalAlz: porItem.reduce((soma, i) => soma + (isNonSellableItem(i.name) ? 0 : getItemPriceOn(i.name, s.date).price * i.qty), 0),
       items: porItem.slice(0, 5).map(i => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ''}`),
     };
   };
@@ -1277,7 +1277,7 @@ export function sessionRealizedAlzInfo(session) {
   let total = 0;
   let exact = true;
   for (const [name, qty] of Object.entries(session.items)) {
-    if (isExcludedGearItem(name) || isEventItem(name)) continue;
+    if (isExcludedGearItem(name) || isNonSellableItem(name)) continue;
     const p = getItemPriceOn(name, session.date);
     if (!p.exact) exact = false;
     total += p.price * qty;
@@ -1293,7 +1293,7 @@ export function sessionTotalAlz(session) {
   if (!session.items) return session.totalAlz || 0;
   let total = 0;
   for (const [name, qty] of Object.entries(session.items)) {
-    if (isExcludedGearItem(name) || isEventItem(name)) continue;
+    if (isExcludedGearItem(name) || isNonSellableItem(name)) continue;
     total += getItemPrice(name) * qty;
   }
   return total;

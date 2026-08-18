@@ -1,5 +1,5 @@
 import { AppState } from '../state/app-state.js';
-import { getFilteredDrops, getAllDrops, getItemPrice, getItemPriceOn, isExcludedGearItem, isEventItem, matchesTrackedKeywordFilter } from './drops.js';
+import { getFilteredDrops, getAllDrops, getItemPrice, getItemPriceOn, isExcludedGearItem, isNonSellableItem, matchesTrackedKeywordFilter } from './drops.js';
 import { saveDropSnapshot } from '../state/persistence.js';
 import { stripEnhancementSuffix } from '../utils/parsing.js';
 
@@ -73,7 +73,7 @@ export function getHistoricalSummary(from, to, { respeitarFiltrosDaPagina = true
   const add = (name, date, qty) => {
     const key = stripEnhancementSuffix(name);
     // Item de evento nao entra em Alz nenhum: e ficha de troca e tem painel proprio.
-    if (isEventItem(key)) { dropCount += qty; return; }
+    if (isNonSellableItem(key)) { dropCount += qty; return; }
     // Preço da ÉPOCA: este total é dinheiro que você ganhou, não uma reavaliação do passado.
     const valor = getItemPriceOn(key, date).price * qty;
     const acc = qtyByItem.get(key) || { qty: 0, total: 0 };

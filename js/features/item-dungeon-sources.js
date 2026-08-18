@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { saveItemDungeonSources, saveRarityThreshold, saveRarityDismissed, saveRarityConfirmed } from '../state/persistence.js';
-import { isExcludedGearItem, isEventItem } from './drops.js';
+import { isExcludedGearItem, isNonSellableItem } from './drops.js';
 import { normalizeForSearch } from '../utils/parsing.js';
 import { renderPage } from '../router.js';
 
@@ -85,7 +85,7 @@ export function suggestExclusiveItems() {
     if (!s.dungeonId) continue;
     runsPorDg.set(s.dungeonId, (runsPorDg.get(s.dungeonId) || 0) + (s.runs || 0));
     for (const [nome, qty] of Object.entries(s.items || {})) {
-      if (isExcludedGearItem(nome) || isEventItem(nome)) continue;
+      if (isExcludedGearItem(nome) || isNonSellableItem(nome)) continue;
       let reg = porItem.get(nome);
       if (!reg) porItem.set(nome, (reg = { dgs: new Map(), total: 0 }));
       reg.dgs.set(s.dungeonId, (reg.dgs.get(s.dungeonId) || 0) + qty);
@@ -311,7 +311,7 @@ export function getExpectedItemNamesForDungeon(dungeonId) {
   // "Raros na mira" de arma — foi o que aconteceu com as armas de Orichalcum. Filtrar na saída
   // custa uma passada e fecha os três de uma vez.
   for (const name of [...names]) {
-    if (isExcludedGearItem(name) || isEventItem(name)) names.delete(name);
+    if (isExcludedGearItem(name) || isNonSellableItem(name)) names.delete(name);
   }
   return names;
 }
