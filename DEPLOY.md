@@ -631,6 +631,42 @@ powershell -ExecutionPolicy Bypass -File tools\comprimir-imagens.ps1
 Ele converte tudo pra JPEG qualidade 82 e move os PNGs originais pra `arte-original/` (que está
 no `.gitignore`, então não vai pro repo nem pro FTP). Depois é só subir `uploads/imagens/`.
 
+## Contas vinculadas (comparar duas contas do mesmo jogador)
+
+Quem joga com uma conta secundária pode vincular as duas e comparar o farme diário lado a lado,
+na página **Contas**. Rode uma vez, no phpMyAdmin:
+
+```
+sql/migrate_linked_accounts.sql
+```
+
+E suba `api/account-link.php` e `api/daily-summary.php` (arquivos novos).
+
+**Como o jogador usa:** entra na conta secundária → Contas → "Gerar código" → copia → entra na
+principal → cola em "Vincular". O código vale 30 minutos e serve uma vez. O vínculo é mútuo: a
+comparação passa a abrir nos dois logins.
+
+**O que atravessa o vínculo:** só o resumo do dia (farmado, gasto em rush, vendido, runs, tempo,
+DG que mais rendeu). Sessões, drops, preços, vendas, metas e alertas continuam estritamente
+isolados por conta — a única consulta que cruza usuários é o GET de `daily-summary.php`, e ela é
+autorizada pelo JOIN com `linked_accounts`, sem ler nenhum id vindo da requisição.
+
+**Cada conta publica o próprio resumo** a cada 2 minutos enquanto o app está aberto. Por isso a
+tela mostra a hora da última publicação da outra conta: se ela não abriu o FarmHub hoje, o dia
+dela não existe ali — e a página diz "não publicado" em vez de mostrar zero, que se leria como
+"não farmou".
+
+**Um detalhe importante pra quem usa duas contas no mesmo navegador:** a conexão ao vivo (o
+arquivo de log) é guardada por usuário desde a versão que introduziu isso. Antes era uma chave só
+pro site inteiro, e entrar na segunda conta reconectava sozinho no log da primeira, jogando o
+farme de uma no histórico da outra sem nada aparecer na tela. Se você já usava o app antes dessa
+mudança, nada muda: o registro antigo é adotado pela primeira conta que abrir o app.
+
+O ideal é cada conta ter a **própria instalação do jogo**, com seu próprio arquivo `DropList` —
+aí dá pra deixar duas abas abertas, cada uma logada numa conta e conectada no seu arquivo,
+farmando as duas ao mesmo tempo sem misturar nada. Com uma instalação só, as duas contas gravam
+no mesmo log e não existe como separar: farme uma de cada vez.
+
 ## Rotas de DGs + comparativo de lucro
 
 Se seu banco já rodou `sql/migrate_item_dungeon_sources.sql` (ou qualquer migração mais

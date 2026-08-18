@@ -292,6 +292,12 @@ export const AppState = {
   isMasterAdmin: false,
   currentUsername: '',
   currentUserId: null,
+  // Contas vinculadas (a secundária do mesmo jogador) e o resumo diário publicado por elas —
+  // ver linked-accounts.js. Vem do servidor a cada abertura, não persiste no cliente.
+  linkedAccounts: [],
+  linkedSummaries: [],
+  // Código de vínculo recém-gerado, esperando ser colado na outra conta. Só UI, some no reload.
+  accountLinkCode: null,
   // Categorias GLOBAIS (do admin mestre) — base comum pra todo mundo.
   itemCategories: [],
   itemCategoryAssignments: {},

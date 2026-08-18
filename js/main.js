@@ -3,6 +3,7 @@ import { loadPersistedState } from './state/persistence.js';
 import { updateBalanceSidebar } from './features/drops.js';
 import { renderPage, navigateTo } from './router.js';
 import { initFileInputListener, connectLiveFile, resumeLiveFileConnection, reconnectLiveFile } from './features/file-source.js';
+import { loadLinkedAccounts, loadLinkedSummaries, startDaySummaryPublisher, generateAccountLinkCode, redeemAccountLinkCode, unlinkAccount, copyAccountLinkCode } from './features/linked-accounts.js';
 import { checkSession, submitLogin, submitRegister, setAuthMode, logout } from './features/auth.js';
 import { startDropCounterTicker } from './features/drop-counter.js';
 import { setDailyGoal, setWeeklyGoal, setMonthlyGoal, initFarmGoalBaseline } from './features/farm-goal.js';
@@ -271,6 +272,10 @@ Object.assign(window, {
   recoverForgottenSession,
   recoverDropWindow,
   applyUnclaimedWindow,
+  generateAccountLinkCode,
+  redeemAccountLinkCode,
+  unlinkAccount,
+  copyAccountLinkCode,
   toggleSessionSplit,
   setSessionSplitPoint,
   setSessionSplitDungeon,
@@ -339,6 +344,15 @@ if (!authenticated) {
   initFileInputListener();
   renderPage();
   resumeLiveFileConnection();
+  // Contas vinculadas: carrega o vínculo, puxa o resumo publicado pela outra conta e liga o
+  // publicador do meu. Sem await — a página não depende disso pra montar, e uma falha de rede
+  // aqui não pode segurar o app inteiro.
+  loadLinkedAccounts()
+    .then(loadLinkedSummaries)
+    .then(() => {
+      startDaySummaryPublisher();
+      if (AppState.currentPage === 'contas') renderPage();
+    });
   startEventScheduleChecks();
   startDropCounterTicker();
   startDgSessionTicker();
