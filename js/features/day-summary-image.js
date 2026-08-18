@@ -105,18 +105,23 @@ export async function buildDaySummaryCanvas() {
   // É o número que responde "o dia valeu a pena?", então é o único em tamanho grande. Sem rush
   // registrado, líquido e farmado são iguais — nesse caso o rótulo diz "farmado", pra não sugerir
   // um desconto que não houve.
+  // netOnDone, e nao net: o card tem que dizer o MESMO numero que a tela (ver o Resumo do dia em
+  // overview-page.js). Duas versoes do mesmo dia — uma na tela, outra no print que voce manda pra
+  // guild — e o tipo de divergencia que faz duvidar do sistema inteiro.
   const temRush = d.spent > 0;
   rotulo(ctx, temRush ? 'Líquido do dia' : 'Farmado no dia', PAD, 152);
-  valor(ctx, `${temRush && d.net >= 0 ? '+' : ''}${formatAlzGamer(temRush ? d.net : d.farmed)}`, PAD, 222, {
+  valor(ctx, `${temRush && d.netOnDone >= 0 ? '+' : ''}${formatAlzGamer(temRush ? d.netOnDone : d.farmed)}`, PAD, 222, {
     size: 74,
-    cor: !temRush ? COR.ouro : d.net >= 0 ? COR.ok : COR.err,
+    cor: !temRush ? COR.ouro : d.netOnDone >= 0 ? COR.ok : COR.err,
   });
 
   // ---- estatísticas secundárias, só as que existem ----
   const stats = [];
   if (temRush) {
     stats.push({ k: 'Farmado', v: formatAlzGamer(d.farmed), c: COR.texto });
-    stats.push({ k: 'Gasto em rush', v: formatAlzGamer(d.spent), c: COR.err });
+    // Mostra o rush RODADO quando sobrou entrada comprada, pra bater com o líquido acima. Somar
+    // o não usado aqui faria o card não fechar na conta de quem for conferir.
+    stats.push({ k: d.spentUnused > 0 ? 'Rush usado' : 'Gasto em rush', v: formatAlzGamer(d.spentOnDone), c: COR.err });
   }
   if (d.sold > 0) stats.push({ k: 'Vendido', v: formatAlzGamer(d.sold), c: COR.ouro });
   if (d.runs > 0) stats.push({ k: 'Runs', v: String(d.runs), c: COR.texto });

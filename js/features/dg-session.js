@@ -1,6 +1,6 @@
 import { AppState } from '../state/app-state.js';
 import { getItemPrice, getItemPriceOn, summarizeDropsByItem, isExcludedGearItem, isEventItem } from './drops.js';
-import { getCostPerGem, getTicketPrice } from './rush-cart.js';
+import { getCostPerGem, getTicketPrice, computeRushVsDone } from './rush-cart.js';
 import { saveDgSessions, saveActiveDgSession, saveResetConfig, saveDeletedSessions } from '../state/persistence.js';
 import { formatAlzGamer, parseTimeInputBR, formatDateBR } from '../utils/formatting.js';
 import { todayISODate, normalizeForSearch, stripEnhancementSuffix } from '../utils/parsing.js';
@@ -539,6 +539,30 @@ export function computeDaySummary(dateISO = todayISODate()) {
   // apresentar estimativa como fato.
   const farmedExact = realizados.every(r => r.exact);
   const spent = AppState.rushHistory[dateISO]?.total || 0;
+
+  // CUSTO DAS RUNS QUE VOCE DE FATO RODOU, separado do que voce COMPROU.
+  //
+  // spent e o rush salvo do dia inteiro: o dinheiro que saiu. Mas o carrinho e um plano, e quem
+  // compra as entradas conforme usa quase nunca roda tudo que planejou. As runs nao feitas viram
+  // custo fantasma — afundam o liquido de um dia cujo farme nao tem nada a ver com elas, e o
+  // numero deixa de corresponder aos drops que cairam.
+  //
+  // Aqui e o principio contabil de competencia: casar o custo com a receita que ele gerou. A
+  // entrada que voce comprou e nao usou nao e prejuizo de hoje, e estoque — ela vai custar no dia
+  // em que voce usar.
+  //
+  // As duas leituras continuam existindo lado a lado, de proposito. Nenhuma substitui a outra:
+  // net responde "quanto sobrou no bolso hoje", netOnDone responde "esse farme valeu a pena".
+  const vsDone = computeRushVsDone(dateISO);
+  const spentOnDone = vsDone ? vsDone.totalSeSoOFeito : spent;
+  // Aproximado quando o preco do ticket/gema mudou depois daquele dia: o custo do que foi rodado
+  // e recalculado com os parametros de HOJE, e ai ele nao fecha com o valor congelado do dia.
+  // Para hoje, que e quando esse numero e olhado, os dois usam os mesmos parametros e batem.
+  const spentOnDoneExact = !vsDone || vsDone.exato;
+  // Piso de 1 Alz: os dois lados vêm de somas de ponto flutuante, e uma sobra de 0,0001 faria a
+  // tela abrir a caixa inteira de "entradas não usadas" pra uma diferença que não existe.
+  const sobra = spent - spentOnDone;
+  const spentUnused = sobra >= 1 ? sobra : 0;
   const runs = sessions.reduce((sum, s) => sum + (s.runs || 0), 0);
   const activeMs = sessions.reduce((sum, s) => sum + (s.activeDurationMs ?? s.durationMs ?? 0), 0);
   const sold = AppState.salesLog
@@ -562,6 +586,11 @@ export function computeDaySummary(dateISO = todayISODate()) {
   return {
     date: dateISO,
     farmed, farmedExact, spent, net: farmed - spent, sold, runs, activeMs,
+    // net       = caixa do dia: farmado menos tudo que foi comprado.
+    // netOnDone = resultado do farme: farmado menos o custo das runs efetivamente rodadas.
+    spentOnDone, spentOnDoneExact, spentUnused, netOnDone: farmed - spentOnDone,
+    runsNaoFeitas: vsDone?.naoFeitas || 0,
+    dgsSemRunsPreenchidas: vsDone?.semRuns || [],
     sessionCount: sessions.length,
     bestItem,
     topDg: topDg ? { name: topDg[0], alz: topDg[1] } : null,
@@ -578,7 +607,9 @@ export function copyDaySummary() {
     `⚔️ Farme de ${formatDateBR(d.date)}`,
     `Farmado: ${formatAlzGamer(d.farmed)}`,
   ];
-  if (d.spent > 0) linhas.push(`Gasto em rush: ${formatAlzGamer(d.spent)}`, `Líquido: ${d.net >= 0 ? '+' : ''}${formatAlzGamer(d.net)}`);
+  // Mesmos números da tela e da imagem: rush RODADO e líquido do farme (ver computeDaySummary).
+  if (d.spent > 0) linhas.push(`${d.spentUnused > 0 ? 'Rush usado' : 'Gasto em rush'}: ${formatAlzGamer(d.spentOnDone)}`, `Líquido: ${d.netOnDone >= 0 ? '+' : ''}${formatAlzGamer(d.netOnDone)}`);
+  if (d.spentUnused > 0) linhas.push(`(comprei ${formatAlzGamer(d.spent)} de rush e sobrou ${formatAlzGamer(d.spentUnused)} sem usar)`);
   if (d.runs > 0) linhas.push(`Runs: ${d.runs} em ${d.sessionCount} sessão(ões)`);
   if (d.topDg) linhas.push(`Melhor DG: ${d.topDg.name} (${formatAlzGamer(d.topDg.alz)})`);
   if (d.bestItem) linhas.push(`Melhor drop: ${d.bestItem.name} (${formatAlzGamer(d.bestItem.price)})`);

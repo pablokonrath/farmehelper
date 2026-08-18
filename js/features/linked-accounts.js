@@ -61,7 +61,11 @@ function montarResumo(dateISO) {
   return {
     date: dateISO,
     farmed: Math.round(d.farmed),
-    spent: Math.round(d.spent),
+    // spentOnDone, não spent: publica o rush que foi RODADO, a mesma base do líquido que aparece
+    // na tela dessa conta. Comparar "quem rendeu mais" cobrando de um lado entradas que ficaram
+    // no estoque puniria justamente quem comprou adiantado — e as duas contas ficariam medindo
+    // coisas diferentes sem nada indicar.
+    spent: Math.round(d.spentOnDone),
     sold: Math.round(d.sold),
     runs: d.runs,
     activeMs: d.activeMs,
@@ -206,7 +210,9 @@ export function computeAccountComparison(days = COMPARISON_DAYS) {
     if (!meu.hasAnything && !dela) continue;
     linhas.push({
       date: dateISO,
-      meu: { farmed: meu.farmed, spent: meu.spent, net: meu.net, runs: meu.runs, activeMs: meu.activeMs, exact: meu.farmedExact, topDg: meu.topDg?.name || null },
+      // Base executada dos dois lados: o que a outra conta publica é o rush RODADO dela (ver
+      // montarResumo). Usar meu.spent aqui compararia compra contra consumo.
+      meu: { farmed: meu.farmed, spent: meu.spentOnDone, net: meu.netOnDone, runs: meu.runs, activeMs: meu.activeMs, exact: meu.farmedExact && meu.spentOnDoneExact, topDg: meu.topDg?.name || null },
       dela: dela ? { farmed: dela.farmed, spent: dela.spent, net: dela.farmed - dela.spent, runs: dela.runs, activeMs: dela.activeMs, topDg: dela.topDg || null, updatedAt: dela.updatedAt } : null,
     });
   }

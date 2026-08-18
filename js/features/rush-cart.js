@@ -521,11 +521,20 @@ export function computeRushVsDone(dateISO) {
   const totalSeSoOFeito = calculateRushCartCost(itensSoFeitos).total;
   const naoFeitas = linhas.reduce((sum, l) => sum + (l.planejadas - l.cobradas), 0);
 
+  // O plano recalculado AGORA, com os parametros de hoje. totalPlanejado e o valor congelado no
+  // dia em que voce salvou; se os dois divergem, e porque o preco do ticket ou da gema mudou
+  // desde entao — e ai totalSeSoOFeito (que tambem usa os parametros de hoje) deixa de ser
+  // comparavel com o dinheiro que de fato saiu. Quem consome precisa poder avisar em vez de
+  // apresentar estimativa como fato.
+  const totalPlanejadoAgora = calculateRushCartCost(rush.items).total;
+
   return {
     linhas,
     naoFeitas,
     semRuns,
     totalPlanejado: rush.total || 0,
+    totalPlanejadoAgora,
+    exato: Math.abs(totalPlanejadoAgora - (rush.total || 0)) < 1,
     totalSeSoOFeito,
     diferenca: (rush.total || 0) - totalSeSoOFeito,
   };

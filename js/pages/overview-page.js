@@ -359,16 +359,27 @@ function buildDaySummaryCard() {
     icon: 'ti-clipboard-text',
     iconColor: 'var(--gold)',
     title: 'Resumo do dia',
-    resumo: `<strong style="color:${getAlzTierColor(d.net)}">${d.net >= 0 ? '' : ''}${formatAlzGamer(d.net)}</strong> <span style="font-size:var(--fs-sm);color:var(--muted)">líquido</span>`,
+    resumo: `<strong style="color:${getAlzTierColor(d.netOnDone)}">${formatAlzGamer(d.netOnDone)}</strong> <span style="font-size:var(--fs-sm);color:var(--muted)">líquido${d.spentUnused > 0 ? ' do farme' : ''}</span>`,
     body: `
   <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px">
     ${bloco('Farmado', formatAlzGamer(d.farmed) + (d.farmedExact ? '' : ' <i class="ti ti-alert-triangle" style="font-size:12px;color:var(--warn)" title="Algum item deste dia não tinha preço registrado na época e entrou pelo preço de hoje — o valor é aproximado"></i>'), getAlzTierColor(d.farmed))}
-    ${d.spent > 0 ? bloco('Gasto em rush', formatAlzGamer(d.spent), 'var(--err)') : ''}
-    ${bloco('Líquido', `${d.net >= 0 ? '+' : ''}${formatAlzGamer(d.net)}`, d.net >= 0 ? 'var(--ok)' : 'var(--err)')}
+    ${d.spent > 0 ? bloco(d.spentUnused > 0 ? 'Rush usado' : 'Gasto em rush', formatAlzGamer(d.spentOnDone) + (d.spentOnDoneExact ? '' : ' <i class="ti ti-alert-triangle" style="font-size:12px;color:var(--warn)" title="O preço do ticket ou da gema mudou depois deste dia, então o custo do que foi rodado está recalculado com os parâmetros de hoje — o valor é aproximado"></i>'), 'var(--err)') : ''}
+    ${bloco(d.spentUnused > 0 ? 'Líquido do farme' : 'Líquido', `${d.netOnDone >= 0 ? '+' : ''}${formatAlzGamer(d.netOnDone)}`, d.netOnDone >= 0 ? 'var(--ok)' : 'var(--err)')}
     ${d.sold > 0 ? bloco('Vendido', formatAlzGamer(d.sold), 'var(--gold)') : ''}
     ${d.runs > 0 ? bloco('Runs', `${d.runs} <span style="font-size:11px;font-weight:400;color:var(--muted)">em ${d.sessionCount} sessão(ões)</span>`, 'var(--txt)') : ''}
     ${d.activeMs > 0 ? bloco('Tempo ativo', formatDuration(d.activeMs), 'var(--txt)') : ''}
   </div>
+  ${/* Entradas compradas e nao usadas. Nao entram no liquido do farme de proposito: elas nao
+       geraram nenhum dos drops de hoje. Mas o dinheiro saiu, entao a linha diz os dois numeros
+       e o que aconteceu com a diferenca — some-la caladamente seria esconder gasto real. */''}
+  ${d.spentUnused > 0 ? `<div style="font-size:11px;color:var(--txt2);background:var(--surf2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:6px;padding:10px 12px;margin-bottom:12px;line-height:1.7">
+    <i class="ti ti-package"></i> Você comprou <strong>${formatAlzGamer(d.spent)}</strong> de rush e rodou <strong>${formatAlzGamer(d.spentOnDone)}</strong>${d.runsNaoFeitas > 0 ? ` — sobraram <strong>${d.runsNaoFeitas} run(s)</strong> que você não fez` : ''}.
+    Os <strong style="color:var(--gold)">${formatAlzGamer(d.spentUnused)}</strong> de diferença ficaram de fora do líquido acima, porque não foi essa entrada que gerou os drops de hoje — ela continua no seu estoque e vai custar no dia em que você usar.
+    <div style="margin-top:6px;color:var(--muted)">No caixa, o dia fechou em <strong style="color:${d.net >= 0 ? 'var(--ok)' : 'var(--err)'}">${d.net >= 0 ? '+' : ''}${formatAlzGamer(d.net)}</strong> — é o que de fato saiu do bolso. Se você não vai usar essas entradas, ajuste o rush do dia em <a href="#" onclick="navigateTo('rush');return false" style="color:var(--acc);text-decoration:underline">Planejamento de Rush</a> ("Cobrar só o que eu fiz") e os dois números passam a ser o mesmo.</div>
+  </div>` : ''}
+  ${d.dgsSemRunsPreenchidas.length ? `<div style="font-size:11px;color:var(--warn);margin-bottom:12px">
+    <i class="ti ti-alert-triangle"></i> <strong>${d.dgsSemRunsPreenchidas.map(esc).join(', ')}</strong> ${d.dgsSemRunsPreenchidas.length > 1 ? 'têm' : 'tem'} sessão hoje mas nenhuma run preenchida. Sem esse número não dá pra saber quanto do rush foi usado, então cobrei o planejado inteiro — preencha "Runs feitas" em <a href="#" onclick="navigateTo('sessoes');return false" style="color:var(--acc);text-decoration:underline">Sessões de farme</a> pro líquido ficar certo.
+  </div>` : ''}
   ${d.topDg || d.bestItem ? `<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);padding-top:10px;border-top:1px solid var(--border)">
     ${d.topDg ? `<span>🏆 Melhor DG: <strong style="color:var(--txt)">${esc(d.topDg.name)}</strong> (${formatAlzGamer(d.topDg.alz)})</span>` : ''}
     ${d.bestItem ? `<span>💎 Melhor drop: <strong style="color:var(--txt)">${esc(d.bestItem.name)}</strong> (${formatAlzGamer(d.bestItem.price)})</span>` : ''}
