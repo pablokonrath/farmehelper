@@ -170,12 +170,6 @@ export async function loadPersistedState() {
     ?? (appSettings.rarityOneInRuns ? 100 / appSettings.rarityOneInRuns : AppState.rarityMaxPercent);
   AppState.rarityDismissed = appSettings.rarityDismissed ?? [];
   AppState.rarityConfirmed = appSettings.rarityConfirmed ?? [];
-  // Itens que não valem Alz. Migra o item do antigo painel de evento pra dentro da lista: quem
-  // tinha um fragmento configurado ali continua com ele excluído, sem precisar recadastrar — e
-  // sem que desligar o painel (que não existe mais) fizesse o item voltar a contar retroativamente
-  // em todo o histórico, que era o furo do desenho anterior.
-  AppState.nonSellableItems = appSettings.nonSellableItems
-    ?? (appSettings.eventConfig?.itemName ? [appSettings.eventConfig.itemName] : []);
   AppState.resetConfig = { ...AppState.resetConfig, ...(appSettings.resetConfig || {}) };
   AppState.dungeonList = dungeonList.length ? dungeonList : DEFAULT_DUNGEONS;
   AppState.manualDrops = hydrateManualDrops(manualDrops);
@@ -218,10 +212,6 @@ export function saveRushCredits() {
 // histórico antigo que essa tabela existe pra guardar. Ver api/drop-snapshots.php.
 export function saveDropSnapshot(rows) {
   return put('drop-snapshots.php', rows);
-}
-
-export function saveNonSellableItems() {
-  return put('app-settings.php', { nonSellableItems: AppState.nonSellableItems });
 }
 
 export function saveRarityConfirmed() {

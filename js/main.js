@@ -52,7 +52,7 @@ import {
   toggleRushRouteItems,
 } from './pages/rush-page.js';
 
-import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice, addNonSellableItem, removeNonSellableItem } from './features/pricing.js';
+import { addItemPrice, startEditingItemPrice, cancelEditingItemPrice, saveItemPriceEdit, deleteItemPrice } from './features/pricing.js';
 import { addTrackedKeyword, removeTrackedKeyword, resetTrackedKeywords, toggleKeywordAlert, addSuggestedKeyword } from './features/keywords.js';
 import { saveDungeonEdit, deleteDungeon, addNewDungeon, resetDungeonList } from './features/dungeon-manager.js';
 import {
@@ -151,8 +151,6 @@ Object.assign(window, {
   cancelEditingItemPrice,
   saveItemPriceEdit,
   deleteItemPrice,
-  addNonSellableItem,
-  removeNonSellableItem,
   addTrackedKeyword,
   removeTrackedKeyword,
   resetTrackedKeywords,

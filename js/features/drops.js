@@ -173,60 +173,44 @@ export function getMaterialGroup(name) {
   const primeira = normalized.replace(NIVEL_NO_FIM, '').trim().split(/\s+/)[0] || 'Material';
   return primeira.charAt(0).toUpperCase() + primeira.slice(1);
 }
+// Itens que você NÃO VENDE — ficha de evento e afins. Ficam FORA de toda conta de Alz do app.
+//
+// Por que precisa existir, se você nunca cadastrou preço pro fragmento: por causa do PREÇO DE
+// REFERÊNCIA DA COMUNIDADE (ver getReferencePrice). Outro jogador cadastrou um valor, e o app usa
+// a mediana como padrão pra quem não tem preço próprio. Ou seja, o fragmento entra no seu farme
+// sozinho, sem você ter feito nada — e é exatamente o farme falso que a gente quer fora: infla o
+// total do dia, o Alz/run e o líquido, e a decisão de onde farmar sai errada em cima de um número
+// que não existe, porque essa ficha nunca vira Alz na sua mão.
+//
+// É constante no código, não configuração. Chegou a ser uma lista editável na tela e foi tirada:
+// não faz sentido pedir pro jogador cadastrar um item justamente pra dizer que ele não vale nada.
+// Mesma ideia (e mesmo jeito de crescer) do MATERIAL_KEYWORDS logo acima — é só acrescentar aqui,
+// e como o push já publica, vale no ar na hora.
+//
+// Casa por TRECHO do nome, então "fragmento" cobre todas as variações que o log traz ("Fragmento
+// Prismático", "Fragmento Prismático (Evento)").
+//
+// COMO ISSO CRESCE: evento de drop no Cabal usa item EXCLUSIVO do evento — ele cai só enquanto o
+// evento dura e depois some do jogo. Então cada evento novo traz uma palavra nova, e esta lista
+// ganha uma linha. É uma mensagem por evento, e como o push já publica, vale no ar na hora.
+//
+// Não dá pra adivinhar o nome antes, e chutar palavras genéricas seria pior: "selo" arrastaria a
+// DG Selo da Escuridão e sumiria com farme de verdade. Esconder farme real é pior que mostrar
+// farme falso, porque um número menor do que deveria não dá nenhum sinal de que está errado.
+//
+// 'fragmento' é do evento que já passou. Fica: o item não cai mais, mas continua no histórico, e a
+// regra não tem data — o farme daquelas sessões segue limpo pra sempre, sem ninguém reprocessar
+// nada.
+const NAO_VENDE_KEYWORDS = ['fragmento'];
 
-// Itens que você NÃO VENDE — ficha de evento, moeda, material que só se usa. Ficam FORA de toda
-// conta de Alz do app.
-//
-// A razão é simples: Alz farmado tem que ser dinheiro que você pode receber. Item que você só
-// consome nunca vira Alz, então dar valor a ele é farme falso — infla o total do dia, o Alz/run e
-// o líquido, e a decisão de onde farmar sai errada em cima de um número que não existe.
-//
-// Antes isso era amarrado a um painel de "evento" com liga/desliga, e tinha um furo grave: o
-// filtro lia a configuração ATUAL, sem nenhuma data. No dia em que o evento fosse desligado, todas
-// as sessões passadas voltavam a contar o fragmento de uma vez — retroativamente, sem aviso, e a
-// média das DGs daquele período mudava sozinha. Uma lista permanente não tem esse problema: o item
-// não vale Alz ontem, hoje nem depois, e nada é reavaliado quando alguma coisa é desligada.
-//
-// Mesmo tratamento do equipamento genérico: continua no log e nos itens da sessão (você continua
-// vendo o que caiu), só não vale Alz.
-//
-// Casa por TRECHO do nome, então "fragmento" cobre todas as variações que o log traz.
-//
-// Mora aqui, e não num módulo próprio, pra não criar ciclo de import: quem gerencia a lista
-// depende do router, e o router carrega as páginas, que dependem deste módulo. A lista é lida
-// direto do AppState, que é o mesmo dado.
-let alvosCache = null;
-let alvosCacheFonte = null;
-let itensCache = new Map();
-
-function alvos() {
-  const fonte = AppState.nonSellableItems || [];
-  // Recalcula quando a LISTA muda (compara por conteúdo, não por referência: editar um item
-  // reescreve o array e a identidade muda de qualquer jeito, mas trocar a ordem não deveria
-  // custar uma revarredura).
-  const chave = fonte.join('|');
-  if (chave !== alvosCacheFonte) {
-    alvosCacheFonte = chave;
-    // Entrada curta demais casaria com meio log por acidente ("orb" pegaria "Orbe", "Orbita"...).
-    // Três caracteres é o piso: abaixo disso a entrada é ignorada em vez de causar estrago mudo.
-    alvosCache = fonte
-      .map(n => normalizeForSearch(n || ''))
-      .filter(n => n.length >= 3);
-    itensCache = new Map();
-  }
-  return alvosCache;
-}
+const naoVendeCache = new Map();
 
 export function isNonSellableItem(name) {
-  const lista = alvos();
-  if (!lista.length) return false;
-  let hit = itensCache.get(name);
+  let hit = naoVendeCache.get(name);
   if (hit === undefined) {
-    // "Contém" e não igualdade: o log traz variações e sufixos no nome ("Fragmento Prismático
-    // (Evento)"), e exigir igualdade exata faria o filtro não pegar nada, calado.
     const alvo = normalizeForSearch(name);
-    hit = lista.some(a => alvo.includes(a));
-    itensCache.set(name, hit);
+    hit = NAO_VENDE_KEYWORDS.some(kw => alvo.includes(kw));
+    naoVendeCache.set(name, hit);
   }
   return hit;
 }

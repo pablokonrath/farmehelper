@@ -4,7 +4,6 @@ import { summarizeDropsByItem, getAllDrops, isFixedPriceItem, hasRegisteredPrice
 import { daysSincePriceUpdate, STALE_PRICE_DAYS, getSalePriceHistory, getPriceOrigin } from '../features/sales.js';
 import { renderAlzValue, formatNumber, formatDateBR } from '../utils/formatting.js';
 import { normalizeForSearch } from '../utils/parsing.js';
-import { infoToggle } from '../features/ui-toggles.js';
 import { esc, escAttr } from '../utils/escape.js';
 import { renderPage } from '../router.js';
 
@@ -201,30 +200,6 @@ ${filteredEntries.map(([name, price, meu]) => {
 </tr>`;
 }).join('')}
 </tbody></table>`}
-</div>
-<div class="card"><div class="ctitle"><i class="ti ti-ban" style="color:var(--warn)"></i>Itens que eu não vendo</div>
-<div style="font-size:13px;color:var(--txt2);line-height:1.7;margin-bottom:12px">
-  Ficha de evento, moeda, material que só se consome. Eles <strong>continuam aparecendo</strong> no
-  log e nos itens da sessão — você segue vendo o que caiu — mas <strong>não valem Alz</strong> em
-  conta nenhuma: nem no total do dia, nem no Alz/run, nem no líquido, nem no ranking de DGs.
-</div>
-${infoToggle('pricing-nonsellable', 'Item que você nunca vende nunca vira dinheiro, então dar valor a ele é farme falso: infla o total do dia e faz você escolher a DG errada em cima de um número que não existe. E isso acontece sozinho — basta o item ter preço de referência da comunidade, mesmo que você nunca cadastre nada.<br><br>Casa por <strong>trecho do nome</strong>, então "fragmento" cobre todas as variações que o log traz ("Fragmento Prismático", "Fragmento Prismático (Evento)"). Mínimo de 3 letras: mais curto que isso acabaria pegando item que não tem nada a ver.<br><br>A lista é <strong>permanente e sem data</strong>, de propósito. Antes isso era um painel de evento com liga/desliga, e no dia em que o evento fosse desligado todas as sessões passadas voltavam a contar o fragmento de uma vez — a média das DGs daquele período mudava sozinha, retroativamente. Aqui o item não vale Alz ontem, hoje nem depois.')}
-<div class="row" style="margin-top:12px;align-items:flex-end">
-  <div style="flex:1;min-width:200px"><label class="lbl">Trecho do nome</label>
-    <input class="inp" id="nonSellableInput" list="nonSellableSugg" placeholder="ex: fragmento" onkeydown="if(event.key==='Enter')addNonSellableItem()">
-    <datalist id="nonSellableSugg">${AppState.knownItemNames.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
-  <div><label class="lbl">&nbsp;</label><button class="btn btn-p" onclick="addNonSellableItem()"><i class="ti ti-plus"></i>Adicionar</button></div>
-</div>
-${AppState.nonSellableItems.length
-  ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px">
-      ${AppState.nonSellableItems.map((n, i) => `<span style="display:flex;align-items:center;gap:8px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12px">
-        ${esc(n)}
-        ${/* Índice, não o nome: enfiar texto do usuário numa string JS dentro de um atributo HTML
-             quebra no primeiro apóstrofo. A função resolve o nome pelo índice, onde ele já está. */''}
-        <button aria-label="Remover ${escAttr(n)} da lista" title="Voltar a contar este item como Alz" style="background:none;border:none;color:var(--err);cursor:pointer;padding:0;font-size:14px;line-height:1" onclick="removeNonSellableItem(${i})"><i class="ti ti-x"></i></button>
-      </span>`).join('')}
-    </div>`
-  : '<div style="font-size:12px;color:var(--muted);margin-top:10px">Nenhum item na lista — tudo que cai está valendo Alz.</div>'}
 </div>
 <div class="card"><div class="sh"><div class="ctitle" style="margin:0"><i class="ti ti-filter"></i>Filtro: só itens rastreados</div>
 <label class="tgl"><input type="checkbox" aria-label="Filtrar apenas itens rastreados" ${AppState.filterByTrackedKeywords ? 'checked' : ''} onchange="toggleFilterByKeywords(this.checked)"><div class="tgl-track"></div><div class="tgl-thumb"></div></label></div>
